@@ -8,14 +8,26 @@ from travelmind.research.engine import ResearchEngine
 from travelmind.runtime.execution import RunError
 from travelmind.schemas.agents import AgentInput
 from travelmind.schemas.domain import Evidence
+from travelmind.schemas.worker import LeaseLost, LeaseRef, WorkerStore
 
 logger = logging.getLogger(__name__)
 
 
 class ResearchRetriever:
-    def __init__(self, engine: ResearchEngine, sessions: async_sessionmaker[AsyncSession]):
+    def __init__(
+        self,
+        engine: ResearchEngine,
+        sessions: async_sessionmaker[AsyncSession],
+        *,
+        store: WorkerStore[AsyncSession] | None = None,
+        lease: LeaseRef | None = None,
+    ):
+        if (store is None) != (lease is None):
+            raise ValueError("an evidence write fence needs both the WorkerStore and lease")
         self.engine = engine
         self.sessions = sessions
+        self.store = store
+        self.lease = lease
 
     async def __call__(self, request: AgentInput) -> list[Evidence]:
         brief = request.brief
@@ -61,4 +73,8 @@ class ResearchRetriever:
                 error.code,
             )
         async with self.sessions.begin() as session:
+            if self.store is not None and self.lease is not None:
+                if request.task_id != self.lease.task_id:
+                    raise LeaseLost("evidence task does not match the lease")
+                await self.store.check_lease(self.lease, transaction=session)
             return await save_evidence(session, request.task_id, evidence)

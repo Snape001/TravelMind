@@ -1,0 +1,134 @@
+import argparse
+import asyncio
+import logging
+import sys
+from contextlib import AsyncExitStack
+
+import httpx
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
+from travelmind.config import Settings, get_settings
+from travelmind.db.connection import create_database_engine
+from travelmind.research.engine import ResearchEngine
+from travelmind.runtime.checkpoints import (
+    FencedPostgresSaver,
+    checkpoint_dsn,
+    initialize_checkpoints,
+)
+from travelmind.runtime.durable_worker import DurableWorker
+from travelmind.runtime.model import create_structured_model
+from travelmind.runtime.retrieval import ResearchRetriever
+
+logger = logging.getLogger(__name__)
+WAKE_CHANNEL = "travelmind:worker:wakeup"
+
+
+async def listen(redis: Redis, wake: asyncio.Event) -> None:
+    while True:
+        try:
+            async with redis.pubsub() as subscriber:
+                await subscriber.subscribe(WAKE_CHANNEL)
+                async for message in subscriber.listen():
+                    if message["type"] == "message":
+                        wake.set()
+        except (RedisError, OSError) as exc:
+            logger.warning("worker.redis_unavailable type=%s", type(exc).__name__)
+            await asyncio.sleep(5)
+
+
+async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> None:
+    # The task-service branch owns the Postgres implementation of WorkerStore.
+    from travelmind.db.worker import PostgresWorkerStore
+
+    if not settings.deepseek_api_key or not settings.deepseek_api_key.get_secret_value():
+        raise ValueError("DEEPSEEK_API_KEY is required")
+    async with AsyncExitStack() as resources:
+        engine = create_database_engine(settings)
+        resources.push_async_callback(engine.dispose)
+        sessions = async_sessionmaker(engine, expire_on_commit=False)
+        store = PostgresWorkerStore(sessions)
+        client = await resources.enter_async_context(httpx.AsyncClient())
+        research = ResearchEngine(client, settings)
+        pool = await resources.enter_async_context(
+            AsyncConnectionPool(
+                checkpoint_dsn(settings),
+                min_size=1,
+                max_size=6,
+                open=False,
+                kwargs={"autocommit": True, "row_factory": dict_row},
+                timeout=settings.dependency_timeout_seconds,
+            )
+        )
+        worker = DurableWorker(
+            store,
+            create_structured_model(settings),
+            lambda lease: FencedPostgresSaver(pool, store, lease),
+            retrieve=lambda lease: ResearchRetriever(research, sessions, store=store, lease=lease),
+            lease_seconds=lease_seconds,
+            poll_seconds=poll_seconds,
+        )
+        if settings.redis_url is None:
+            await worker.serve()
+            return
+        redis = Redis.from_url(
+            settings.redis_url.get_secret_value(),
+            socket_connect_timeout=settings.dependency_timeout_seconds,
+        )
+        resources.push_async_callback(redis.aclose)
+        wake = asyncio.Event()
+        subscriber = asyncio.create_task(listen(redis, wake))
+
+        async def wait_for_work(seconds: float) -> None:
+            try:
+                await asyncio.wait_for(wake.wait(), seconds)
+            except TimeoutError:
+                pass
+            wake.clear()
+
+        try:
+            await worker.serve(wait_for_work)
+        finally:
+            subscriber.cancel()
+            await asyncio.gather(subscriber, return_exceptions=True)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="TravelMind durable research worker")
+    subcommands = parser.add_subparsers(dest="command", required=True)
+    subcommands.add_parser("init-checkpoints", help="Initialize or upgrade Checkpoint tables")
+    run = subcommands.add_parser("run", help="Poll PostgreSQL and execute queued research")
+    run.add_argument("--lease-seconds", type=int, default=45)
+    run.add_argument("--poll-seconds", type=float, default=2)
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
+    if sys.platform == "win32":
+        # Psycopg does not support Windows' default Proactor loop.
+        loop_factory = asyncio.SelectorEventLoop
+    else:
+        loop_factory = asyncio.new_event_loop
+    try:
+        settings = get_settings()
+        with asyncio.Runner(loop_factory=loop_factory) as runner:
+            if args.command == "init-checkpoints":
+                runner.run(initialize_checkpoints(settings))
+            else:
+                runner.run(serve(settings, args.lease_seconds, args.poll_seconds))
+    except KeyboardInterrupt:
+        return 0
+    except ModuleNotFoundError as exc:
+        if exc.name != "travelmind.db.worker":
+            raise
+        logger.error("PostgresWorkerStore is supplied by the Phase 2 task-service branch")
+        return 1
+    except Exception as exc:
+        logger.error("worker.startup_failed type=%s", type(exc).__name__)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

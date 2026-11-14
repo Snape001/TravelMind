@@ -9,8 +9,10 @@ from langgraph.config import get_stream_writer
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 from pydantic import ValidationError
 
+from travelmind.runtime.journal import record_event
 from travelmind.schemas.agents import AgentFailure, AgentInput, ErrorInfo, RunBudget
 from travelmind.schemas.events import AgentFinishedEvent, AgentStartedEvent, EventPayload
+from travelmind.schemas.worker import LeaseLost
 
 logger = logging.getLogger(__name__)
 Result = TypeVar("Result")
@@ -44,6 +46,7 @@ def classify_error(exc: Exception) -> RunError:
 
 
 def emit(payload: EventPayload) -> None:
+    record_event(payload)
     get_stream_writer()(payload)
 
 
@@ -52,7 +55,7 @@ async def with_budget(operation: Callable[[], Awaitable[Result]], budget: RunBud
         try:
             async with asyncio.timeout(budget.timeout_seconds):
                 return await operation()
-        except RunError:
+        except (RunError, LeaseLost):
             raise
         except Exception as exc:
             error = classify_error(exc)
