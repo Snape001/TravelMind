@@ -8,14 +8,16 @@
 
 ```powershell
 docker compose up -d --wait
-Copy-Item backend/.env.example backend/.env
+if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
 Set-Location backend
 uv sync --locked
 uv run alembic upgrade head
 uv run uvicorn travelmind.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-若使用已有的 PostgreSQL 与 Redis，将 `backend/.env` 的连接串改为实际地址，再运行迁移。DeepSeek 密钥可填入同一文件，阶段 0 的任务接口可在密钥为空时使用。
+Compose 将 PostgreSQL 和 Redis 分别绑定到本机的 `15432` 和 `16379` 端口。若已有 `backend/.env`，请核对其中的连接串与实际服务地址一致。
+
+在 `backend/.env` 的 `DEEPSEEK_API_KEY` 填入密钥。模板默认使用官方 API `https://api.deepseek.com` 和 `deepseek-flash`，阶段 0 的任务接口可在密钥为空时使用。
 
 从项目根目录另开一个终端启动前端。
 
