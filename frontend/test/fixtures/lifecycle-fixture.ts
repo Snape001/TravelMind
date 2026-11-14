@@ -1,5 +1,5 @@
 import { buildResearch, type MockResearch } from "./mock-research";
-import { uuidPattern, type AgentEvent, type EventPayload, type PendingClarification, type ResearchBrief, type TaskRead } from "./research";
+import { uuidPattern, type AgentEvent, type EventPayload, type PendingClarification, type ResearchBrief, type TaskRead } from "../../src/lib/research";
 
 type Operation = "pause" | "resume" | "answer";
 type Failure = "IDEMPOTENCY_CONFLICT" | "TASK_STATE_CONFLICT" | "CLARIFICATION_STALE" | "VALIDATION_ERROR";

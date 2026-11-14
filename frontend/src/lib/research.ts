@@ -44,5 +44,6 @@ const clock = new Intl.DateTimeFormat("zh-CN", {
 const calendar = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", dateStyle: "medium" });
 export const formatTime = (value: string) => clock.format(new Date(value));
 export const formatDate = (value: string) => calendar.format(new Date(value));
-export const reportHref = (taskId: string, reportId: string) => `/reports/${taskId}/${reportId}`;
+export const workbenchHref = (taskId: string) => `/workbench/${encodeURIComponent(taskId)}`;
+export const reportHref = (taskId: string, reportId: string) => `/reports/${encodeURIComponent(taskId)}/${encodeURIComponent(reportId)}`;
 export const uuidPattern = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu;

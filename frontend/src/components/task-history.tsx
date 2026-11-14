@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, FlaskConical } from "lucide-react";
-import { ApiError, mockMode, readTask } from "@/lib/task-client";
-import { historyKey, readTaskHistory } from "@/lib/task-history";
-import { formatDate, taskStatusLabels, type TaskRead } from "@/lib/research";
+import { ApiError, readTask } from "@/lib/task-client";
+import { readTaskHistory } from "@/lib/task-history";
+import { formatDate, taskStatusLabels, workbenchHref, type TaskRead } from "@/lib/research";
 import { SessionPrompt, useSession } from "./session";
 
 export function TaskHistory() {
@@ -21,8 +21,7 @@ function HistoryList({ userId }: { userId: string }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    let ids: string[] = [];
-    try { ids = readTaskHistory(localStorage, historyKey(userId, mockMode)); } catch { /* Storage may be disabled. */ }
+    const ids = readTaskHistory(userId);
     Promise.allSettled(ids.map((id) => readTask(id, controller.signal))).then((results) => {
       if (controller.signal.aborted) return;
       const failures = results.flatMap((result) => result.status === "rejected" ? [result.reason as unknown] : []);
@@ -39,7 +38,7 @@ function HistoryList({ userId }: { userId: string }) {
       <button className="text-link" type="button" onClick={() => setAttempt((value) => value + 1)}>重试</button></div>}
     {tasks?.length === 0 && !error && <p className="panel empty-state">此浏览器暂无可访问的历史任务。</p>}
     {!!tasks?.length && <ul className="report-list">{tasks.map((task) => <li key={task.task_id}>
-      <Link className="report-row task-history-row" href={`/workbench/${task.task_id}`}>
+      <Link className="report-row task-history-row" href={workbenchHref(task.task_id)}>
         <span className="icon-tile"><FlaskConical size={19} aria-hidden /></span>
         <span><strong>{task.brief.destination}调研</strong><small>更新于 {formatDate(task.updated_at)}</small></span>
         <span className={`task-badge ${task.status}`}>{task.status === "running" && task.pause_requested_at ? "等待暂停" : taskStatusLabels[task.status]}</span>

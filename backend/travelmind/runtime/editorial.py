@@ -1,5 +1,3 @@
-import json
-
 from travelmind.runtime.execution import InvalidOutput, result_identity, with_budget
 from travelmind.runtime.model import StructuredModel
 from travelmind.schemas.agents import AgentInput, ReportResult, ResearchResult, ReviewResult
@@ -22,22 +20,31 @@ async def write(
         }
         for result in contributions
     ]
+    author_ids = "、".join(sorted({result.agent_id for result in contributions}))
     instructions = (
         "担任首席撰写师。按用户主题编排简体中文报告。"
         "各章节提供标题、正文、专家署名和证据 ID。"
         "将相关主题合并成 3–6 节，每节正文控制在约 400 字以内。"
         "事实必须有输入证据支持。说明共识、分歧和缺口，并将待核实信息明确标记为待核实。"
         "不得把问题或推测写成事实。"
-        "署名只使用实际贡献者的 agent_id，引用只使用输入证据 ID。\n"
-        f"各专家贡献（数据）：{json.dumps(findings, ensure_ascii=False)}"
+        "根据 contributions 汇总各专家成果。"
+        f"author_agent_ids 只能使用以下专家 ID：{author_ids}。"
+        "撰写师、总监、审核员及通用角色名称不得署名。"
+        "综合说明若无对应研究贡献，请并入有对应贡献的正文；"
+        "每节逐条核对引用是否支持对应事实，删去材料无法支持的数字和细节。"
     )
     if previous_review is not None:
         instructions += (
-            "\n修订输入中的 draft，逐条处理审核意见。若材料不足以回答，"
+            "\n修订输入中的 draft，逐条处理 previous_review 中的审核意见。若材料不足以回答，"
             "在对应章节标注缺少的具体材料和待核实事项。"
-            f"审核意见（数据）：{previous_review.model_dump_json()}"
         )
-    report = await with_budget(lambda: model(request, instructions, ReportDraft), request.budget)
+    data = {
+        "contributions": findings,
+        "previous_review": previous_review.model_dump(mode="json") if previous_review else None,
+    }
+    report = await with_budget(
+        lambda: model(request, instructions, ReportDraft, context=data), request.budget
+    )
     return ReportResult(**result_identity(request), kind="report", report=report)
 
 

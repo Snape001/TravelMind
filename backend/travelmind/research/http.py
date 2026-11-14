@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from json import loads
 from time import monotonic
 from typing import Any, Literal
 
@@ -11,6 +12,7 @@ from pydantic import SecretStr
 from travelmind.schemas.agents import ErrorInfo
 
 Provider = Literal["bocha", "firecrawl", "openalex"]
+MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 logger = logging.getLogger(__name__)
 
 
@@ -86,8 +88,9 @@ class ProviderClient:
             started = monotonic()
             response = None
             try:
-                async with asyncio.timeout(self.timeout):
-                    response = await self.client.request(
+                async with (
+                    asyncio.timeout(self.timeout),
+                    self.client.stream(
                         method,
                         endpoint,
                         headers=headers,
@@ -95,12 +98,18 @@ class ProviderClient:
                         params=params,
                         timeout=self.timeout,
                         follow_redirects=False,
-                    )
-                if not response.is_success:
-                    raise status_failure(self.provider, response.status_code)
+                    ) as response,
+                ):
+                    if not response.is_success:
+                        raise status_failure(self.provider, response.status_code)
+                    body = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        if len(body) + len(chunk) > MAX_RESPONSE_BYTES:
+                            raise invalid_response(self.provider)
+                        body.extend(chunk)
                 try:
-                    payload = response.json()
-                except ValueError:
+                    payload = loads(body)
+                except (ValueError, RecursionError):
                     raise invalid_response(self.provider) from None
                 if not isinstance(payload, dict):
                     raise invalid_response(self.provider)

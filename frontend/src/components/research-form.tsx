@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronDown, MapPin, Search, Zap, Layers, BookOpen } from "lucide-react";
-import { createTask, mockMode } from "@/lib/task-client";
-import { historyKey, rememberTask } from "@/lib/task-history";
+import { createTask } from "@/lib/task-client";
+import { rememberTask } from "@/lib/task-history";
 import { depthOptions, prepareBrief, type CurrentUser, type ResearchBrief } from "@/lib/research";
 import { SessionPrompt, useSession } from "./session";
 
@@ -46,7 +46,7 @@ function ResearchFormFields({ user, handleError }: { user?: CurrentUser; handleE
       setSending(true);
       const task = await createTask(brief, lastRequest.current.key, user.csrf_token, controller.signal);
       if (controller.signal.aborted) return;
-      try { rememberTask(localStorage, historyKey(user.user_id, mockMode), task.task_id); } catch { /* Storage may be disabled. */ }
+      rememberTask(user.user_id, task.task_id);
       router.push(`/workbench/${task.task_id}`);
     } catch (problem) {
       if (controller.signal.aborted) return;

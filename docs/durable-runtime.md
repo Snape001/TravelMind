@@ -1,19 +1,10 @@
 # Phase 2 独立调研 Worker
 
-Worker 通过冻结的 `WorkerStore` 领取任务、续租、读取指令和提交业务投影。合入任务服务分支后，入口使用其 PostgreSQL 实现 `travelmind.db.worker.PostgresWorkerStore`。
+独立 Worker 使用 `PostgresWorkerStore` 领取任务、续租、读取指令和提交业务投影。
 
 ## 本地启动
 
-合入任务服务和 Runtime 后，从 `backend` 目录执行以下命令。使用与 FastAPI 相同的数据库配置，并设置 `DEEPSEEK_API_KEY` 及需要的检索服务密钥。
-
-```powershell
-uv sync --locked
-uv run alembic upgrade head
-uv run python -m travelmind.runtime.worker_cli init-checkpoints
-uv run python -m travelmind.runtime.worker_cli run
-```
-
-部署时先停用旧版 FastAPI 后台执行器，再运行迁移及一次 Checkpoint 初始化。Worker 进程可独立重启或启动多个实例。默认租约为 45 秒，每隔租约时长的三分之一续租，空闲时每 2 秒轮询 PostgreSQL。可通过 `--lease-seconds` 和 `--poll-seconds` 调整。配置 Redis 时订阅 `travelmind:worker:wakeup`，通知只触发提前轮询，断线时 PostgreSQL 轮询继续。
+启动与升级命令见 [README](../README.md#本地启动)。Worker 进程可独立重启或启动多个实例。默认租约为 45 秒，每隔租约时长的三分之一续租，空闲时每 2 秒轮询 PostgreSQL。可通过 `--lease-seconds` 和 `--poll-seconds` 调整。配置 Redis 时订阅 `travelmind:worker:wakeup`，收到通知时提前轮询。Worker 关闭时取消监听及心跳，并释放数据库和模型连接。
 
 ## 恢复与投影
 
@@ -28,4 +19,4 @@ uv run python -m travelmind.runtime.worker_cli run
 
 从 `backend` 运行 `uv run pytest tests/test_durable_runtime.py`。联调时将 `TEST_DATABASE_URL` 指向专用测试库，应用任务服务的业务迁移后运行 `uv run pytest tests/test_durable_postgres.py`。测试包含投影前崩溃后的重领、旧 epoch 的完整和中间写入拦截，以及澄清、暂停和续跑的跨连接恢复。
 
-重试预算回归覆盖最后一次执行租约、仅投影租约的终态与中断恢复，以及只有未提交中间写入时的耗尽结算。OIDC 签名校验所需的 `PyJWT[crypto]` 随后端锁文件安装。
+重试预算回归覆盖最后一次执行租约、仅投影租约的终态与中断恢复，以及只有未提交中间写入时的耗尽结算。

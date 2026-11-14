@@ -99,7 +99,7 @@ def build_research_graph(
     max_revision_rounds: int = 1,
     checkpointer: BaseCheckpointSaver | None = None,
 ):
-    """Compile the async A-line workflow. Custom stream items are AgentEvent payloads."""
+    """Compile the research workflow. Custom stream items are AgentEvent payloads."""
     if not 0 <= max_revision_rounds <= 2:
         raise ValueError("max_revision_rounds must be between 0 and 2")
     run_budget = budget or RunBudget()
@@ -351,6 +351,11 @@ def build_research_graph(
             return updates | publish_status("failed", error=error)
         return updates
 
+    def running_edges(origin: str, target: str) -> None:
+        builder.add_conditional_edges(
+            origin, lambda state: state["status"] == "running", {True: target, False: END}
+        )
+
     builder = StateGraph(ResearchState, input_schema=ResearchInput, context_schema=ControlContext)
     for name, node in {
         "director": director,
@@ -362,6 +367,9 @@ def build_research_graph(
         "review": review,
     }.items():
         builder.add_node(name, journal_node(node) if durable else node)
+
+    builder.add_edge("expert", "schedule")
+    running_edges("planner", "schedule")
 
     if durable:
 
@@ -387,7 +395,6 @@ def build_research_graph(
             },
         )
         builder.add_edge("clarification", "before_director")
-        builder.add_edge("expert", "schedule")
         builder.add_conditional_edges(
             "schedule",
             lambda state: state["status"],
@@ -405,29 +412,14 @@ def build_research_graph(
             },
         )
         builder.add_edge("cross_examine", "before_write")
-        for origin, target in {
-            "planner": "schedule",
-            "write": "before_review",
-            "review": "before_write",
-        }.items():
-            builder.add_conditional_edges(
-                origin,
-                lambda state: state["status"] == "running",
-                {True: target, False: END},
-            )
+        running_edges("write", "before_review")
+        running_edges("review", "before_write")
         return builder.compile(checkpointer=checkpointer)
 
     builder.add_edge(START, "director")
-    for node, next_node in [
-        ("director", "planner"),
-        ("planner", "schedule"),
-        ("write", "review"),
-        ("review", "write"),
-    ]:
-        builder.add_conditional_edges(
-            node, lambda state: state["status"] == "running", {True: next_node, False: END}
-        )
+    running_edges("director", "planner")
+    running_edges("write", "review")
+    running_edges("review", "write")
     builder.add_conditional_edges("schedule", dispatch, ["expert", "cross_examine", "write", END])
-    builder.add_edge("expert", "schedule")
     builder.add_edge("cross_examine", "write")
     return builder.compile()

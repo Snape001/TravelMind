@@ -1,9 +1,7 @@
-import type { CurrentUser } from "./research";
+import type { CurrentUser } from "../../src/lib/research";
 
 const cookie = "travelmind_fixture_session";
-// Next.js bundles route handlers separately. Both fixture routes use the same process store.
-const processStore = globalThis as typeof globalThis & { travelmindFixtureSessions?: Map<string, CurrentUser> };
-const sessions = processStore.travelmindFixtureSessions ??= new Map<string, CurrentUser>();
+const sessions = new Map<string, CurrentUser>();
 const identity = { user_id: "4fb7f515-2097-4a09-9fde-d5de25d2143d", display_name: "契约测试用户" };
 
 export function fixtureSession(request: Request) {
@@ -12,7 +10,7 @@ export function fixtureSession(request: Request) {
   return token ? sessions.get(token) : undefined;
 }
 
-export function fixtureError(status: number, code: string, message: string) {
+function fixtureError(status: number, code: string, message: string) {
   return Response.json({ detail: { code, message, retryable: false } }, { status });
 }
 
@@ -23,10 +21,6 @@ export function checkFixtureWrite(request: Request, user: CurrentUser) {
 }
 
 const sessionCookie = (value: string, age: number) => `${cookie}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}`;
-
-export function fixtureLogin() {
-  return new Response(null, { status: 302, headers: { Location: "/mock/api/v1/auth/callback", "Cache-Control": "no-store" } });
-}
 
 export function fixtureCallback() {
   const salt = crypto.randomUUID();

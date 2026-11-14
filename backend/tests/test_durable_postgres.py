@@ -13,14 +13,19 @@ from test_runtime import Model, source
 
 from travelmind.config import Settings
 from travelmind.db.connection import create_database_engine
+from travelmind.db.control import apply_command
 from travelmind.db.evidence import save_evidence
-from travelmind.db.models import AgentRunRow, EventRow, ReportRow, TaskRow
+from travelmind.db.models import AgentRunRow, EventRow, ReportRow, TaskRow, UserRow
+from travelmind.db.tasks import create_task, pending_clarification
+from travelmind.db.worker import PostgresWorkerStore
 from travelmind.runtime.checkpoints import (
     FencedPostgresSaver,
     checkpoint_dsn,
     initialize_checkpoints,
 )
 from travelmind.runtime.durable_worker import DurableWorker
+from travelmind.schemas.api import ClarificationAnswers
+from travelmind.schemas.domain import ResearchBrief
 from travelmind.schemas.worker import LeaseLost, ProjectionBatch
 
 pytestmark = pytest.mark.postgres
@@ -30,11 +35,6 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:
         pytest.skip("set TEST_DATABASE_URL to a dedicated migrated test database")
-    try:
-        from travelmind.db.models import UserRow
-        from travelmind.db.worker import PostgresWorkerStore
-    except ImportError:
-        pytest.skip("requires the Phase 2 task-service branch and its migration")
 
     class SimulatedCrash(Exception):
         pass
@@ -206,16 +206,6 @@ def test_pause_and_clarification_resume_from_postgres_with_new_worker_connection
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:
         pytest.skip("set TEST_DATABASE_URL to a dedicated migrated test database")
-    try:
-        from travelmind.db.control import apply_command
-        from travelmind.db.models import UserRow
-        from travelmind.db.tasks import create_task, pending_clarification
-        from travelmind.db.worker import PostgresWorkerStore
-    except ImportError:
-        pytest.skip("requires the Phase 2 task-service branch and its migration")
-
-    from travelmind.schemas.api import ClarificationAnswers
-    from travelmind.schemas.domain import ResearchBrief
 
     async def run():
         settings = Settings(_env_file=None, database_url=url)
@@ -227,8 +217,8 @@ def test_pause_and_clarification_resume_from_postgres_with_new_worker_connection
         item = source()
         task_id = None
 
-        async def model_reply(request, prompt):
-            if request.agent_id == "research_director" and "泉州" not in prompt:
+        async def model_reply(request, _prompt, context):
+            if request.agent_id == "research_director" and not context["clarification_answers"]:
                 return {"questions": ["请问是哪座古城？"]}
             if request.agent_id == "planner":
                 async with sessions() as session:

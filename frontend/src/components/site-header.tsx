@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Compass, FileText, FlaskConical, House, UsersRound } from "lucide-react";
-import { loginHref, mockMode } from "@/lib/task-client";
+import { loginHref } from "@/lib/task-client";
 import { useSession } from "./session";
 
 const links = [
@@ -43,7 +43,6 @@ export function SiteHeader() {
           })}
         </nav>
         <div className="header-session">
-          {mockMode && <span className="mode"><span className="status-dot" />模拟模式</span>}
           {session.user ? <>
             <span className="account-name" title={session.user.display_name ?? "已登录"}>{session.user.display_name ?? "已登录"}</span>
             <button className="button secondary" type="button" onClick={leave} disabled={busy}>{busy ? "正在退出…" : "退出"}</button>

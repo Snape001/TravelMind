@@ -12,7 +12,7 @@ from redis.asyncio import Redis
 from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from travelmind.config import Settings, get_settings
+from travelmind.config import WAKE_CHANNEL, Settings, get_settings
 from travelmind.db.connection import create_database_engine
 from travelmind.db.worker import PostgresWorkerStore
 from travelmind.research.engine import ResearchEngine
@@ -22,11 +22,10 @@ from travelmind.runtime.checkpoints import (
     initialize_checkpoints,
 )
 from travelmind.runtime.durable_worker import DurableWorker
-from travelmind.runtime.model import create_structured_model
+from travelmind.runtime.model import open_structured_model
 from travelmind.runtime.retrieval import ResearchRetriever
 
 logger = logging.getLogger(__name__)
-WAKE_CHANNEL = "travelmind:worker:wakeup"
 
 
 async def listen(redis: Redis, wake: asyncio.Event) -> None:
@@ -49,9 +48,8 @@ async def log_liveness(worker_id: UUID) -> None:
 
 
 async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> None:
-    if not settings.deepseek_api_key or not settings.deepseek_api_key.get_secret_value():
-        raise ValueError("DEEPSEEK_API_KEY is required")
     async with AsyncExitStack() as resources:
+        model = await resources.enter_async_context(open_structured_model(settings))
         engine = create_database_engine(settings)
         resources.push_async_callback(engine.dispose)
         sessions = async_sessionmaker(engine, expire_on_commit=False)
@@ -70,7 +68,7 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
         )
         worker = DurableWorker(
             store,
-            create_structured_model(settings),
+            model,
             lambda lease: FencedPostgresSaver(pool, store, lease),
             retrieve=lambda lease: ResearchRetriever(research, sessions, store=store, lease=lease),
             lease_seconds=lease_seconds,
@@ -112,6 +110,9 @@ def main() -> int:
     run.add_argument("--poll-seconds", type=float, default=2)
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
+    # Transport INFO logs include request URLs. Provider loggers supply safe metrics.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
     if sys.platform == "win32":
         # Psycopg does not support Windows' default Proactor loop.
         loop_factory = asyncio.SelectorEventLoop

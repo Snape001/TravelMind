@@ -1,6 +1,6 @@
 # Phase 2 公共契约基线
 
-本契约冻结持久化调研的 API、状态机与 Worker 交接。架构背景见 [持久化调研设计](durable-research-design.md)。本提交提供状态规则和共享 Schema。新增路由、存储实现与迁移由下文指定分支接入。
+本契约冻结持久化调研的 API、状态机与 Worker 交接。当前运行架构见 [持久化 Worker](durable-runtime.md) 和 [Agent Runtime](agent-runtime.md)。
 
 ## 任务状态
 

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { appendEvent, encodeEvent, readEvent, summarize } from "../src/lib/agent-events";
+import { eventCursor, readEvent, summarize } from "../src/lib/agent-events";
+import { demo, demoResearch } from "../src/lib/demo";
 import { prepareBrief } from "../src/lib/research";
-import { buildResearch, demoTask, eventsAfter, streamResearch, taskAt } from "../src/lib/mock-research";
+import { buildResearch, encodeEvent, eventsAfter, streamResearch, taskAt } from "./fixtures/mock-research";
 
 const brief = { destination: "泉州", topics: ["古城文化", "公共交通"], requirements: "周末", depth: "deep" } as const;
 const now = Date.parse("2026-11-14T03:30:00Z");
@@ -35,13 +36,15 @@ test("SSE ignores malformed data, unknown versions and mismatched event name or 
 });
 
 test("SSE replay scopes events to their task and trace and ignores duplicate or stale frames", () => {
-  const accepted = appendEvent([], first, research.task);
-  assert.equal(accepted.length, 1);
-  assert.equal(appendEvent(accepted, first, research.task), accepted);
-  assert.equal(appendEvent(accepted, { ...first, sequence: 2 }, research.task), accepted);
-  assert.equal(appendEvent(accepted, { ...first, task_id: demoTask.task.task_id, sequence: 2 }, research.task), accepted);
-  assert.equal(appendEvent(accepted, { ...first, trace_id: demoTask.task.trace_id, sequence: 2 }, research.task), accepted);
-  assert.equal(appendEvent([research.events[1]], first, research.task).length, 1);
+  const cursor = eventCursor(research.task, 0);
+  assert.equal(cursor.accept(first), true);
+  assert.equal(cursor.accept(first), false);
+  assert.equal(cursor.accept({ ...first, sequence: 2 }), false);
+  assert.equal(cursor.accept({ ...research.events[1], task_id: demo.taskId }), false);
+  assert.equal(cursor.accept({ ...research.events[1], trace_id: demoResearch.task.trace_id }), false);
+  assert.equal(cursor.accept(research.events[1]), true);
+  assert.equal(cursor.accept(first), false);
+  assert.equal(cursor.sequence, 2);
 });
 
 test("mock replay delivers only events above the exclusive cursor and at the current time", () => {
@@ -111,5 +114,22 @@ test("mock report versions and citations stay scoped to their owning task", () =
     }
   }
   assert.ok(research.evidence.every((source) => source.task_id === research.task.task_id));
-  assert.notEqual(research.task.task_id, demoTask.task.task_id);
+  assert.notEqual(research.task.task_id, demo.taskId);
+});
+
+test("public example preserves its completed replay, report versions and evidence references", () => {
+  const { task, events, reports, evidence } = demoResearch;
+  assert.equal(task.task_id, demo.taskId);
+  assert.equal(task.status, "completed");
+  assert.equal(reports.find(({ report_id }) => report_id === demo.reportId)?.content.title, demo.title);
+  assert.equal(summarize(task, events).reportDecision, "approved");
+  assert.ok(events.some(({ payload }) => payload.type === "report.reviewed" && payload.decision === "revision_required"));
+  assert.ok(events.every((event) => readEvent(JSON.stringify(event), event.payload.type, String(event.sequence)) &&
+    event.task_id === task.task_id && event.trace_id === task.trace_id));
+  const evidenceIds = new Set(evidence.map(({ evidence_id }) => evidence_id));
+  for (const report of reports) {
+    assert.equal(report.task_id, task.task_id);
+    assert.ok(report.content.sections.flatMap(({ evidence_ids }) => evidence_ids ?? []).every((id) => evidenceIds.has(id)));
+  }
+  assert.ok(evidence.some(({ source_url }) => source_url === "https://whc.unesco.org/en/list/1561/"));
 });

@@ -15,6 +15,7 @@ from travelmind.api.oidc import AuthSettings, OidcClient
 from travelmind.config import Settings, get_settings
 from travelmind.db.connection import create_database_engine
 from travelmind.schemas.api import ErrorInfo, ErrorResponse
+from travelmind.server_logging import access_log_filter
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        logging.getLogger("uvicorn.access").addFilter(access_log_filter)
         async with AsyncExitStack() as resources:
             app.state.settings = config
             app.state.engine = None

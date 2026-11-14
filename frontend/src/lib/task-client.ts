@@ -1,13 +1,10 @@
-import { eventTypes, readEvent } from "./agent-events";
-import { demo } from "./demo";
+import { eventCursor, eventTypes, readEvent } from "./agent-events";
 import type { AgentEvent, CurrentUser, EvidenceRead, ReportRead, ResearchBrief, TaskRead } from "./research";
 import type { TaskCommand } from "./task-lifecycle";
 
-export const mockMode = process.env.NEXT_PUBLIC_RESEARCH_MODE === "mock";
-export const isMockTask = (taskId: string) => mockMode || taskId === demo.taskId;
-const collection = (mock: boolean) => mock ? "/mock/api/v1/tasks" : "/api/v1/tasks";
-const taskUrl = (taskId: string) => `${collection(isMockTask(taskId))}/${encodeURIComponent(taskId)}`;
-const auth = `${mockMode ? "/mock" : ""}/api/v1/auth`;
+const collection = "/api/v1/tasks";
+const taskUrl = (taskId: string) => `${collection}/${encodeURIComponent(taskId)}`;
+const auth = "/api/v1/auth";
 export const loginHref = `${auth}/login`;
 
 export class ApiError extends Error {
@@ -43,7 +40,7 @@ function write(csrf: string, key?: string, body?: object, signal?: AbortSignal):
 export const readSession = (signal?: AbortSignal) => json<CurrentUser>(`${auth}/me`, { signal });
 export const logout = (csrf: string) => request(`${auth}/logout`, write(csrf));
 export const createTask = (brief: ResearchBrief, key: string, csrf: string, signal?: AbortSignal) =>
-  json<TaskRead>(collection(mockMode), write(csrf, key, brief, signal));
+  json<TaskRead>(collection, write(csrf, key, brief, signal));
 export function sendCommand(taskId: string, command: TaskCommand, key: string, csrf: string, signal?: AbortSignal) {
   const path = command.operation === "answer" ? `clarifications/${encodeURIComponent(command.roundId)}/answer` : command.operation;
   return json<TaskRead>(`${taskUrl(taskId)}/${path}`, write(csrf, key, command.operation === "answer" ? command.body : undefined, signal));
@@ -55,18 +52,18 @@ export const readEvidence = (taskId: string, id: string, signal: AbortSignal) =>
   json<EvidenceRead>(`${taskUrl(taskId)}/evidence/${encodeURIComponent(id)}`, { signal });
 
 export function subscribe(
-  taskId: string, after: number,
-  onEvent: (event: AgentEvent) => boolean,
+  task: Pick<TaskRead, "task_id" | "trace_id">, after: number,
+  onEvent: (event: AgentEvent) => void,
   onConnection: (state: "open" | "reconnecting") => void,
 ): () => void {
   let source: EventSource | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let cursor = after;
+  const cursor = eventCursor(task, after);
   let delay = 500;
   let stopped = false;
   function connect() {
     if (stopped) return;
-    const active = new EventSource(`${taskUrl(taskId)}/events?after=${cursor}`);
+    const active = new EventSource(`${taskUrl(task.task_id)}/events?after=${cursor.sequence}`);
     source = active;
     active.onopen = () => { if (!stopped && active === source) onConnection("open"); };
     active.onerror = () => {
@@ -74,16 +71,16 @@ export function subscribe(
       source = undefined;
       active.close();
       onConnection("reconnecting");
-      timer = setTimeout(connect, delay);
+      if (!stopped) timer = setTimeout(connect, delay);
       delay = Math.min(delay * 2, 10000);
     };
     for (const type of eventTypes) {
       active.addEventListener(type, (message: MessageEvent<string>) => {
         if (stopped || active !== source) return;
         const event = readEvent(message.data, type, message.lastEventId);
-        if (event && event.sequence > cursor && onEvent(event)) {
-          cursor = event.sequence;
+        if (event && cursor.accept(event)) {
           delay = 500;
+          onEvent(event);
         }
       });
     }
@@ -93,5 +90,6 @@ export function subscribe(
     stopped = true;
     clearTimeout(timer);
     source?.close();
+    source = undefined;
   };
 }

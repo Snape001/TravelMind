@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, CircleAlert, FileText, GitBranch, ListChecks, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EventFeed } from "./event-feed";
 import { TeamGraph } from "./team-graph";
 import { ExpertIcon } from "./expert-icon";
 import { summarize } from "@/lib/agent-events";
-import { demo } from "@/lib/demo";
+import { demo, demoResearch } from "@/lib/demo";
 import { expertName } from "@/lib/experts";
-import { isMockTask, mockMode, readReport } from "@/lib/task-client";
+import { readReport } from "@/lib/task-client";
 import { rememberReport } from "@/lib/report-history";
-import { historyKey, rememberTask } from "@/lib/task-history";
+import { rememberTask } from "@/lib/task-history";
 import { depthOptions, formatDate, reportHref, taskStatusLabels, type CurrentUser } from "@/lib/research";
 import { SessionPrompt, useSession } from "./session";
 import { TaskControls } from "./task-controls";
@@ -26,24 +26,29 @@ export function Workbench({ taskId }: { taskId: string }) {
   if (!user && taskId !== demo.taskId) return <main className="shell inner-page">
     <div className="page-heading"><h1>调研工作台</h1></div><SessionPrompt />
   </main>;
-  return <WorkbenchSession key={`${user?.user_id ?? "demo"}:${attempt}`} taskId={taskId} user={user} retry={() => setAttempt((value) => value + 1)} />;
+  return <WorkbenchSession key={`${taskId}:${user?.user_id ?? "demo"}:${attempt}`} taskId={taskId} user={user} retry={() => setAttempt((value) => value + 1)} />;
 }
 
 function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: CurrentUser; retry: () => void }) {
   const { handleError } = useSession();
-  const { task, events, connection, error, accept, refresh } = useTaskSession(taskId, handleError);
+  const example = taskId === demo.taskId;
+  const live = useTaskSession(example ? null : taskId, handleError);
+  const { error, accept, refresh } = live;
+  const task = example ? demoResearch.task : live.task;
+  const events = example ? demoResearch.events : live.events;
+  const connection = example ? "closed" : live.connection;
   const [agent, setAgent] = useState("");
-
-  useEffect(() => {
-    if (!task || !user || taskId === demo.taskId) return;
-    try { rememberTask(localStorage, historyKey(user.user_id, mockMode), taskId); } catch { /* Storage may be disabled. */ }
-  }, [task, taskId, user]);
-
-  const view = task && summarize(task, events);
-  const archivedReportId = task?.status === "completed" && view?.reportDecision === "approved" ? view.report?.report_id : undefined;
   const userId = user?.user_id;
+  const taskLoaded = task !== null;
+
   useEffect(() => {
-    if (!archivedReportId || !userId || taskId === demo.taskId) return;
+    if (taskLoaded && userId && !example) rememberTask(userId, taskId);
+  }, [taskLoaded, taskId, userId, example]);
+
+  const view = useMemo(() => task && summarize(task, events), [task, events]);
+  const archivedReportId = task?.status === "completed" && view?.reportDecision === "approved" ? view.report?.report_id : undefined;
+  useEffect(() => {
+    if (!archivedReportId || !userId || example) return;
     const controller = new AbortController();
     readReport(taskId, archivedReportId, controller.signal).then((report) => {
       if (!controller.signal.aborted) rememberReport(userId, {
@@ -53,7 +58,7 @@ function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: Curr
       // A transient archive error does not interrupt the stream or report link.
     });
     return () => controller.abort();
-  }, [taskId, archivedReportId, userId]);
+  }, [taskId, archivedReportId, userId, example]);
 
   if (!task || !view) return (
     <main className="shell inner-page">
@@ -71,7 +76,7 @@ function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: Curr
       <Link className="text-link back" href="/workbench"><ArrowLeft size={16} aria-hidden /> 调研历史</Link>
       <div className="page-heading workbench-heading">
         <div>
-          <p className="eyebrow">调研工作台{taskId === demo.taskId ? " · 示例回放" : isMockTask(taskId) ? " · 模拟任务" : ""}</p>
+          <p className="eyebrow">调研工作台{example ? " · 示例回放" : ""}</p>
           <h1>{task.brief.destination}调研</h1>
           <div className="meta-row"><span><MapPin size={15} aria-hidden />{task.brief.destination}</span><span>{depth}</span><span>{formatDate(task.created_at)}</span>
             <span className={`task-badge ${task.status}`} role="status"><span className={`status-dot ${task.status}`} />{taskStatusLabels[task.status]}</span>
@@ -87,7 +92,7 @@ function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: Curr
       </details> : null}
       {error && <div className="notice error-text"><p role="alert">{error}</p><button type="button" className="text-link" onClick={refresh}>重新读取状态</button></div>}
       {task.status === "failed" && view.error && <p className="notice error-text" role="alert">{view.error.message}</p>}
-      {user && taskId !== demo.taskId && <TaskControls task={task} user={user} accept={accept} refresh={refresh} onError={handleError} />}
+      {user && !example && <TaskControls task={task} user={user} accept={accept} refresh={refresh} onError={handleError} />}
       <div className="workbench-grid">
         <div className="workbench-side">
           <section className="panel graph-panel" aria-labelledby="team-graph-title">

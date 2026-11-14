@@ -5,9 +5,9 @@ import { ArrowLeft, ArrowUpRight, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { EvidenceCard } from "./evidence-card";
 import { expertName, findExpert } from "@/lib/experts";
-import { isMockTask, readReport } from "@/lib/task-client";
-import { formatDate, type ReportRead } from "@/lib/research";
-import { demo } from "@/lib/demo";
+import { readReport } from "@/lib/task-client";
+import { formatDate, workbenchHref, type ReportRead } from "@/lib/research";
+import { demo, demoResearch } from "@/lib/demo";
 import { SessionPrompt, useSession } from "./session";
 
 export function ReportReader({ taskId, reportId }: { taskId: string; reportId: string }) {
@@ -15,23 +15,30 @@ export function ReportReader({ taskId, reportId }: { taskId: string; reportId: s
   if (!session.user && taskId !== demo.taskId) return <main className="shell inner-page">
     <div className="page-heading"><h1>调研报告</h1></div><SessionPrompt />
   </main>;
-  return <ReaderSession key={session.user?.user_id ?? "demo"} taskId={taskId} reportId={reportId} />;
+  return <ReaderSession key={`${taskId}:${reportId}:${session.user?.user_id ?? "demo"}`} taskId={taskId} reportId={reportId} />;
 }
 
 function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string }) {
   const { handleError } = useSession();
-  const [report, setReport] = useState<ReportRead | null>(null);
-  const [error, setError] = useState("");
+  const example = taskId === demo.taskId;
+  const [loaded, setReport] = useState<ReportRead | null>(null);
+  const [loadError, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const report = example ? demoResearch.reports.find(({ report_id }) => report_id === reportId) : loaded;
+  const error = example && !report ? "该任务的报告暂不可用。" : loadError;
   useEffect(() => {
+    if (example) return;
     const controller = new AbortController();
     readReport(taskId, reportId, controller.signal).then((data) => {
-      if (!controller.signal.aborted) setReport(data);
+      if (!controller.signal.aborted) {
+        setReport(data);
+        setError("");
+      }
     }).catch((problem: Error) => {
       if (!controller.signal.aborted) { handleError(problem); setError(problem.message); }
     });
     return () => controller.abort();
-  }, [taskId, reportId, attempt, handleError]);
+  }, [taskId, reportId, attempt, handleError, example]);
 
   useEffect(() => {
     if (report && location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
@@ -44,11 +51,11 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
     <main className="shell inner-page">
       <div className="reader-navigation">
         <Link className="text-link back" href="/reports"><ArrowLeft size={16} aria-hidden /> 报告中心</Link>
-        <Link className="text-link back" href={`/workbench/${taskId}`}>查看调研过程 <ArrowUpRight size={16} aria-hidden /></Link>
+        <Link className="text-link back" href={workbenchHref(taskId)}>查看调研过程 <ArrowUpRight size={16} aria-hidden /></Link>
       </div>
       {report ? <>
         <header className="report-masthead">
-          <p className="eyebrow"><FileText size={17} aria-hidden /> {isMockTask(taskId) ? "模拟调研报告" : "调研报告"}</p>
+          <p className="eyebrow"><FileText size={17} aria-hidden /> {example ? "示例调研报告" : "调研报告"}</p>
           <h1>{report.content.title}</h1>
           <p>第 {report.version} 版 · {formatDate(report.created_at)} · {sections.length} 个章节 · {evidence.size} 条引用</p>
         </header>
@@ -76,9 +83,9 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
           </article>
         </div>
       </> : <section className="panel empty-state">
-        {error ? <><p className="error-text" role="alert">{error}</p><button type="button" className="button secondary" onClick={() => {
+        {error ? <><p className="error-text" role="alert">{error}</p>{!example && <button type="button" className="button secondary" onClick={() => {
           setError(""); setAttempt((value) => value + 1);
-        }}>重新加载</button></> : <p role="status">正在读取报告…</p>}
+        }}>重新加载</button>}</> : <p role="status">正在读取报告…</p>}
       </section>}
     </main>
   );

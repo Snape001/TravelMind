@@ -1,10 +1,13 @@
 import asyncio
 import logging
+from collections import defaultdict
 
+from pydantic import HttpUrl
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from travelmind.db.evidence import save_evidence
-from travelmind.research.engine import ResearchEngine
+from travelmind.research.engine import ResearchEngine, ToolResult
+from travelmind.research.sources import is_public_target, url_key
 from travelmind.runtime.execution import RunError
 from travelmind.schemas.agents import AgentInput
 from travelmind.schemas.domain import Evidence
@@ -19,17 +22,36 @@ class ResearchRetriever:
         engine: ResearchEngine,
         sessions: async_sessionmaker[AsyncSession],
         *,
-        store: WorkerStore[AsyncSession] | None = None,
-        lease: LeaseRef | None = None,
+        store: WorkerStore[AsyncSession],
+        lease: LeaseRef,
     ):
-        if (store is None) != (lease is None):
-            raise ValueError("an evidence write fence needs both the WorkerStore and lease")
         self.engine = engine
         self.sessions = sessions
         self.store = store
         self.lease = lease
+        self._scrape_locks = defaultdict(asyncio.Lock)
+        self._scrape_results: dict[tuple[str, str], ToolResult] = {}
+
+    async def _scrape(self, url: HttpUrl, request: AgentInput) -> ToolResult:
+        key = url_key(url)
+        try:
+            # Keep the scrape and any wait for a parallel expert inside the same budget.
+            async with asyncio.timeout(min(12, request.budget.timeout_seconds / 2)):
+                async with self._scrape_locks[key]:
+                    if key not in self._scrape_results:
+                        self._scrape_results[key] = await self.engine.scrape(url)
+                    return self._scrape_results[key]
+        except TimeoutError:
+            logger.warning(
+                "research.scrape_timeout task_id=%s trace_id=%s",
+                request.task_id,
+                request.trace_id,
+            )
+            return ToolResult()
 
     async def __call__(self, request: AgentInput) -> list[Evidence]:
+        if request.task_id != self.lease.task_id:
+            raise LeaseLost("evidence task does not match the lease")
         brief = request.brief
         objective = request.assignment.objective if request.assignment else ""
         query = f"{brief.destination} {' '.join(brief.topics[:3])} {objective}".strip()[:1000]
@@ -45,22 +67,12 @@ class ResearchRetriever:
             problem = search.errors[-1]
             raise RunError(problem.code, problem.message, retryable=problem.retryable)
         if brief.depth != "quick":
-            for item in evidence:
-                if item.source_type in ("web", "official") and item.source_url:
-                    try:
-                        # Reserve the rest of the retrieval budget for search and persistence.
-                        async with asyncio.timeout(min(12, request.budget.timeout_seconds / 2)):
-                            page = await self.engine.scrape(item.source_url)
-                    except TimeoutError:
-                        logger.warning(
-                            "research.scrape_timeout task_id=%s trace_id=%s",
-                            request.task_id,
-                            request.trace_id,
-                        )
-                        break
-                    except ValueError:
-                        continue
-                    evidence = [*page.evidence, *evidence]
+            for index, item in enumerate(evidence):
+                url = item.source_url
+                if item.source_type in ("web", "official") and url and is_public_target(url):
+                    page = await self._scrape(url, request)
+                    if page.evidence:
+                        evidence = [*page.evidence, *evidence[:index], *evidence[index + 1 :]]
                     search.errors.extend(page.errors)
                     break
 
@@ -73,8 +85,5 @@ class ResearchRetriever:
                 error.code,
             )
         async with self.sessions.begin() as session:
-            if self.store is not None and self.lease is not None:
-                if request.task_id != self.lease.task_id:
-                    raise LeaseLost("evidence task does not match the lease")
-                await self.store.check_lease(self.lease, transaction=session)
+            await self.store.check_lease(self.lease, transaction=session)
             return await save_evidence(session, request.task_id, evidence)

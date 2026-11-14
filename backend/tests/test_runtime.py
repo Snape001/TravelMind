@@ -36,10 +36,10 @@ class Model:
         self.calls = []
         self.drafts = 0
 
-    async def __call__(self, request, instructions, response_type, /):
+    async def __call__(self, request, instructions, response_type, /, *, context=None):
         self.calls.append((request, instructions))
         if self.reply:
-            response = await self.reply(request, instructions)
+            response = await self.reply(request, instructions, context)
             if response is not None:
                 return response_type.model_validate(response)
         finding = {
@@ -87,7 +87,7 @@ class Model:
 def test_director_stops_for_clarification_and_can_run_with_an_amended_brief():
     evidence = source()
 
-    async def reply(request, _):
+    async def reply(request, _, _context):
         if request.agent_id == "research_director" and request.brief.destination == "古城":
             return {"questions": ["请问是哪座古城？"]}
         return None
@@ -157,7 +157,7 @@ def test_review_checks_the_draft_and_bounds_revision(approve_revision):
     async def retrieve(_):
         return [evidence]
 
-    async def reply(request, instructions):
+    async def reply(request, instructions, context):
         if request.agent_id == "reviewer":
             assert request.draft is not None
             if "第 1 版" in request.draft.sections[0].body or not approve_revision:
@@ -165,8 +165,12 @@ def test_review_checks_the_draft_and_bounds_revision(approve_revision):
                     "decision": "revision_required",
                     "issues": [{"category": "coverage", "message": "补充遗产范围"}],
                 }
-        if request.agent_id == "writer" and request.draft is not None:
-            assert "补充遗产范围" in instructions
+        if request.agent_id == "writer":
+            assert "author_agent_ids 只能使用以下专家 ID" in instructions
+            assert "history_culture" in instructions and "tourism_resources" in instructions
+            assert "撰写师、总监、审核员" in instructions
+            if request.draft is not None:
+                assert context["previous_review"]["issues"][0]["message"] == "补充遗产范围"
         return None
 
     async def run():
@@ -187,7 +191,7 @@ def test_unknown_report_reference_cannot_be_approved_and_events_use_existing_con
     async def retrieve(_):
         return [evidence]
 
-    async def reply(request, _):
+    async def reply(request, _, _context):
         if request.agent_id == "writer":
             return {
                 "title": "泉州调研",
@@ -238,7 +242,7 @@ def test_invalid_expert_references_are_isolated_and_exhausted_research_stops():
     async def retrieve(_):
         return [evidence]
 
-    async def reply(request, _):
+    async def reply(request, _, _context):
         if request.assignment:
             return {
                 "findings": [
@@ -270,7 +274,7 @@ def test_planner_retries_a_cycle_then_dispatches_the_selected_experts():
     async def retrieve(_):
         return [evidence]
 
-    async def reply(request, _):
+    async def reply(request, _, _context):
         nonlocal attempts
         if request.agent_id != "planner":
             return None
@@ -319,7 +323,7 @@ def test_failed_dependency_blocks_only_its_dependent_expert():
     async def run():
         model = Model(evidence)
 
-        async def reply(request, _):
+        async def reply(request, _, _context):
             if request.agent_id == "writer":
                 return {
                     "title": "泉州调研",

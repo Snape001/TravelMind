@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { ApiError, loginHref, logout, mockMode, readSession } from "@/lib/task-client";
+import { ApiError, loginHref, logout, readSession } from "@/lib/task-client";
 import type { CurrentUser } from "@/lib/research";
 
 type Session =
@@ -9,7 +9,7 @@ type Session =
   | { status: "unavailable"; user?: never }
   | { status: "authenticated"; user: CurrentUser };
 
-const changes = `travelmind.session-changed.${mockMode ? "fixture" : "live"}`;
+const changes = "travelmind.session-changed.live";
 const Context = createContext<{
   session: Session;
   refresh: () => void;
@@ -83,6 +83,6 @@ export function SessionPrompt() {
     <p role="alert">暂时无法读取登录状态。</p><button type="button" className="button secondary" onClick={refresh}>重新检查</button>
   </div>;
   return <div className="session-prompt"><p>登录后继续调研或查看自己的任务。</p>
-    <a className="button primary" href={loginHref}>{mockMode ? "登录测试账号" : "登录"}</a>
+    <a className="button primary" href={loginHref}>登录</a>
   </div>;
 }

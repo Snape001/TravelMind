@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import logging
 
 import httpx
 from fastapi import APIRouter, Request, Response
@@ -12,6 +13,7 @@ from travelmind.schemas.api import CurrentUser, ErrorResponse
 
 LOGIN_COOKIE = "__Host-travelmind-login"
 LOGIN_SECONDS = 600
+logger = logging.getLogger(__name__)
 AUTH_ERRORS = {
     401: {"model": ErrorResponse},
     500: {"model": ErrorResponse},
@@ -40,7 +42,8 @@ async def login(request: Request, sessions: Sessions) -> RedirectResponse:
     provider = _provider(request)
     try:
         metadata = await provider.discover()
-    except (ValueError, httpx.HTTPError):
+    except (ValueError, httpx.HTTPError) as exc:
+        logger.warning("oidc.discovery_failed type=%s", type(exc).__name__)
         raise api_error(
             503, "DATABASE_UNAVAILABLE", "身份认证服务暂时不可用", retryable=True
         ) from None
@@ -100,7 +103,8 @@ async def callback(request: Request, sessions: Sessions) -> RedirectResponse:
             verifier, nonce = flow.verifier, flow.nonce
         metadata = await provider.discover()
         claims = await provider.exchange(metadata, code=code[0], verifier=verifier, nonce=nonce)
-    except (ValueError, httpx.HTTPError):
+    except (ValueError, httpx.HTTPError) as exc:
+        logger.warning("oidc.callback_rejected type=%s", type(exc).__name__)
         raise api_error(400, "AUTH_CALLBACK_INVALID", "登录回调无效或已过期") from None
 
     name = claims.get("name")

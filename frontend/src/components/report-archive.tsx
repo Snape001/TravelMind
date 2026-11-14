@@ -6,7 +6,6 @@ import { ArrowUpRight, FileText } from "lucide-react";
 import { demo } from "@/lib/demo";
 import { formatDate, reportHref } from "@/lib/research";
 import { readArchive, type ArchiveEntry } from "@/lib/report-history";
-import { isMockTask } from "@/lib/task-client";
 import { useSession } from "./session";
 
 const example: ArchiveEntry = { taskId: demo.taskId, reportId: demo.reportId, title: demo.title, date: demo.date };
@@ -20,7 +19,7 @@ function ArchiveList({ compact, userId }: { compact: boolean; userId?: string })
   const [reports, setReports] = useState<ArchiveEntry[]>([]);
   useEffect(() => {
     if (!userId) return;
-    function update() { if (userId) setReports(readArchive(userId)); }
+    const update = () => setReports(readArchive(userId));
     update();
     window.addEventListener("storage", update);
     return () => window.removeEventListener("storage", update);
@@ -32,7 +31,7 @@ function ArchiveList({ compact, userId }: { compact: boolean; userId?: string })
         <li key={taskId}>
           <Link className="report-row" href={reportHref(taskId, reportId)}>
             <span className="icon-tile"><FileText size={19} aria-hidden /></span>
-            <span><strong>{title}</strong><small>{formatDate(date)} · {taskId === demo.taskId ? "示例报告" : isMockTask(taskId) ? "模拟报告" : "调研报告"}</small></span>
+            <span><strong>{title}</strong><small>{formatDate(date)} · {taskId === demo.taskId ? "示例报告" : "调研报告"}</small></span>
             <ArrowUpRight size={18} aria-hidden />
           </Link>
         </li>

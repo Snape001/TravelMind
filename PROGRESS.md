@@ -1,5 +1,15 @@
 # TravelMind 开发进度
 
+## Phase 2 · 正式完成与发布验收（2026-11-15）
+
+- 删除 Phase 1 内嵌执行器和 Worker 构造器的重复预算配置。原执行器的集成断言迁入真实 PostgreSQL 与 Checkpoint 测试。移除公开模拟任务和登录路由、运行时模拟开关及重复文档，保留测试 Fixture 和只读泉州示例。
+- Worker 复用并释放模型客户端。外部材料、澄清答复、专家成果和审核意见通过独立 JSON 消息传给模型，输出继续经 Schema 验证和来源核对。检索限制供应商响应大小，在一个租约中合并同源抓取，并由租约保护证据落库。仅投影租约、旧 epoch 拒写和已保存中断恢复均经回归验证。
+- 停止记录 OIDC 回调查询参数和 HTTP 客户端的完整请求 URL，隐藏数据库参数。Compose 凭据改由本地环境注入。Alembic 识别 LangGraph 独立管理的 Checkpoint 表，业务迁移校验通过。AgentEvent v1 沿用冻结契约，重新生成的 API 类型无差异。
+- 专用 PostgreSQL 上后端 88 项、前端 22 项全部通过，无跳过。Ruff、ESLint、TypeScript、Next.js 生产构建、Docker Compose 配置和锁定依赖检查均通过。移除 Tailwind 工具链，升级 ESLint 链中的 `minimatch` 到 `11.0.7`，本次 npm 审计与 Python 锁文件审计均为 0 项已知漏洞。
+- Chrome 验证示例报告、引用，以及经 Next.js 转发的 SSE 重连、去重、临时 503 恢复和登出断流。真实博查、OpenAlex 和 Firecrawl 均返回证据。真实调研在明确章节署名规则后通过审核，写入 5 章节报告和 59 条事件，Redis 断连期间仍由 Worker 轮询领取。此前两次真实调研按 `REVIEW_REJECTED` 正常结算。
+- 正式 OIDC 提供方与生产 HTTPS 域名仍待部署验证。任务历史由当前浏览器按账户保存。非可信内容隔离与结构化校验降低提示注入风险，模型仍可能受材料中的误导内容影响。
+- **交付提交**　`refactor: harden and clean up Phase 2`。
+
 ## Phase 2 · 最终集成（2026-11-15）
 
 | 顺序 | 功能分支 | 分支头 | 合并提交 |

@@ -38,6 +38,7 @@ def batches(task_id: UUID, state: StateSnapshot) -> list[ProjectionBatch]:
                 started[payload.run_id] = (payload, at)
             elif isinstance(payload, AgentFinishedEvent):
                 event, start = started.pop(payload.run_id)
+                results = values.get("results", {})
                 runs.append(
                     ProjectedRun(
                         run_id=payload.run_id,
@@ -45,7 +46,7 @@ def batches(task_id: UUID, state: StateSnapshot) -> list[ProjectionBatch]:
                         assignment_id=event.assignment_id,
                         status=payload.status,
                         result=output_for(values, payload.run_id)
-                        if str(payload.run_id) in values.get("results", {})
+                        if payload.run_id in results or str(payload.run_id) in results
                         else None,
                         started_at=start,
                         finished_at=at,

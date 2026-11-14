@@ -1,7 +1,9 @@
-import { encodeEvent } from "./agent-events";
-import { demo } from "./demo";
-import { expertName } from "./experts";
-import type { AgentEvent, Assignment, EventPayload, EvidenceRead, ReportRead, ResearchBrief, TaskRead } from "./research";
+import { expertName } from "../../src/lib/experts";
+import type { AgentEvent, Assignment, EventPayload, EvidenceRead, ReportRead, ResearchBrief, TaskRead } from "../../src/lib/research";
+
+export function encodeEvent(event: AgentEvent): string {
+  return `id: ${event.sequence}\nevent: ${event.payload.type}\ndata: ${JSON.stringify(event)}\n\n`;
+}
 
 export type MockResearch = {
   task: TaskRead;
@@ -27,14 +29,12 @@ function selectSpecialists(brief: ResearchBrief): string[] {
     .slice(0, brief.depth === "quick" ? 2 : brief.depth === "deep" ? 3 : 4);
 }
 
-export function buildResearch(brief: ResearchBrief, start = Date.now(), archive = false): MockResearch {
-  let archiveId = 10;
-  const id = () => archive ? `856d05aa-7d53-4fe7-aefa-${(archiveId++).toString(16).padStart(12, "0")}` :
-    globalThis.crypto.randomUUID();
+export function buildResearch(brief: ResearchBrief, start = Date.now()): MockResearch {
+  const id = () => globalThis.crypto.randomUUID();
   const date = (offset = 0) => new Date(start + offset).toISOString();
   const task: TaskRead = {
-    task_id: archive ? demo.taskId : id(),
-    trace_id: archive ? "856d05aa-7d53-4fe7-aefa-d17e6a84c002" : id(),
+    task_id: id(),
+    trace_id: id(),
     brief, status: "queued", created_at: date(), updated_at: date(),
   };
   const { destination, topics, requirements } = brief;
@@ -46,20 +46,17 @@ export function buildResearch(brief: ResearchBrief, start = Date.now(), archive 
   const writer = { assignment_id: id(), agent_id: "report_writer", objective: "整合研究成果并生成报告。", depends_on: assignments.map((item) => item.assignment_id) };
   const reviewer = { assignment_id: id(), agent_id: "reviewer", objective: "核对引用与适用条件。", depends_on: [writer.assignment_id] };
   const evidence: EvidenceRead[] = specialists.map((agent, index) => {
-    const heritage = archive && agent === "history_culture";
     return {
-      task_id: task.task_id, evidence_id: id(), source_type: heritage ? "official" : "web",
-      source_title: heritage ? "联合国教科文组织 · 泉州世界遗产档案" : `${destination} · ${expertName(agent)}资料样例`,
-      source_url: heritage ? "https://whc.unesco.org/en/list/1561/" : null,
-      source_locator: heritage ? "UNESCO World Heritage List, no. 1561" : `模拟资料样例 ${index + 1}`,
+      task_id: task.task_id, evidence_id: id(), source_type: "web",
+      source_title: `${destination} · ${expertName(agent)}资料样例`,
+      source_locator: `模拟资料样例 ${index + 1}`,
       retrieved_at: date(4000),
-      excerpt: heritage ? "遗产档案介绍了宋元时期泉州海洋贸易相关的遗产点。" :
-        `演示摘录。真实调研时需补充${destination}的原始资料、发布时间及适用条件。`,
+      excerpt: `演示摘录。真实调研时需补充${destination}的原始资料、发布时间及适用条件。`,
     };
   });
-  const firstReportId = archive ? "856d05aa-7d53-4fe7-aefa-d17e6a84c003" : id();
-  const finalReportId = archive ? demo.reportId : id();
-  const title = archive ? demo.title : `${destination}目的地调研报告`;
+  const firstReportId = id();
+  const finalReportId = id();
+  const title = `${destination}目的地调研报告`;
   const topicText = topics?.length ? topics.join("、") : "目的地概况与出行安排";
   const reports: ReportRead[] = [firstReportId, finalReportId].map((report_id, index) => ({
     task_id: task.task_id, report_id, version: index + 1, created_at: date(index === 0 ? 9900 : 13900),
@@ -71,10 +68,9 @@ export function buildResearch(brief: ResearchBrief, start = Date.now(), archive 
           body: `本次围绕${destination}的${topicText}展开模拟调研。${requirements ? `出行需求为「${requirements}」。` : ""}\n\n报告展示专家分工、结论组织和证据追溯的完整流程。`,
         },
         {
-          heading: archive ? "古城文化与遗产线索" : "研究主题与资料线索",
+          heading: "研究主题与资料线索",
           author_agent_ids: specialists.slice(0, 2), evidence_ids: evidence.slice(0, 2).map((source) => source.evidence_id),
-          body: archive ? "可从宋元时期的海上贸易切入，结合 UNESCO 遗产档案了解泉州的遗产点。周末行程可以按主题选取少量地点，为步行和现场参观预留时间。" :
-            `按${topicText}整理待查问题。优先查阅目的地官方资料，并与其他来源对照适用范围与发布时间。`,
+          body: `按${topicText}整理待查问题。优先查阅目的地官方资料，并与其他来源对照适用范围与发布时间。`,
         },
         {
           heading: "行程安排与待核事项", author_agent_ids: ["report_writer", ...specialists.slice(2)],
@@ -138,12 +134,6 @@ export function buildResearch(brief: ResearchBrief, start = Date.now(), archive 
   return { task, events, evidence, reports };
 }
 
-export const demoTask = buildResearch(
-  { destination: demo.destination, topics: ["古城文化", "公共交通"], requirements: "周末两天，以步行和公共交通为主。", depth: "deep" },
-  Date.parse(demo.date),
-  true,
-);
-
 export function eventsAfter(research: MockResearch, cursor: number, now = Date.now()): AgentEvent[] {
   return research.events.filter((event) => event.sequence > cursor && Date.parse(event.occurred_at) <= now);
 }
@@ -155,10 +145,7 @@ export function taskAt(research: MockResearch, now = Date.now()): TaskRead {
     updated_at: available.at(-1)?.occurred_at ?? research.task.updated_at };
 }
 
-export function streamResearch(
-  research: MockResearch, after: number, signal: AbortSignal,
-  eventsAt?: (now: number) => AgentEvent[] | null,
-): ReadableStream<Uint8Array> {
+export function streamResearch(research: MockResearch, after: number, signal: AbortSignal): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   let cancel = () => {};
   return new ReadableStream({
@@ -180,8 +167,7 @@ export function streamResearch(
       cancel = cleanUp;
       function tick() {
         const now = Date.now();
-        const events = eventsAt ? eventsAt(now)?.filter((event) => event.sequence > cursor) : eventsAfter(research, cursor, now);
-        if (!events) { finish(); return; }
+        const events = eventsAfter(research, cursor, now);
         for (const event of events) {
           controller.enqueue(encoder.encode(encodeEvent(event)));
           cursor = event.sequence;
@@ -192,7 +178,7 @@ export function streamResearch(
           lastFrame = now;
         }
         const next = research.events.find((event) => event.sequence > cursor);
-        timer = setTimeout(tick, eventsAt ? 150 : next ? Math.max(20, Date.parse(next.occurred_at) - now) : 15000);
+        timer = setTimeout(tick, next ? Math.max(20, Date.parse(next.occurred_at) - now) : 15000);
       }
       signal.addEventListener("abort", finish, { once: true });
       if (signal.aborted) finish();

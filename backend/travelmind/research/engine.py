@@ -20,10 +20,6 @@ class SearchRequest(Contract):
     limit: int = Field(ge=1, le=50)
 
 
-class ScrapeRequest(Contract):
-    url: HttpUrl
-
-
 class ToolResult(Contract):
     evidence: list[Evidence] = Field(default_factory=list)
     errors: list[ProviderError] = Field(default_factory=list)
@@ -81,7 +77,7 @@ class ResearchEngine:
         )
 
     async def scrape(self, url: str | HttpUrl) -> ToolResult:
-        request = ScrapeRequest(url=url)
-        if request.url.username or request.url.password or not is_public_target(request.url):
+        target = HttpUrl(url)
+        if not is_public_target(target):
             raise ValueError("scrape requires a public HTTP(S) URL without credentials")
-        return await _collect(self.scraper.scrape(request.url))
+        return await _collect(self.scraper.scrape(target))

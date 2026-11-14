@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from travelmind.api.dependencies import Sessions, SignedIn, WriteUser, api_error
+from travelmind.config import WAKE_CHANNEL
 from travelmind.db.auth import session_is_active
 from travelmind.db.control import (
     AnswerMismatch,
@@ -54,7 +55,6 @@ not_found = {404: {"model": ErrorResponse}}
 task_location = {"Location": {"description": "Task resource URL", "schema": {"type": "string"}}}
 sse_error_content = {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
 SSE_SESSION_CHECK_SECONDS = 5
-WAKE_CHANNEL = "travelmind:worker:wakeup"
 CONTROL_ERRORS = {status: {"model": ErrorResponse} for status in (403, 404, 409, 422)}
 ControlKey = Annotated[IdempotencyKey, Header()]
 
@@ -79,6 +79,12 @@ async def _notify_worker(request: Request, task_id: UUID) -> None:
             await redis.publish(WAKE_CHANNEL, str(task_id))
     except (RedisError, OSError, TimeoutError) as exc:
         logger.warning("task.wakeup_failed task_id=%s type=%s", task_id, type(exc).__name__)
+
+
+async def _require_empty_body(request: Request, message: str) -> None:
+    async for chunk in request.stream():
+        if chunk:
+            raise api_error(422, "VALIDATION_ERROR", message)
 
 
 @router.post(
@@ -175,8 +181,7 @@ async def pause_task(
     user: WriteUser,
     idempotency_key: ControlKey,
 ) -> TaskRead:
-    if await request.body():
-        raise api_error(422, "VALIDATION_ERROR", "暂停请求不接受请求体")
+    await _require_empty_body(request, "暂停请求不接受请求体")
     result, _ = await _control(task.task_id, sessions, user, response, "pause", idempotency_key)
     return result
 
@@ -190,8 +195,7 @@ async def resume_task(
     user: WriteUser,
     idempotency_key: ControlKey,
 ) -> TaskRead:
-    if await request.body():
-        raise api_error(422, "VALIDATION_ERROR", "恢复请求不接受请求体")
+    await _require_empty_body(request, "恢复请求不接受请求体")
     result, applied = await _control(
         task.task_id, sessions, user, response, "resume", idempotency_key
     )

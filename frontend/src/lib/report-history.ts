@@ -1,15 +1,16 @@
-import { mockMode } from "./task-client";
+import { uuidPattern } from "./research";
 
 type ReportKey = { taskId: string; reportId: string };
 export type ArchiveEntry = ReportKey & { title: string; date: string };
-const archiveKey = (userId: string) => `travelmind.${mockMode ? "fixture" : "live"}.reports.v2.${userId}`;
+const archiveKey = (userId: string) => `travelmind.live.reports.v2.${userId}`;
 
 export function readArchive(userId: string): ArchiveEntry[] {
   try {
     const contents = JSON.parse(localStorage.getItem(archiveKey(userId)) ?? "[]");
     if (!Array.isArray(contents)) return [];
     return contents.filter((entry): entry is ArchiveEntry => entry && typeof entry.taskId === "string" &&
-      typeof entry.reportId === "string" && typeof entry.title === "string" &&
+      uuidPattern.test(entry.taskId) && typeof entry.reportId === "string" && uuidPattern.test(entry.reportId) &&
+      typeof entry.title === "string" &&
       typeof entry.date === "string" && Number.isFinite(Date.parse(entry.date)));
   } catch {
     return [];

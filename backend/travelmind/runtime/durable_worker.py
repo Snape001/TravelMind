@@ -102,31 +102,23 @@ class DurableWorker:
 
     async def execute(self, claim: TaskClaim) -> None:
         """Reconcile the last checkpoint before issuing any further graph work."""
-        execution_permitted = getattr(claim, "execution_permitted", None)
-        attempt_count = getattr(claim, "attempt_count", None)
-        max_attempts = getattr(claim, "max_attempts", None)
-        if (
-            type(execution_permitted) is not bool
-            or type(attempt_count) is not int
-            or type(max_attempts) is not int
-            or not 1 <= attempt_count <= max_attempts
-            or (not execution_permitted and (not claim.reclaimed or attempt_count != max_attempts))
-        ):
-            raise ValueError("TaskClaim is missing a valid retry budget")
-
+        # Validate even if a store constructs its claim without running the schema validators.
+        claim = TaskClaim.model_validate(claim.model_dump())
         lease = claim.lease
         saver = self.saver(lease)
         graph = build_research_graph(
             self.model,
             checkpointer=saver,
-            retrieve=self.retrieve(lease) if execution_permitted and self.retrieve else None,
+            retrieve=self.retrieve(lease) if claim.execution_permitted and self.retrieve else None,
         )
         config = {"configurable": {"thread_id": str(lease.task_id), "graph_version": GRAPH_VERSION}}
         force_pause = False
 
         async def should_pause() -> bool:
+            if force_pause:
+                return True
             current = await self.store.load_instruction(lease)
-            return force_pause or current.pause_requested_at is not None
+            return current.pause_requested_at is not None
 
         while True:
             # The durable cursor is authoritative after an ambiguous response or restart.
@@ -154,7 +146,7 @@ class DurableWorker:
                 if applied != current.projected_index:
                     current = await self.store.load_instruction(lease)
 
-            if not execution_permitted:
+            if not claim.execution_permitted:
                 await self._failure(
                     lease,
                     "ATTEMPT_BUDGET_EXHAUSTED",
@@ -168,10 +160,10 @@ class DurableWorker:
                     await self._failure(lease, "CHECKPOINT_MISSING", retryable=False)
                     return
                 inputs = {
-                    "task_id": UUID(str(lease.task_id)),
-                    "trace_id": UUID(str(claim.trace_id)),
+                    "task_id": lease.task_id,
+                    "trace_id": claim.trace_id,
                     "brief": current.instruction.brief,
-                    "start_instruction_id": UUID(str(current.instruction.instruction_id)),
+                    "start_instruction_id": current.instruction.instruction_id,
                 }
             else:
                 inputs = None
@@ -179,17 +171,18 @@ class DurableWorker:
                     [halt] = snapshot.interrupts
                     instruction = current.instruction
                     expected = ResumePause if halt.value["kind"] == "pause" else AnswerClarification
-                    if not isinstance(instruction, expected) or instruction.interrupt_id != halt.id:
+                    if (
+                        not isinstance(instruction, expected)
+                        or instruction.interrupt_id != halt.id
+                        or (
+                            isinstance(instruction, AnswerClarification)
+                            and str(instruction.clarification_id) != halt.value["clarification_id"]
+                        )
+                    ):
                         await self._failure(
                             lease, "CHECKPOINT_INSTRUCTION_MISMATCH", retryable=False
                         )
                         return
-                    if isinstance(instruction, AnswerClarification):
-                        if str(instruction.clarification_id) != halt.value["clarification_id"]:
-                            await self._failure(
-                                lease, "CHECKPOINT_INSTRUCTION_MISMATCH", retryable=False
-                            )
-                            return
                     inputs = Command(resume={halt.id: instruction.model_dump(mode="json")})
                     # A resumed pause re-enters the same gate even after the API cleared
                     # pause_requested_at, so LangGraph can deliver the saved resume value.

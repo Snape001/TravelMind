@@ -2,33 +2,28 @@
 
 面向中国旅游目的地的多智能体调研平台。Next.js 工作台通过 FastAPI 启动真实调研。LangGraph 编排专家并行检索、交叉质询、撰写与审核，工作台通过 SSE 展示进度，报告可以跳转到入库的来源证据。
 
-## 独立运行前端示例
+## 泉州示例回放
 
-从项目根目录执行。
+从项目根目录执行以下命令，然后打开 `http://127.0.0.1:3000`，选择首页的泉州示例。示例提供只读工作台、报告版本及来源证据，可独立于后端和身份提供方运行。
 
 ```powershell
 Set-Location frontend
 npm ci
-$env:NEXT_PUBLIC_RESEARCH_MODE = 'mock'
 npm run dev -- --hostname 127.0.0.1
 ```
 
-打开 `http://127.0.0.1:3000`，填写目的地、主题、个性化需求和调研深度。新任务约 16 秒内依次推送规划、专家执行、工具调用、证据、报告与审核事件。首页的泉州示例在两种模式下都可访问。
-
-- 工作台使用 React Flow 展示三级组织架构和任务依赖。选择组织图中的专家可筛选对话与事件。报告阅读页提供目录、章节署名和证据跳转。
-- 前端模拟路由位于 `/mock/api/v1/tasks`，按 OpenAPI 生成类型提供任务、报告、证据和 AgentEvent v1 SSE。模拟 SSE 使用命名事件、任务内序号、`after` 和 `Last-Event-ID`。正式 `/api/v1/*` 仍由 Next.js 转发至 FastAPI。
-- 新任务、报告内容和事件保存在 Next.js 进程内存中。浏览器保留已完成报告的链接，服务重启后须重新创建新任务。预置的泉州示例可继续访问。
-
 ## 本地启动
 
-需要 Node.js 20.9+、Python 3.11+、uv 和 PostgreSQL。Redis 可选，用于提前唤醒 Worker。从项目根目录执行以下 PowerShell 命令。
+需要 Node.js 20.9–20.x 或 22+、Python 3.11+、uv 和 PostgreSQL。Redis 可选，用于提前唤醒 Worker。
 
 ```powershell
-docker compose up -d --wait postgres
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
 ```
 
-Compose 将 PostgreSQL 绑定到本机 `15432`。使用 Redis 时执行 `docker compose up -d --wait redis`，并在 `backend/.env` 配置 `REDIS_URL=redis://127.0.0.1:16379/0`。仅使用 PostgreSQL 时可删除模板中的 `REDIS_URL` 行。核对 `DATABASE_URL` 与实际数据库地址一致。
+使用 Compose 时，在项目根目录的 `.env` 设置 `POSTGRES_PASSWORD`，在 `backend/.env` 的 `DATABASE_URL` 填写对应的 URL 编码密码，再运行 `docker compose up -d --wait postgres`。已有 PostgreSQL 数据卷继续使用初始化时的数据库密码。Compose 将 PostgreSQL 绑定到本机 `15432`。
+
+启用 Redis 时运行 `docker compose up -d --wait redis`，并在 `backend/.env` 配置 `REDIS_URL=redis://127.0.0.1:16379/0`。仅使用 PostgreSQL 时可删除模板中的 `REDIS_URL` 行。
 
 在 `backend/.env` 填入 `DEEPSEEK_API_KEY`、`BOCHA_API_KEY` 和 `FIRECRAWL_API_KEY`。Worker 启动需要 DeepSeek 密钥，默认使用官方 API `https://api.deepseek.com` 和 `deepseek-flash`。
 
@@ -42,7 +37,7 @@ OIDC_PUBLIC_ORIGIN=https://travelmind.example
 OIDC_TOKEN_AUTH_METHOD=client_secret_basic
 ```
 
-把 `OIDC_PUBLIC_ORIGIN` 对应的 HTTPS 反向代理指向 Next.js，并在身份提供方登记回调 `https://travelmind.example/api/v1/auth/callback`。Next.js 将包括 SSE 在内的同源 `/api/v1/*` 转发至 FastAPI。代理需允许 SSE 长连接并关闭响应缓冲。使用浏览器打开配置的 HTTPS 入口，以便发送安全会话 Cookie。
+把 `OIDC_PUBLIC_ORIGIN` 对应的 HTTPS 反向代理指向 Next.js，并在身份提供方登记回调 `https://travelmind.example/api/v1/auth/callback`。Next.js 将包括 SSE 在内的同源 `/api/v1/*` 转发至 FastAPI。代理需允许 SSE 长连接、关闭响应缓冲，并配置访问日志仅记录路径，避免记录 OIDC 回调参数。使用浏览器打开配置的 HTTPS 入口，以便发送安全会话 Cookie。
 
 升级现有环境前，先停止旧版 FastAPI 后台执行器和旧 Worker。在后端目录安装锁定依赖、升级业务迁移并初始化 LangGraph Checkpoint，再启动 API。历史无主任务仍需由管理员显式关联到用户，详见 [Phase 2 公共契约](docs/phase-2-contract.md)。
 
@@ -66,11 +61,12 @@ uv run python -m travelmind.runtime.worker_cli run
 ```powershell
 Set-Location frontend
 npm ci
-$env:NEXT_PUBLIC_RESEARCH_MODE = 'live'
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend/.env.example` 复制为 `frontend/.env.local`，再修改 `API_ORIGIN`。FastAPI 文档位于 `http://127.0.0.1:8000/docs`。登录工作台后可创建、暂停和恢复任务，或回答当前澄清轮次。报告获批后可从工作台打开正文。SSE 使用 AgentEvent v1，凭当前会话连接，并可通过 `Last-Event-ID` 从指定序号之后续传。
+Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend/.env.example` 复制为 `frontend/.env.local`，在启动开发服务或运行生产构建前设置 `API_ORIGIN`。FastAPI 文档位于 `http://127.0.0.1:8000/docs`。登录工作台后可创建、暂停和恢复任务，或回答当前澄清轮次。报告获批后可从工作台打开正文。SSE 使用 AgentEvent v1，凭当前会话连接，并可通过 `Last-Event-ID` 从指定序号之后续传。
+
+工作台和报告中心按账户将最近链接保存在当前浏览器。换设备时可打开已知链接，服务器仍校验任务归属。
 
 ### 就绪与进程监控
 
@@ -89,4 +85,4 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 - 公共契约改动后，启动后端并在前端目录运行 `npm run generate:api`，提交生成的 TypeScript 类型。
 - 如需验证 DeepSeek 密钥、网络和所选模型，从后端目录运行 `uv run python -m travelmind.runtime.check_deepseek`。该命令只读取官方模型列表。
 
-任务状态机、API、数据模型与身份边界见 [Phase 2 公共契约](docs/phase-2-contract.md)。
+任务状态机、API、数据模型与身份边界见 [Phase 2 公共契约](docs/phase-2-contract.md)。图状态与 Worker 事务边界见 [Agent Runtime](docs/agent-runtime.md) 和 [持久化 Worker](docs/durable-runtime.md)。

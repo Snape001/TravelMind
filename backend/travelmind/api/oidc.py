@@ -2,6 +2,8 @@ from math import isfinite
 from urllib.parse import parse_qsl, quote_plus, urlencode, urlsplit, urlunsplit
 
 import httpx
+import jwt
+from jwt.algorithms import has_crypto
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -70,16 +72,23 @@ class InvalidLogin(ValueError):
     pass
 
 
+SUPPORTED_SIGNATURES = {
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+}
+
+
 class OidcClient:
     def __init__(self, http: httpx.AsyncClient, settings: AuthSettings):
-        try:
-            import jwt
-            from jwt.algorithms import has_crypto
-        except ImportError as exc:
-            raise RuntimeError("OIDC requires PyJWT[crypto]") from exc
         if not has_crypto:
             raise RuntimeError("OIDC requires PyJWT[crypto]")
-        self.jwt = jwt
         self.http = http
         self.settings = settings
 
@@ -108,7 +117,6 @@ class OidcClient:
         return metadata
 
     async def exchange(self, metadata: dict, *, code: str, verifier: str, nonce: str) -> dict:
-        jwt = self.jwt
         config = self.settings
         data = {
             "grant_type": "authorization_code",
@@ -141,18 +149,7 @@ class OidcClient:
         try:
             header = jwt.get_unverified_header(token)
             algorithm = header.get("alg")
-            supported = {
-                "RS256",
-                "RS384",
-                "RS512",
-                "PS256",
-                "PS384",
-                "PS512",
-                "ES256",
-                "ES384",
-                "ES512",
-            }
-            if not isinstance(algorithm, str) or algorithm not in supported:
+            if not isinstance(algorithm, str) or algorithm not in SUPPORTED_SIGNATURES:
                 raise InvalidLogin
             jwks = self._object(await self.http.get(metadata["jwks_uri"], follow_redirects=False))
             keys = jwks.get("keys")

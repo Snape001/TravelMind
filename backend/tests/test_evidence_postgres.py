@@ -7,6 +7,10 @@ from sqlalchemy import func, select
 
 from travelmind.db.evidence import save_evidence
 from travelmind.db.models import EvidenceRow
+from travelmind.db.worker import PostgresWorkerStore
+from travelmind.research.engine import ToolResult
+from travelmind.runtime.retrieval import ResearchRetriever
+from travelmind.schemas.agents import AgentInput
 from travelmind.schemas.domain import Evidence
 
 pytestmark = pytest.mark.postgres
@@ -90,3 +94,46 @@ def test_save_evidence_reuses_legacy_rows_and_rolls_back_with_caller(client):
     assert stored[1].evidence_id == other.evidence_id
     assert client.get(f"/api/v1/tasks/{task_id}/evidence/{legacy_id}").status_code == 200
     assert client.get(f"/api/v1/tasks/{task_id}/evidence/{other.evidence_id}").status_code == 404
+
+
+def test_parallel_retrieval_shares_a_scrape_and_stores_one_evidence_id(client):
+    task = client.post("/api/v1/tasks", json={"destination": "泉州", "depth": "deep"}).json()
+    page = make_evidence("https://example.org/zh/guide")
+    scrape_calls = []
+
+    class Engine:
+        search_calls = 0
+
+        async def search(self, *_args, **_options):
+            self.search_calls += 1
+            return ToolResult(
+                evidence=[
+                    make_evidence(f"https://example.org/guide?utm_source={self.search_calls}")
+                ]
+            )
+
+        async def scrape(self, url):
+            scrape_calls.append(url)
+            await asyncio.sleep(0)
+            return ToolResult(evidence=[page])
+
+    async def run():
+        sessions = client.app.state.sessions
+        store = PostgresWorkerStore(sessions)
+        claim = await store.claim(uuid4(), lease_seconds=30)
+        assert claim is not None and claim.lease.task_id == UUID(task["task_id"])
+        retrieve = ResearchRetriever(Engine(), sessions, store=store, lease=claim.lease)
+        requests = [
+            AgentInput(
+                task_id=task["task_id"],
+                trace_id=task["trace_id"],
+                run_id=uuid4(),
+                agent_id=agent_id,
+                brief=task["brief"],
+            )
+            for agent_id in ("history_culture", "tourism_resources")
+        ]
+        return await asyncio.gather(*(retrieve(request) for request in requests))
+
+    assert client.portal.call(run) == [[page], [page]]
+    assert len(scrape_calls) == 1

@@ -1,7 +1,9 @@
 import asyncio
+from collections.abc import AsyncIterator
 from datetime import timedelta
 from uuid import UUID, uuid4
 
+import httpx
 import pytest
 from redis.exceptions import ConnectionError
 from sqlalchemy import func, update
@@ -55,8 +57,8 @@ def test_exhausted_reclaims_never_issue_another_execution_lease(client):
 
     async def run():
         sessions = client.app.state.sessions
-        left = PostgresWorkerStore(sessions, max_attempts=1)
-        right = PostgresWorkerStore(sessions, max_attempts=10)
+        left = PostgresWorkerStore(sessions)
+        right = PostgresWorkerStore(sessions)
         worker_ids = uuid4(), uuid4()
 
         async def race():
@@ -124,6 +126,34 @@ def test_exhausted_reclaims_never_issue_another_execution_lease(client):
             assert events[-1].payload.error == failure.error
 
     client.portal.call(run)
+
+
+@pytest.mark.parametrize("operation", ["pause", "resume"])
+def test_control_rejects_a_body_without_buffering_the_rest(client, operation):
+    created = client.post("/api/v1/tasks", json={"destination": "泉州"})
+    assert created.status_code == 201
+
+    async def body() -> AsyncIterator[bytes]:
+        yield b"unexpected"
+        raise AssertionError("control endpoint should stop reading after the first nonempty chunk")
+
+    async def send():
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=client.app),
+            base_url=str(client.base_url),
+            headers=client.headers,
+            cookies=dict(client.cookies),
+        ) as browser:
+            return await browser.post(
+                f"{created.headers['location']}/{operation}",
+                headers={"Idempotency-Key": str(uuid4())},
+                content=body(),
+            )
+
+    response = client.portal.call(send)
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "VALIDATION_ERROR"
+    assert client.get(created.headers["location"]).json()["status"] == "queued"
 
 
 def test_pause_resume_and_replay_snapshot(client):
@@ -349,7 +379,7 @@ def test_running_pause_resumes_from_the_persisted_interrupt(client):
 def test_retry_backoff_retains_attempt_budget_across_queued_pause(client):
     task_id = create_with_budget(client, 2)
     url = f"/api/v1/tasks/{task_id}"
-    store = PostgresWorkerStore(client.app.state.sessions, max_attempts=2)
+    store = PostgresWorkerStore(client.app.state.sessions)
 
     async def fail_first_attempt():
         claim = await store.claim(uuid4(), lease_seconds=30)
@@ -368,7 +398,7 @@ def test_retry_backoff_retains_attempt_budget_across_queued_pause(client):
     )
 
     async def fail_second_attempt():
-        competing_store = PostgresWorkerStore(client.app.state.sessions, max_attempts=10)
+        competing_store = PostgresWorkerStore(client.app.state.sessions)
         claims = await asyncio.gather(
             store.claim(uuid4(), lease_seconds=30),
             competing_store.claim(uuid4(), lease_seconds=30),

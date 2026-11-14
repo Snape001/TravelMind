@@ -1,3 +1,4 @@
+import logging
 from uuid import uuid4
 
 import pytest
@@ -5,7 +6,28 @@ from fastapi.testclient import TestClient
 
 from travelmind.api import health
 from travelmind.config import Settings
+from travelmind.db.connection import create_database_engine
 from travelmind.main import create_app
+from travelmind.server_logging import AccessLogFilter
+
+
+def test_access_logs_drop_query_parameters():
+    record = logging.LogRecord(
+        "uvicorn.access",
+        logging.INFO,
+        "",
+        0,
+        '%s - "%s %s HTTP/%s" %d',
+        ("127.0.0.1:54321", "GET", "/api/v1/auth/callback?state=test-value", "1.1", 302),
+        None,
+    )
+    assert AccessLogFilter().filter(record)
+    assert record.getMessage() == '127.0.0.1:54321 - "GET /api/v1/auth/callback HTTP/1.1" 302'
+
+
+def test_database_errors_hide_parameter_values():
+    settings = Settings(_env_file=None, database_url="postgresql+asyncpg://localhost/travelmind")
+    assert create_database_engine(settings).sync_engine.hide_parameters
 
 
 def test_service_starts_without_external_dependencies():

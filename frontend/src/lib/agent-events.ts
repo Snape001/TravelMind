@@ -6,10 +6,6 @@ export const eventTypes = [
   "agent.finished", "tool.started", "tool.finished", "evidence.added", "report.ready", "report.reviewed",
 ] as const satisfies EventPayload["type"][];
 
-export function encodeEvent(event: AgentEvent): string {
-  return `id: ${event.sequence}\nevent: ${event.payload.type}\ndata: ${JSON.stringify(event)}\n\n`;
-}
-
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -58,10 +54,19 @@ export function readEvent(data: string, name: string, id: string): AgentEvent | 
   }
 }
 
-export function appendEvent(events: AgentEvent[], event: AgentEvent, task: Pick<TaskRead, "task_id" | "trace_id">): AgentEvent[] {
-  if (event.task_id !== task.task_id || event.trace_id !== task.trace_id ||
-    event.sequence <= (events.at(-1)?.sequence ?? 0) || events.some(({ event_id }) => event_id === event.event_id)) return events;
-  return [...events, event];
+export function eventCursor(task: Pick<TaskRead, "task_id" | "trace_id">, after: number) {
+  let sequence = after;
+  const seen = new Set<string>();
+  return {
+    get sequence() { return sequence; },
+    accept(event: AgentEvent) {
+      if (event.task_id !== task.task_id || event.trace_id !== task.trace_id ||
+        event.sequence <= sequence || seen.has(event.event_id)) return false;
+      sequence = event.sequence;
+      seen.add(event.event_id);
+      return true;
+    },
+  };
 }
 
 export function summarize(task: TaskRead, events: AgentEvent[]) {

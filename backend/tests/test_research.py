@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 from datetime import timedelta
 
 import httpx
@@ -48,6 +49,7 @@ def test_bocha_search_deduplicates_and_preserves_source_fields():
                 "datePublished": "invalid",
             },
             {"name": "坏链接", "url": "javascript:alert(1)", "snippet": "无效"},
+            {"name": "内部地址", "url": "http://127.0.0.1/", "snippet": "无效"},
             {"name": "无正文", "url": "https://example.org/empty"},
         ]
         return httpx.Response(200, json={"code": 200, "data": {"webPages": {"value": results}}})
@@ -106,6 +108,7 @@ def test_openalex_reconstructs_abstract_and_handles_sparse_records():
                         "primary_location": {"landing_page_url": "https://example.org/article"},
                         "abstract_inverted_index": None,
                     },
+                    {"id": "http://127.0.0.1/", "title": "Invalid source"},
                 ]
             },
         )
@@ -306,6 +309,101 @@ def test_firecrawl_reports_target_page_failure_without_storing_error_page():
     result = asyncio.run(run())
     assert result.evidence == []
     assert result.errors[0].code == "PAGE_UNAVAILABLE"
+
+
+def test_firecrawl_rejects_non_public_reported_final_url():
+    def respond(_):
+        return httpx.Response(
+            200,
+            json={
+                "success": True,
+                "data": {
+                    "markdown": "A page",
+                    "metadata": {
+                        "sourceURL": "https://example.org/guide",
+                        "url": "http://127.0.0.1/",
+                    },
+                },
+            },
+        )
+
+    async def run():
+        client, engine = make_engine(respond, firecrawl_api_key="firecrawl-key")
+        async with client:
+            return await engine.scrape("https://example.org/guide")
+
+    result = asyncio.run(run())
+    assert result.evidence == []
+    assert result.errors[0].code == "INVALID_RESPONSE"
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"[" * (sys.getrecursionlimit() + 200) + b"]" * (sys.getrecursionlimit() + 200),
+        b'{"results":[],"padding":"' + b" " * (8 * 1024 * 1024) + b'"}',
+    ],
+)
+def test_openalex_refuses_invalid_or_oversized_payload_without_hiding_bocha_evidence(content):
+    def respond(request):
+        if request.url.host == "api.openalex.org":
+            return httpx.Response(200, content=content)
+        return httpx.Response(
+            200,
+            json={
+                "code": 200,
+                "data": {
+                    "webPages": {
+                        "value": [{"url": "https://example.org/", "summary": "Travel evidence"}],
+                    },
+                },
+            },
+        )
+
+    async def run():
+        client, engine = make_engine(respond, bocha_api_key="bocha-key")
+        async with client:
+            return await engine.search("泉州")
+
+    result = asyncio.run(run())
+    assert [item.excerpt for item in result.evidence] == ["Travel evidence"]
+    assert [(error.provider, error.code) for error in result.errors] == [
+        ("openalex", "INVALID_RESPONSE")
+    ]
+
+
+def test_bocha_provider_text_is_safe_to_persist_and_serialize():
+    def respond(_):
+        return httpx.Response(
+            200,
+            content=json.dumps(
+                {
+                    "code": 200,
+                    "data": {
+                        "webPages": {
+                            "value": [
+                                {
+                                    "name": "\x00",
+                                    "url": "https://example.org/",
+                                    "summary": "Travel\x00 evidence \ud800",
+                                }
+                            ],
+                        },
+                    },
+                }
+            ).encode(),
+        )
+
+    async def run():
+        client, engine = make_engine(respond, bocha_api_key="bocha-key")
+        async with client:
+            return await engine.search("泉州", sources=("bocha",))
+
+    result = asyncio.run(run())
+    (item,) = result.evidence
+    assert item.source_title == "https://example.org/"
+    assert item.excerpt == "Travel evidence ?"
+    item.model_dump_json()
 
 
 def test_validates_inputs_and_missing_credentials_before_sending_requests():

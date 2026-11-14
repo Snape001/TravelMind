@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { demo, demoResearch } from "@/lib/demo";
 import { readEvidence } from "@/lib/task-client";
 import { formatDate, type EvidenceRead } from "@/lib/research";
 
@@ -10,9 +11,13 @@ const sourceTypes: Record<EvidenceRead["source_type"], string> = {
 };
 
 export function EvidenceCard({ taskId, evidenceId }: { taskId: string; evidenceId: string }) {
-  const [evidence, setEvidence] = useState<EvidenceRead | null>(null);
-  const [error, setError] = useState("");
+  const example = taskId === demo.taskId;
+  const [loaded, setEvidence] = useState<EvidenceRead | null>(null);
+  const [loadError, setError] = useState("");
+  const evidence = example ? demoResearch.evidence.find(({ evidence_id }) => evidence_id === evidenceId) : loaded;
+  const error = example && !evidence ? "该任务的证据暂不可用。" : loadError;
   useEffect(() => {
+    if (example) return;
     const controller = new AbortController();
     readEvidence(taskId, evidenceId, controller.signal).then((item) => {
       if (!controller.signal.aborted) setEvidence(item);
@@ -20,7 +25,7 @@ export function EvidenceCard({ taskId, evidenceId }: { taskId: string; evidenceI
       if (!controller.signal.aborted) setError(problem.message);
     });
     return () => controller.abort();
-  }, [taskId, evidenceId]);
+  }, [taskId, evidenceId, example]);
 
   if (error) return <p className="error-text" role="alert">{error}</p>;
   if (!evidence) return <p className="muted" role="status">正在读取证据…</p>;

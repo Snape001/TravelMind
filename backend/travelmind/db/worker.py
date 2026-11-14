@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta
-from typing import Literal, Protocol
+from typing import Literal
 from uuid import UUID
 
+from psycopg import AsyncConnection as PsycopgConnection
+from psycopg.pq import TransactionStatus
 from pydantic import TypeAdapter
 from sqlalchemy import Interval, and_, case, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 
-from travelmind.db.models import DEFAULT_MAX_ATTEMPTS, AttemptFailureRow, ProjectionRow, TaskRow
+from travelmind.db.models import AttemptFailureRow, ProjectionRow, TaskRow
 from travelmind.db.projections import apply_batch, publish_transition, release_lease
 from travelmind.db.tasks import lock_task, payload_digest
 from travelmind.schemas.agents import ErrorInfo
@@ -30,27 +32,6 @@ BACKOFF_CAP_SECONDS = 30
 BACKOFF_CAP_EXPONENT = 5
 
 
-class TransactionStatus(Protocol):
-    name: str
-
-
-class TransactionInfo(Protocol):
-    @property
-    def transaction_status(self) -> TransactionStatus: ...
-
-
-class Cursor(Protocol):
-    async def fetchone(self) -> object | None: ...
-
-
-class CheckpointTransaction(Protocol):
-    # psycopg AsyncConnection, already inside the transaction used for the checkpoint write.
-    @property
-    def info(self) -> TransactionInfo: ...
-
-    async def execute(self, query: str, params: tuple[object, ...]) -> Cursor: ...
-
-
 def _matches(row, lease: LeaseRef, now: datetime) -> bool:
     return (
         row is not None
@@ -63,15 +44,7 @@ def _matches(row, lease: LeaseRef, now: datetime) -> bool:
 
 
 class PostgresWorkerStore:
-    def __init__(
-        self,
-        sessions: async_sessionmaker[AsyncSession],
-        *,
-        max_attempts: int = DEFAULT_MAX_ATTEMPTS,
-    ):
-        # Keep accepting the legacy constructor argument. New limits belong to create_task.
-        if max_attempts < 1:
-            raise ValueError("max_attempts must be positive")
+    def __init__(self, sessions: async_sessionmaker[AsyncSession]):
         self.sessions = sessions
 
     async def claim(self, worker_id: UUID, *, lease_seconds: int) -> TaskClaim | None:
@@ -148,7 +121,7 @@ class PostgresWorkerStore:
         self,
         lease: LeaseRef,
         *,
-        transaction: AsyncSession | AsyncConnection | CheckpointTransaction,
+        transaction: AsyncSession | AsyncConnection | PsycopgConnection,
     ) -> None:
         if isinstance(transaction, AsyncSession):
             task, _ = await self._locked_lease(transaction, lease)
@@ -178,7 +151,7 @@ class PostgresWorkerStore:
             return
         # A psycopg connection is also used by AsyncPostgresSaver. Check transaction state
         # before SELECT so an autocommit connection cannot silently release the row lock.
-        if transaction.info.transaction_status.name != "INTRANS":
+        if transaction.info.transaction_status != TransactionStatus.INTRANS:
             raise ValueError("lease fencing requires an open transaction")
         lock = await transaction.execute(
             "SELECT task_id FROM research_tasks WHERE task_id = %s FOR UPDATE", (lease.task_id,)

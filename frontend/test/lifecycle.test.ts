@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { appendEvent } from "../src/lib/agent-events";
-import { fixtureResearch, FixtureTask } from "../src/lib/lifecycle-fixture";
+import { fixtureResearch, FixtureTask } from "./fixtures/lifecycle-fixture";
 import { makeAnswers, nextSnapshot, taskControls } from "../src/lib/task-lifecycle";
 import { ApiError, createTask, readSession, sendCommand, subscribe } from "../src/lib/task-client";
-import { historyKey, readTaskHistory, rememberTask } from "../src/lib/task-history";
+import { readTaskHistory, rememberTask } from "../src/lib/task-history";
 import type { AgentEvent, TaskRead } from "../src/lib/research";
-import { checkFixtureWrite, fixtureCallback, fixtureLogout, fixtureSession } from "../src/lib/fixture-session";
+import { checkFixtureWrite, fixtureCallback, fixtureLogout, fixtureSession } from "./fixtures/session";
 
 const brief = { destination: "泉州", topics: ["文化"], requirements: "", depth: "deep" } as const;
 const now = Date.parse("2026-11-14T09:00:00Z");
@@ -81,19 +80,20 @@ test("stale API responses and historical events cannot regress the current snaps
   assert.equal(nextSnapshot(precise, { ...queued, updated_at: "2026-11-14T17:00:02.800100+08:00" }), precise);
 });
 
-test("recent task links are isolated by account and transport and contain only IDs", () => {
+test("recent task links are isolated by account, ignore the former fixture namespace and contain only IDs", () => {
   const values = new Map<string, string>();
   const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
-  const a = historyKey("account-a", false);
-  const b = historyKey("account-b", false);
+  const a = "travelmind.live.task-history.v1.account-a";
   const id = crypto.randomUUID();
-  rememberTask(storage, a, id);
+  const oldFixtureId = crypto.randomUUID();
+  storage.setItem("travelmind.fixture.task-history.v1.account-a", JSON.stringify([oldFixtureId]));
+  rememberTask("account-a", id, storage);
   const next = crypto.randomUUID();
-  rememberTask(storage, a, next);
-  rememberTask(storage, a, id);
-  assert.deepEqual(readTaskHistory(storage, a), [id, next]);
-  assert.deepEqual(readTaskHistory(storage, b), []);
-  assert.deepEqual(readTaskHistory(storage, historyKey("account-a", true)), []);
+  rememberTask("account-a", next, storage);
+  rememberTask("account-a", id, storage);
+  assert.deepEqual(readTaskHistory("account-a", storage), [id, next]);
+  assert.deepEqual(readTaskHistory("account-b", storage), []);
+  assert.ok(!readTaskHistory("account-a", storage).includes(oldFixtureId));
   assert.deepEqual(JSON.parse(values.get(a)!), [id, next]);
 });
 
@@ -144,7 +144,7 @@ test("fixture session requires same-origin CSRF and is revoked at logout", async
   assert.equal(fixtureSession(request("http://127.0.0.1:3107")), undefined);
 });
 
-test("SSE reconnects from the last accepted sequence and deduplicates replay", (t) => {
+test("SSE reconnects from the last accepted sequence and cancels stale streams and reconnects", (t) => {
   const fixture = makeFixture();
   const task = read(fixture, now);
   const sources: FakeSource[] = [];
@@ -158,33 +158,43 @@ test("SSE reconnects from the last accepted sequence and deduplicates replay", (
       this.dispatchEvent(new MessageEvent(event.payload.type, { data: JSON.stringify(event), lastEventId: String(event.sequence) }));
     }
   }
-  t.mock.method(globalThis, "setTimeout", (callback: () => void) => { queueMicrotask(callback); return 1; });
-  const original = globalThis.EventSource;
-  globalThis.EventSource = FakeSource as unknown as typeof EventSource;
+  const timers = new Map<number, () => void>();
+  let timerId = 0;
+  t.mock.method(globalThis, "setTimeout", (callback: () => void) => { timers.set(++timerId, callback); return timerId; });
+  t.mock.method(globalThis, "clearTimeout", (id: number) => timers.delete(id));
+  const original = Object.getOwnPropertyDescriptor(globalThis, "EventSource");
+  Object.defineProperty(globalThis, "EventSource", { value: FakeSource, configurable: true });
   const states: string[] = [];
-  let events: AgentEvent[] = [];
-  const close = subscribe(task.task_id, 0, (event) => {
-    const next = appendEvent(events, event, task);
-    if (next === events) return false;
-    events = next;
-    return true;
-  }, (state) => states.push(state));
-  return Promise.resolve().then(() => {
+  const events: AgentEvent[] = [];
+  const close = subscribe(task, 0, (event) => events.push(event), (state) => states.push(state));
+  try {
     const [first, second] = fixture.eventsAt(now + 600);
     sources[0].onopen?.();
     sources[0].send(first);
     sources[0].send({ ...second, trace_id: crypto.randomUUID() });
     sources[0].onerror?.();
     assert.equal(sources[0].stopped, true);
-    return Promise.resolve().then(() => {
-      assert.match(sources[1].url, /after=1$/);
-      sources[1].onopen?.();
-      sources[1].send(first);
-      sources[1].send(second);
-      assert.deepEqual(events, [first, second]);
-      assert.deepEqual(states, ["open", "reconnecting", "open"]);
-    });
-  }).finally(() => { close(); globalThis.EventSource = original; });
+    sources[0].send(second);
+    assert.deepEqual(events, [first]);
+    const reconnect = timers.get(1)!;
+    timers.delete(1);
+    reconnect();
+    assert.match(sources[1].url, /after=1$/);
+    sources[1].onopen?.();
+    sources[1].send(first);
+    sources[1].send(second);
+    assert.deepEqual(events, [first, second]);
+    assert.deepEqual(states, ["open", "reconnecting", "open"]);
+    sources[1].onerror?.();
+    assert.equal(timers.size, 1);
+    assert.equal(sources[1].stopped, true);
+    close();
+    assert.equal(timers.size, 0);
+  } finally {
+    close();
+    if (original) Object.defineProperty(globalThis, "EventSource", original);
+    else Reflect.deleteProperty(globalThis, "EventSource");
+  }
 });
 
 test("historical task snapshots missing new optional fields still render", () => {

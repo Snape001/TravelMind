@@ -6,6 +6,7 @@ import pytest
 from langgraph.checkpoint.base import empty_checkpoint
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.state import CompiledStateGraph
+from pydantic import ValidationError
 from test_runtime import Model, source
 
 from travelmind.runtime.checkpoints import checkpoint_serializer
@@ -24,13 +25,6 @@ from travelmind.schemas.worker import (
     TaskClaim,
     WorkerInstruction,
 )
-
-
-class BudgetClaim(TaskClaim):
-    # On the standalone Runtime branch, the shared TaskClaim still has the old shape.
-    max_attempts: int
-    attempt_count: int
-    execution_permitted: bool
 
 
 class Store:
@@ -66,7 +60,7 @@ class Store:
         return "applied"
 
     def claim(self, epoch=1, *, execution_permitted=True):
-        return BudgetClaim(
+        return TaskClaim(
             lease=LeaseRef(task_id=self.task_id, worker_id=uuid4(), lease_epoch=epoch),
             trace_id=self.trace_id,
             lease_until=datetime.now(UTC),
@@ -83,10 +77,10 @@ def test_clarification_resume_survives_worker_restart():
         saver = InMemorySaver(serde=checkpoint_serializer())
         calls = []
 
-        async def model(request, instructions, response, /):
+        async def model(request, _instructions, response, /, *, context):
             calls.append(request.agent_id)
             assert request.agent_id == "research_director"
-            if "泉州" in instructions:
+            if any(item["answer"] == "泉州" for item in context["clarification_answers"]):
                 return response(questions=["最关注什么？"])
             return response(questions=["哪座古城？"])
 
@@ -121,7 +115,7 @@ def test_pause_after_director_and_resume_without_repeating_it():
         store = Store("泉州")
         saver = InMemorySaver(serde=checkpoint_serializer())
 
-        async def model_reply(request, _):
+        async def model_reply(request, _, _context):
             if request.agent_id == "research_director":
                 store.paused_at = datetime.now(UTC)
 
@@ -189,7 +183,7 @@ def test_missing_projection_is_replayed_before_the_next_node(crash_at, execution
         store = CrashStore("泉州")
         saver = InMemorySaver(serde=checkpoint_serializer())
 
-        async def reply(request, _):
+        async def reply(request, _, _context):
             if request.agent_id == "research_director" and crash_at == "clarification_required":
                 return {"questions": ["现在想了解泉州的哪个方面？"]}
             if request.agent_id == "research_director" and crash_at == "pause_reached":
@@ -250,7 +244,7 @@ def test_exhausted_budget_prevents_start_or_resume_without_new_checkpoint(
         store = Store("古城")
         saver = InMemorySaver(serde=checkpoint_serializer())
 
-        async def ask(_request, _instructions, response, /):
+        async def ask(_request, _instructions, response, /, *, context):
             return response(questions=["哪座古城？"])
 
         if state == "answered":
@@ -295,19 +289,18 @@ def test_worker_rejects_a_claim_missing_any_required_budget_field(field):
     async def run():
         store = Store("泉州")
         original = store.claim()
-        legacy = BudgetClaim.model_construct(
-            **{
-                name: getattr(original, name)
-                for name in type(original).model_fields
-                if name != field
-            }
+        invalid_claim = TaskClaim.model_construct(
+            **{name: value for name, value in original if name != field}
         )
 
         def saver(_):
             pytest.fail("an incomplete claim must be rejected before opening a checkpoint")
 
-        with pytest.raises(ValueError, match="retry budget"):
-            await DurableWorker(store, None, saver).execute(legacy)
+        with pytest.raises(ValidationError) as error:
+            await DurableWorker(store, None, saver).execute(invalid_claim)
+        assert [(item["loc"], item["type"]) for item in error.value.errors()] == [
+            ((field,), "missing")
+        ]
 
     asyncio.run(run())
 
@@ -318,7 +311,7 @@ def test_heartbeat_loss_cancels_the_inflight_model():
             await model_started.wait()
             raise LeaseLost
 
-    async def model(*args):
+    async def model(*args, **kwargs):
         model_started.set()
         try:
             await asyncio.Future()
@@ -356,10 +349,11 @@ def test_crash_after_consuming_answer_does_not_submit_it_to_a_later_round():
         saver = InMemorySaver(serde=checkpoint_serializer())
         calls = 0
 
-        async def model(_request, instructions, response, /):
+        async def model(_request, _instructions, response, /, *, context):
             nonlocal calls
             calls += 1
-            return response(questions=["最关注什么？" if "泉州" in instructions else "哪座古城？"])
+            answered = any(item["answer"] == "泉州" for item in context["clarification_answers"])
+            return response(questions=["最关注什么？" if answered else "哪座古城？"])
 
         await DurableWorker(store, model, lambda _: saver).execute(store.claim())
         first = store.batches[-1]
