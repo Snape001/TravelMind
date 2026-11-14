@@ -7,10 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "tsc -p tsconfig.test.json && node .artifacts/tests/test/research.test.js",
     "typecheck": "tsc --noEmit",
     "generate:api": "openapi-typescript http://127.0.0.1:8000/openapi.json -o src/lib/api.generated.ts"
   },
   "dependencies": {
+    "@xyflow/react": "^12.12.1",
+    "lucide-react": "^1.73.0",
     "next": "16.4.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
