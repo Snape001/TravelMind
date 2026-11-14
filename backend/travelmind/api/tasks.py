@@ -1,49 +1,67 @@
 import asyncio
 import logging
 from collections.abc import AsyncIterator
+from time import monotonic
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.sse import EventSourceResponse, ServerSentEvent
+from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from travelmind.api.dependencies import Sessions, SignedIn, WriteUser, api_error
+from travelmind.db.auth import session_is_active
+from travelmind.db.control import (
+    AnswerMismatch,
+    ClarificationStale,
+    Operation,
+    TaskNotFound,
+    apply_command,
+)
 from travelmind.db.models import EvidenceRow, ReportRow, TaskRow
-from travelmind.db.tasks import IdempotencyConflict, create_task, events_after
-from travelmind.schemas.api import ErrorResponse, EvidenceRead, IdempotencyKey, ReportRead, TaskRead
+from travelmind.db.tasks import (
+    IdempotencyConflict,
+    create_task,
+    events_after,
+    owned_task,
+    task_read,
+)
+from travelmind.schemas.api import (
+    ClarificationAnswers,
+    ErrorResponse,
+    EvidenceRead,
+    IdempotencyKey,
+    ReportRead,
+    TaskRead,
+)
 from travelmind.schemas.domain import ResearchBrief
 from travelmind.schemas.events import AgentEvent, EventCursor
+from travelmind.schemas.task_control import InvalidTaskTransition
 
 logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/api/v1/tasks",
     tags=["tasks"],
-    responses={500: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+    responses={
+        401: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
+    },
 )
 not_found = {404: {"model": ErrorResponse}}
 task_location = {"Location": {"description": "Task resource URL", "schema": {"type": "string"}}}
 sse_error_content = {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+SSE_SESSION_CHECK_SECONDS = 5
+WAKE_CHANNEL = "travelmind:worker:wakeup"
+CONTROL_ERRORS = {status: {"model": ErrorResponse} for status in (403, 404, 409, 422)}
+ControlKey = Annotated[IdempotencyKey, Header()]
 
 
-def api_error(status: int, code: str, message: str, *, retryable: bool = False) -> HTTPException:
-    return HTTPException(status, detail={"code": code, "message": message, "retryable": retryable})
-
-
-def get_sessions(request: Request) -> async_sessionmaker[AsyncSession]:
-    sessions = request.app.state.sessions
-    if sessions is None:
-        raise api_error(503, "DATABASE_UNAVAILABLE", "任务数据库不可用", retryable=True)
-    return sessions
-
-
-Sessions = Annotated[async_sessionmaker[AsyncSession], Depends(get_sessions)]
-
-
-async def require_task(task_id: UUID, sessions: Sessions) -> TaskRow:
+async def require_task(task_id: UUID, sessions: Sessions, user: SignedIn) -> TaskRow:
     async with sessions() as session:
-        task = await session.get(TaskRow, task_id)
+        task = await owned_task(session, task_id, user.user_id)
     if task is None:
         raise api_error(404, "TASK_NOT_FOUND", "调研任务不存在")
     return task
@@ -52,12 +70,24 @@ async def require_task(task_id: UUID, sessions: Sessions) -> TaskRow:
 ExistingTask = Annotated[TaskRow, Depends(require_task)]
 
 
+async def _notify_worker(request: Request, task_id: UUID) -> None:
+    redis = request.app.state.redis
+    if redis is None:
+        return
+    try:
+        async with asyncio.timeout(request.app.state.settings.dependency_timeout_seconds):
+            await redis.publish(WAKE_CHANNEL, str(task_id))
+    except (RedisError, OSError, TimeoutError) as exc:
+        logger.warning("task.wakeup_failed task_id=%s type=%s", task_id, type(exc).__name__)
+
+
 @router.post(
     "",
     status_code=201,
     responses={
         200: {"model": TaskRead, "headers": task_location},
         201: {"headers": task_location},
+        403: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
     },
 )
@@ -65,29 +95,139 @@ async def submit_task(
     brief: ResearchBrief,
     request: Request,
     response: Response,
-    background: BackgroundTasks,
     sessions: Sessions,
+    user: WriteUser,
     idempotency_key: Annotated[IdempotencyKey | None, Header()] = None,
 ) -> TaskRead:
     try:
         async with sessions() as session:
-            task, created = await create_task(session, brief, idempotency_key)
+            task, created = await create_task(
+                session, brief, idempotency_key, owner_id=user.user_id
+            )
+            if created:
+                result = TaskRead.model_validate(task)
+            else:
+                async with session.begin():
+                    await session.refresh(task, with_for_update=True)
+                    result = await task_read(session, task)
     except IdempotencyConflict as exc:
         raise api_error(409, "IDEMPOTENCY_CONFLICT", "幂等键已用于其他请求") from exc
     response.headers["Location"] = f"/api/v1/tasks/{task.task_id}"
     if created:
         logger.info("task.created task_id=%s trace_id=%s", task.task_id, task.trace_id)
+        await _notify_worker(request, task.task_id)
     else:
         response.status_code = 200
-    worker = request.app.state.worker
-    if worker is not None and task.status == "queued":
-        background.add_task(worker.execute, task.task_id)
-    return TaskRead.model_validate(task)
+    return result
 
 
 @router.get("/{task_id}", responses=not_found)
-async def read_task(task: ExistingTask) -> TaskRead:
-    return TaskRead.model_validate(task)
+async def read_task(task_id: UUID, sessions: Sessions, user: SignedIn) -> TaskRead:
+    async with sessions.begin() as session:
+        task = await owned_task(session, task_id, user.user_id, lock=True)
+        if task is None:
+            raise api_error(404, "TASK_NOT_FOUND", "调研任务不存在")
+        return await task_read(session, task)
+
+
+async def _control(
+    task_id: UUID,
+    session_factory: Sessions,
+    user: WriteUser,
+    response: Response,
+    operation: Operation,
+    key: str,
+    *,
+    clarification_id: UUID | None = None,
+    answers: ClarificationAnswers | None = None,
+) -> tuple[TaskRead, bool]:
+    try:
+        async with session_factory() as session:
+            status, result, applied = await apply_command(
+                session,
+                user.user_id,
+                task_id,
+                operation,
+                key,
+                clarification_id=clarification_id,
+                answers=answers,
+            )
+    except TaskNotFound:
+        raise api_error(404, "TASK_NOT_FOUND", "调研任务不存在") from None
+    except IdempotencyConflict:
+        raise api_error(409, "IDEMPOTENCY_CONFLICT", "幂等键已用于其他请求") from None
+    except InvalidTaskTransition:
+        raise api_error(409, "TASK_STATE_CONFLICT", "任务状态不支持该操作") from None
+    except ClarificationStale:
+        raise api_error(409, "CLARIFICATION_STALE", "已不是当前待答轮次") from None
+    except AnswerMismatch:
+        raise api_error(422, "VALIDATION_ERROR", "必须为当前轮次的每个问题提供一个答案") from None
+    response.status_code = status
+    return result, applied
+
+
+@router.post("/{task_id}/pause", responses={202: {"model": TaskRead}, **CONTROL_ERRORS})
+async def pause_task(
+    task: ExistingTask,
+    request: Request,
+    response: Response,
+    sessions: Sessions,
+    user: WriteUser,
+    idempotency_key: ControlKey,
+) -> TaskRead:
+    if await request.body():
+        raise api_error(422, "VALIDATION_ERROR", "暂停请求不接受请求体")
+    result, _ = await _control(task.task_id, sessions, user, response, "pause", idempotency_key)
+    return result
+
+
+@router.post("/{task_id}/resume", status_code=202, responses=CONTROL_ERRORS)
+async def resume_task(
+    task: ExistingTask,
+    request: Request,
+    response: Response,
+    sessions: Sessions,
+    user: WriteUser,
+    idempotency_key: ControlKey,
+) -> TaskRead:
+    if await request.body():
+        raise api_error(422, "VALIDATION_ERROR", "恢复请求不接受请求体")
+    result, applied = await _control(
+        task.task_id, sessions, user, response, "resume", idempotency_key
+    )
+    if applied:
+        await _notify_worker(request, task.task_id)
+    return result
+
+
+@router.post(
+    "/{task_id}/clarifications/{clarification_id}/answer",
+    status_code=202,
+    responses=CONTROL_ERRORS,
+)
+async def answer_task(
+    task: ExistingTask,
+    clarification_id: UUID,
+    answers: ClarificationAnswers,
+    request: Request,
+    response: Response,
+    sessions: Sessions,
+    user: WriteUser,
+    idempotency_key: ControlKey,
+) -> TaskRead:
+    result, applied = await _control(
+        task.task_id,
+        sessions,
+        user,
+        response,
+        "answer",
+        idempotency_key,
+        clarification_id=clarification_id,
+        answers=answers,
+    )
+    if applied:
+        await _notify_worker(request, task.task_id)
+    return result
 
 
 @router.get(
@@ -95,6 +235,7 @@ async def read_task(task: ExistingTask) -> TaskRead:
     response_class=EventSourceResponse,
     responses={
         200: {"model": AgentEvent},
+        401: {"content": sse_error_content},
         404: {"content": sse_error_content},
         500: {"content": sse_error_content},
         503: {"content": sse_error_content},
@@ -103,14 +244,31 @@ async def read_task(task: ExistingTask) -> TaskRead:
 async def stream_events(
     task: ExistingTask,
     sessions: Sessions,
+    user: SignedIn,
     after: EventCursor = 0,
     last_event_id: Annotated[EventCursor | None, Header()] = None,
 ) -> AsyncIterator[ServerSentEvent]:
     cursor = last_event_id if last_event_id is not None else after
+    check_at = 0.0
     while True:
         try:
             async with sessions() as session:
+                if monotonic() >= check_at:
+                    if not await session_is_active(session, user):
+                        return
+                    check_at = monotonic() + SSE_SESSION_CHECK_SECONDS
                 events = await events_after(session, task.task_id, cursor)
+                if not events:
+                    status = await session.scalar(
+                        select(TaskRow.status).where(TaskRow.task_id == task.task_id)
+                    )
+                    if status is None:
+                        return
+                    if status in ("completed", "failed"):
+                        # Recheck the event cursor after observing a committed terminal state.
+                        events = await events_after(session, task.task_id, cursor)
+                        if not events:
+                            return
         except (OSError, SQLAlchemyError) as exc:
             logger.warning(
                 "task.stream_interrupted task_id=%s trace_id=%s type=%s",
@@ -126,6 +284,11 @@ async def stream_events(
                 event=event.payload.type,
                 raw_data=event.model_dump_json(),
             )
+            if event.payload.type == "task.status" and event.payload.status in (
+                "completed",
+                "failed",
+            ):
+                return
         if not events:
             await asyncio.sleep(1)
 

@@ -20,6 +20,7 @@ from travelmind.schemas.worker import (
     LeaseRef,
     ProjectedEvent,
     ProjectionBatch,
+    TaskClaim,
 )
 
 EXPECTED_TRANSITIONS = {
@@ -150,3 +151,26 @@ def test_worker_instruction_and_projection_keep_internal_identity_separate_from_
                 }
             ],
         )
+
+
+def test_claim_requires_explicit_execution_permission_and_budget():
+    fields = {
+        "lease": {"task_id": uuid4(), "worker_id": uuid4(), "lease_epoch": 1},
+        "trace_id": uuid4(),
+        "lease_until": datetime.now(UTC),
+        "reclaimed": False,
+        "attempt_count": 1,
+        "max_attempts": 1,
+        "execution_permitted": True,
+    }
+    assert TaskClaim.model_validate(fields).execution_permitted
+    for field in ("attempt_count", "max_attempts", "execution_permitted"):
+        with pytest.raises(ValidationError):
+            TaskClaim.model_validate({key: value for key, value in fields.items() if key != field})
+    with pytest.raises(ValidationError):
+        TaskClaim.model_validate(fields | {"attempt_count": 2})
+    with pytest.raises(ValidationError):
+        TaskClaim.model_validate(fields | {"execution_permitted": False})
+    assert not TaskClaim.model_validate(
+        fields | {"reclaimed": True, "execution_permitted": False}
+    ).execution_permitted
