@@ -1,8 +1,15 @@
-from typing import Annotated, Required, TypedDict, TypeVar
+from typing import Annotated, TypedDict, TypeVar
 from uuid import UUID
 
-from travelmind.schemas.agents import AgentOutput
-from travelmind.schemas.domain import Evidence, ReportDraft, ResearchBrief, ResearchPlan, TaskStatus
+from travelmind.schemas.agents import AgentOutput, ErrorInfo
+from travelmind.schemas.domain import (
+    Evidence,
+    ReportDraft,
+    ResearchBrief,
+    ResearchPlan,
+    Review,
+    TaskStatus,
+)
 
 Record = TypeVar("Record")
 
@@ -17,13 +24,24 @@ def merge_records(left: dict[UUID, Record], right: dict[UUID, Record]) -> dict[U
     return merged
 
 
-class ResearchState(TypedDict, total=False):
-    task_id: Required[UUID]
-    trace_id: Required[UUID]
-    brief: Required[ResearchBrief]
+class ResearchInput(TypedDict):
+    task_id: UUID
+    trace_id: UUID
+    brief: ResearchBrief
+
+
+class ResearchState(ResearchInput, total=False):
     status: TaskStatus
     plan: ResearchPlan
+    questions: list[str]
+    failure: ErrorInfo
     results: Annotated[dict[UUID, AgentOutput], merge_records]
     evidence: Annotated[dict[UUID, Evidence], merge_records]
+    assignment_runs: Annotated[dict[UUID, UUID], merge_records]
+    challenge_runs: Annotated[dict[UUID, UUID], merge_records]
+    wave: list[UUID]
+    usable_research: list[UUID]
     draft: ReportDraft
+    report_id: UUID
+    review: Review
     review_round: int
