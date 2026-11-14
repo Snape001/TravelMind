@@ -17,6 +17,13 @@
 - **待联调**　通过实际 OIDC 提供方和 HTTPS 代理完成浏览器登录，并与独立 Worker 验证 Checkpoint 跨进程续跑。
 - **交付提交**　基于 `48df38b` 的 `codex/task-service-auth`，提交 `feat: implement durable task service and OIDC sessions`。冻结契约、公共 Schema、Runtime 和前端文件经差异检查。
 
+### Worker 重试预算修订（契约 `508775c`）
+
+- `0003` 为任务持久化 `max_attempts`（默认 3）及各 epoch 的执行许可。执行租约在任务行锁内递增计数。过期回收使用数据库时钟执行退避，预算耗尽时只签发可补投影的租约。仅投影租约可以续租、读取指令、提交已持久化的结果或结算失败。Checkpoint 和证据写入仍要求执行许可。
+- 迁移将旧租约到期，保留数据库中的任务和投影。旧版本已排队且计数达到默认上限的任务保留一笔已排队尝试，其他超限旧计数归至上限。部署前需停止旧 Worker，完成 `alembic upgrade head` 后启动匹配新契约的 Runtime。
+- 专用 PostgreSQL 上 56 项任务服务回归通过，另有 18 项 Runtime 联调通过，其中真实 Checkpointer 用例覆盖终态报告补投影、旧 epoch 写入受阻和跨连接暂停及澄清续跑。Ruff、Alembic 一致性和带历史数据的 `0002 → 0003` 迁移验证通过。
+- **交付提交**　`fix: enforce durable worker attempt budgets in PostgreSQL`。
+
 ## 阶段 1 · 三分支集成（2026-11-14）
 
 | 顺序 | 功能分支 | 分支头 | 合并提交 |

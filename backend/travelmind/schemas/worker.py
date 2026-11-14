@@ -23,6 +23,19 @@ class TaskClaim(Contract):
     trace_id: UUID
     lease_until: AwareDatetime
     reclaimed: bool
+    max_attempts: int = Field(ge=1, strict=True)
+    attempt_count: int = Field(ge=1, strict=True)
+    execution_permitted: bool = Field(strict=True)
+
+    @model_validator(mode="after")
+    def validate_budget(self) -> Self:
+        if self.attempt_count > self.max_attempts:
+            raise ValueError("attempt count cannot exceed the task budget")
+        if not self.execution_permitted and (
+            not self.reclaimed or self.attempt_count != self.max_attempts
+        ):
+            raise ValueError("projection-only claims require a reclaimed, exhausted task")
+        return self
 
 
 class Instruction(Contract):
@@ -137,5 +150,5 @@ class WorkerStore(Protocol[WriteTransaction]):
     ) -> Literal["applied", "already_applied"]: ...
 
     async def check_lease(self, lease: LeaseRef, *, transaction: WriteTransaction) -> None:
-        """Lock and validate the task within the caller's open write transaction."""
+        """Lock the task and require a live execution lease in the caller's write transaction."""
         ...

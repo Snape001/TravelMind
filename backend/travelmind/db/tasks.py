@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from travelmind.db.models import ClarificationRow, EventRow, TaskRow
+from travelmind.db.models import DEFAULT_MAX_ATTEMPTS, ClarificationRow, EventRow, TaskRow
 from travelmind.schemas.api import PendingClarification, TaskRead
 from travelmind.schemas.domain import ResearchBrief
 from travelmind.schemas.events import AgentEvent, EventPayload, TaskStatusEvent
@@ -20,7 +20,12 @@ class IdempotencyConflict(Exception):
 
 
 async def create_task(
-    session: AsyncSession, brief: ResearchBrief, idempotency_key: str | None, *, owner_id: UUID
+    session: AsyncSession,
+    brief: ResearchBrief,
+    idempotency_key: str | None,
+    *,
+    owner_id: UUID,
+    max_attempts: int = DEFAULT_MAX_ATTEMPTS,
 ) -> tuple[TaskRow, bool]:
     body = brief.model_dump(mode="json")
     now = func.clock_timestamp()
@@ -32,6 +37,7 @@ async def create_task(
             trace_id=uuid4(),
             owner_id=owner_id,
             idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
             brief=body,
             status=status,
             created_at=now,

@@ -18,6 +18,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+DEFAULT_MAX_ATTEMPTS = 3
+
 
 class Base(DeclarativeBase):
     pass
@@ -70,6 +72,14 @@ class TaskRow(Base):
             "(lease_worker_id IS NULL) = (lease_until IS NULL)",
             name="ck_research_tasks_lease_pair",
         ),
+        CheckConstraint(
+            "(lease_worker_id IS NULL) = (lease_execution_permitted IS NULL)",
+            name="ck_research_tasks_lease_permission",
+        ),
+        CheckConstraint(
+            "max_attempts >= 1 AND attempt_count <= max_attempts",
+            name="ck_research_tasks_attempt_budget",
+        ),
         Index(
             "ix_research_tasks_claim",
             "available_at",
@@ -99,7 +109,9 @@ class TaskRow(Base):
     lease_worker_id: Mapped[UUID | None]
     lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lease_epoch: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    lease_execution_permitted: Mapped[bool | None]
     attempt_count: Mapped[int] = mapped_column(server_default="0")
+    max_attempts: Mapped[int] = mapped_column(server_default=str(DEFAULT_MAX_ATTEMPTS))
     pause_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     instruction: Mapped[dict] = mapped_column(JSONB)
     paused_interrupt_id: Mapped[str | None] = mapped_column(Text)

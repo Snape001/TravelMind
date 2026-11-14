@@ -3,12 +3,13 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from pydantic import TypeAdapter
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import Interval, and_, case, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 
-from travelmind.db.models import AttemptFailureRow, ProjectionRow, TaskRow
+from travelmind.db.models import DEFAULT_MAX_ATTEMPTS, AttemptFailureRow, ProjectionRow, TaskRow
 from travelmind.db.projections import apply_batch, publish_transition, release_lease
 from travelmind.db.tasks import lock_task, payload_digest
+from travelmind.schemas.agents import ErrorInfo
 from travelmind.schemas.task_control import next_task_status
 from travelmind.schemas.worker import (
     AttemptFailure,
@@ -22,6 +23,11 @@ from travelmind.schemas.worker import (
 )
 
 INSTRUCTION = TypeAdapter(ExecutionInstruction)
+ATTEMPT_BUDGET_EXHAUSTED = ErrorInfo(
+    code="ATTEMPT_BUDGET_EXHAUSTED", message="任务执行次数已达上限", retryable=False
+)
+BACKOFF_CAP_SECONDS = 30
+BACKOFF_CAP_EXPONENT = 5
 
 
 class TransactionStatus(Protocol):
@@ -57,17 +63,27 @@ def _matches(row, lease: LeaseRef, now: datetime) -> bool:
 
 
 class PostgresWorkerStore:
-    def __init__(self, sessions: async_sessionmaker[AsyncSession], *, max_attempts: int = 3):
+    def __init__(
+        self,
+        sessions: async_sessionmaker[AsyncSession],
+        *,
+        max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+    ):
+        # Keep accepting the legacy constructor argument. New limits belong to create_task.
         if max_attempts < 1:
             raise ValueError("max_attempts must be positive")
         self.sessions = sessions
-        self.max_attempts = max_attempts
 
     async def claim(self, worker_id: UUID, *, lease_seconds: int) -> TaskClaim | None:
         if lease_seconds < 1:
             raise ValueError("lease_seconds must be positive")
         async with self.sessions.begin() as session:
             due = func.statement_timestamp()
+            budget_available = TaskRow.attempt_count < TaskRow.max_attempts
+            backoff = func.least(
+                func.power(2, func.least(TaskRow.attempt_count, BACKOFF_CAP_EXPONENT)),
+                BACKOFF_CAP_SECONDS,
+            ) * literal(timedelta(seconds=1), type_=Interval())
             priority = case(
                 (TaskRow.status == "queued", TaskRow.available_at), else_=TaskRow.lease_until
             )
@@ -76,8 +92,16 @@ class PostgresWorkerStore:
                 .where(
                     TaskRow.owner_id.is_not(None),
                     or_(
-                        and_(TaskRow.status == "queued", TaskRow.available_at <= due),
-                        and_(TaskRow.status == "running", TaskRow.lease_until <= due),
+                        and_(
+                            TaskRow.status == "queued",
+                            TaskRow.available_at <= due,
+                            budget_available,
+                        ),
+                        and_(
+                            TaskRow.status == "running",
+                            TaskRow.lease_until <= due,
+                            or_(~budget_available, TaskRow.lease_until + backoff <= due),
+                        ),
                     ),
                 )
                 .order_by(priority, TaskRow.created_at, TaskRow.task_id)
@@ -92,8 +116,9 @@ class PostgresWorkerStore:
             task.lease_worker_id = worker_id
             task.lease_until = now + timedelta(seconds=lease_seconds)
             task.lease_epoch += 1
-            # A reclaim must be able to project an already-persisted terminal checkpoint.
-            task.attempt_count += 1
+            task.lease_execution_permitted = task.attempt_count < task.max_attempts
+            if task.lease_execution_permitted:
+                task.attempt_count += 1
             if not reclaimed:
                 await publish_transition(session, task, next_task_status(task.status, "claim"), now)
             return TaskClaim(
@@ -103,6 +128,9 @@ class PostgresWorkerStore:
                 trace_id=task.trace_id,
                 lease_until=task.lease_until,
                 reclaimed=reclaimed,
+                max_attempts=task.max_attempts,
+                attempt_count=task.attempt_count,
+                execution_permitted=task.lease_execution_permitted,
             )
 
     async def _locked_lease(
@@ -123,7 +151,9 @@ class PostgresWorkerStore:
         transaction: AsyncSession | AsyncConnection | CheckpointTransaction,
     ) -> None:
         if isinstance(transaction, AsyncSession):
-            await self._locked_lease(transaction, lease)
+            task, _ = await self._locked_lease(transaction, lease)
+            if not task.lease_execution_permitted:
+                raise LeaseLost
             return
         if isinstance(transaction, AsyncConnection):
             if not transaction.in_transaction():
@@ -136,13 +166,14 @@ class PostgresWorkerStore:
                         table.c.lease_worker_id,
                         table.c.lease_epoch,
                         table.c.lease_until,
+                        table.c.lease_execution_permitted,
                     )
                     .where(table.c.task_id == lease.task_id)
                     .with_for_update()
                 )
             ).one_or_none()
             now = await transaction.scalar(select(func.clock_timestamp()))
-            if not _matches(row, lease, now):
+            if not _matches(row, lease, now) or not row.lease_execution_permitted:
                 raise LeaseLost
             return
         # A psycopg connection is also used by AsyncPostgresSaver. Check transaction state
@@ -157,6 +188,7 @@ class PostgresWorkerStore:
         match = await transaction.execute(
             """SELECT 1 FROM research_tasks WHERE task_id = %s AND status = 'running'
                 AND lease_worker_id = %s AND lease_epoch = %s
+                AND lease_execution_permitted IS TRUE
                 AND lease_until > clock_timestamp()""",
             (lease.task_id, lease.worker_id, lease.lease_epoch),
         )
@@ -199,16 +231,21 @@ class PostgresWorkerStore:
                         digest=digest,
                     )
                 )
-                retry = projection.error.retryable and task.attempt_count < self.max_attempts
+                error = projection.error
+                if error.retryable and task.attempt_count >= task.max_attempts:
+                    error = ATTEMPT_BUDGET_EXHAUSTED
+                retry = error.retryable
                 status = next_task_status(task.status, "retry" if retry else "fail")
                 release_lease(task)
                 if retry:
                     task.available_at = now + timedelta(
-                        seconds=min(2 ** min(task.attempt_count, 5), 30)
+                        seconds=min(
+                            2 ** min(task.attempt_count, BACKOFF_CAP_EXPONENT), BACKOFF_CAP_SECONDS
+                        )
                     )
                 else:
                     task.pause_requested_at = None
-                await publish_transition(session, task, status, now, error=projection.error)
+                await publish_transition(session, task, status, now, error=error)
                 return "applied"
 
             index = projection.projection_index

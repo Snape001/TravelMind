@@ -29,6 +29,7 @@ from travelmind.schemas.worker import ContinueCheckpoint, ProjectionBatch, Proje
 
 def release_lease(task: TaskRow) -> None:
     task.lease_worker_id = task.lease_until = task.available_at = None
+    task.lease_execution_permitted = None
 
 
 async def publish_transition(
@@ -70,7 +71,6 @@ async def apply_batch(
     release_lease(task)
     if transition == "pause_reached":
         task.paused_interrupt_id = batch.interrupt_id
-        task.attempt_count = 0
     if batch.clarification is not None:
         clarification = batch.clarification
         if await session.get(ClarificationRow, (task.task_id, clarification.clarification_id)):
