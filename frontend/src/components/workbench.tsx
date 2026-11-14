@@ -6,61 +6,54 @@ import { useEffect, useState } from "react";
 import { EventFeed } from "./event-feed";
 import { TeamGraph } from "./team-graph";
 import { ExpertIcon } from "./expert-icon";
-import { appendEvent, summarize } from "@/lib/agent-events";
+import { summarize } from "@/lib/agent-events";
 import { demo } from "@/lib/demo";
 import { expertName } from "@/lib/experts";
-import { isMockTask, readReport, readTask, subscribe } from "@/lib/task-client";
+import { isMockTask, mockMode, readReport } from "@/lib/task-client";
 import { rememberReport } from "@/lib/report-history";
-import { depthOptions, formatDate, reportHref, taskStatusLabels, type AgentEvent, type TaskRead } from "@/lib/research";
+import { historyKey, rememberTask } from "@/lib/task-history";
+import { depthOptions, formatDate, reportHref, taskStatusLabels, type CurrentUser } from "@/lib/research";
+import { SessionPrompt, useSession } from "./session";
+import { TaskControls } from "./task-controls";
+import { useTaskSession } from "./use-task-session";
 
 const assignmentLabels = { waiting: "待执行", running: "执行中", completed: "已完成", failed: "失败" };
 
 export function Workbench({ taskId }: { taskId: string }) {
+  const { session } = useSession();
   const [attempt, setAttempt] = useState(0);
-  return <WorkbenchSession key={attempt} taskId={taskId} retry={() => setAttempt((value) => value + 1)} />;
+  const user = session.user;
+  if (!user && taskId !== demo.taskId) return <main className="shell inner-page">
+    <div className="page-heading"><h1>调研工作台</h1></div><SessionPrompt />
+  </main>;
+  return <WorkbenchSession key={`${user?.user_id ?? "demo"}:${attempt}`} taskId={taskId} user={user} retry={() => setAttempt((value) => value + 1)} />;
 }
 
-function WorkbenchSession({ taskId, retry }: { taskId: string; retry: () => void }) {
-  const [task, setTask] = useState<TaskRead | null>(null);
-  const [events, setEvents] = useState<AgentEvent[]>([]);
-  const [connection, setConnection] = useState<"connecting" | "open" | "reconnecting" | "closed">("connecting");
-  const [error, setError] = useState("");
+function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: CurrentUser; retry: () => void }) {
+  const { handleError } = useSession();
+  const { task, events, connection, error, accept, refresh } = useTaskSession(taskId, handleError);
   const [agent, setAgent] = useState("");
 
   useEffect(() => {
-    const controller = new AbortController();
-    let close: (() => void) | undefined;
-    readTask(taskId, controller.signal).then((record) => {
-      if (controller.signal.aborted) return;
-      setTask(record);
-      close = subscribe(record.task_id, 0, (event) => {
-        if (event.task_id !== record.task_id || event.trace_id !== record.trace_id) return;
-        setEvents((previous) => appendEvent(previous, event, record));
-        if (event.payload.type === "task.status" && ["completed", "failed", "needs_clarification"].includes(event.payload.status)) {
-          close?.();
-          setConnection("closed");
-        }
-      }, setConnection);
-    }).catch((problem: Error) => {
-      if (!controller.signal.aborted) setError(problem.message);
-    });
-    return () => { controller.abort(); close?.(); };
-  }, [taskId]);
+    if (!task || !user || taskId === demo.taskId) return;
+    try { rememberTask(localStorage, historyKey(user.user_id, mockMode), taskId); } catch { /* Storage may be disabled. */ }
+  }, [task, taskId, user]);
 
   const view = task && summarize(task, events);
-  const archivedReportId = view && view.status === "completed" && view.reportDecision === "approved" ? view.report?.report_id : undefined;
+  const archivedReportId = task?.status === "completed" && view?.reportDecision === "approved" ? view.report?.report_id : undefined;
+  const userId = user?.user_id;
   useEffect(() => {
-    if (!archivedReportId || taskId === demo.taskId) return;
+    if (!archivedReportId || !userId || taskId === demo.taskId) return;
     const controller = new AbortController();
     readReport(taskId, archivedReportId, controller.signal).then((report) => {
-      if (!controller.signal.aborted) rememberReport({
+      if (!controller.signal.aborted) rememberReport(userId, {
         taskId, reportId: report.report_id, title: report.content.title, date: report.created_at,
       });
     }).catch(() => {
       // A transient archive error does not interrupt the stream or report link.
     });
     return () => controller.abort();
-  }, [taskId, archivedReportId]);
+  }, [taskId, archivedReportId, userId]);
 
   if (!task || !view) return (
     <main className="shell inner-page">
@@ -75,13 +68,13 @@ function WorkbenchSession({ taskId, retry }: { taskId: string; retry: () => void
   const completed = view.assignments.filter(({ status }) => status === "completed").length;
   return (
     <main className="shell inner-page workbench">
-      <Link className="text-link back" href="/"><ArrowLeft size={16} aria-hidden /> 返回首页</Link>
+      <Link className="text-link back" href="/workbench"><ArrowLeft size={16} aria-hidden /> 调研历史</Link>
       <div className="page-heading workbench-heading">
         <div>
           <p className="eyebrow">调研工作台{taskId === demo.taskId ? " · 示例回放" : isMockTask(taskId) ? " · 模拟任务" : ""}</p>
           <h1>{task.brief.destination}调研</h1>
           <div className="meta-row"><span><MapPin size={15} aria-hidden />{task.brief.destination}</span><span>{depth}</span><span>{formatDate(task.created_at)}</span>
-            <span className={`task-badge ${view.status}`} role="status"><span className={`status-dot ${view.status}`} />{taskStatusLabels[view.status]}</span>
+            <span className={`task-badge ${task.status}`} role="status"><span className={`status-dot ${task.status}`} />{taskStatusLabels[task.status]}</span>
           </div>
         </div>
         {view.report && <Link className="button primary" href={reportHref(taskId, view.report.report_id)}>
@@ -92,8 +85,9 @@ function WorkbenchSession({ taskId, retry }: { taskId: string; retry: () => void
         {task.brief.topics?.length ? <p>{task.brief.topics.join("、")}</p> : null}
         {task.brief.requirements && <p>{task.brief.requirements}</p>}
       </details> : null}
-      {view.error && <p className="notice error-text" role="alert">{view.error.message}</p>}
-      {view.questions.length > 0 && <section className="notice"><h2>待澄清问题</h2><ul>{view.questions.map((question, index) => <li key={index}>{question}</li>)}</ul></section>}
+      {error && <div className="notice error-text"><p role="alert">{error}</p><button type="button" className="text-link" onClick={refresh}>重新读取状态</button></div>}
+      {task.status === "failed" && view.error && <p className="notice error-text" role="alert">{view.error.message}</p>}
+      {user && taskId !== demo.taskId && <TaskControls task={task} user={user} accept={accept} refresh={refresh} onError={handleError} />}
       <div className="workbench-grid">
         <div className="workbench-side">
           <section className="panel graph-panel" aria-labelledby="team-graph-title">

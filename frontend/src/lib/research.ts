@@ -4,6 +4,9 @@ type Schemas = components["schemas"];
 export type ResearchBrief = paths["/api/v1/tasks"]["post"]["requestBody"]["content"]["application/json"];
 export type TaskRead = Schemas["TaskRead"];
 export type TaskStatus = TaskRead["status"];
+export type CurrentUser = Schemas["CurrentUser"];
+export type PendingClarification = Schemas["PendingClarification"];
+export type ClarificationAnswers = Schemas["ClarificationAnswers"];
 export type AgentEvent = paths["/api/v1/tasks/{task_id}/events"]["get"]["responses"][200]["content"]["text/event-stream"];
 export type EventPayload = AgentEvent["payload"];
 export type Assignment = Schemas["Assignment"];
@@ -42,3 +45,4 @@ const calendar = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", d
 export const formatTime = (value: string) => clock.format(new Date(value));
 export const formatDate = (value: string) => calendar.format(new Date(value));
 export const reportHref = (taskId: string, reportId: string) => `/reports/${taskId}/${reportId}`;
+export const uuidPattern = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu;

@@ -155,7 +155,10 @@ export function taskAt(research: MockResearch, now = Date.now()): TaskRead {
     updated_at: available.at(-1)?.occurred_at ?? research.task.updated_at };
 }
 
-export function streamResearch(research: MockResearch, after: number, signal: AbortSignal): ReadableStream<Uint8Array> {
+export function streamResearch(
+  research: MockResearch, after: number, signal: AbortSignal,
+  eventsAt?: (now: number) => AgentEvent[] | null,
+): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   let cancel = () => {};
   return new ReadableStream({
@@ -177,7 +180,9 @@ export function streamResearch(research: MockResearch, after: number, signal: Ab
       cancel = cleanUp;
       function tick() {
         const now = Date.now();
-        for (const event of eventsAfter(research, cursor, now)) {
+        const events = eventsAt ? eventsAt(now)?.filter((event) => event.sequence > cursor) : eventsAfter(research, cursor, now);
+        if (!events) { finish(); return; }
+        for (const event of events) {
           controller.enqueue(encoder.encode(encodeEvent(event)));
           cursor = event.sequence;
           lastFrame = now;
@@ -187,7 +192,7 @@ export function streamResearch(research: MockResearch, after: number, signal: Ab
           lastFrame = now;
         }
         const next = research.events.find((event) => event.sequence > cursor);
-        timer = setTimeout(tick, next ? Math.max(20, Date.parse(next.occurred_at) - now) : 15000);
+        timer = setTimeout(tick, eventsAt ? 150 : next ? Math.max(20, Date.parse(next.occurred_at) - now) : 15000);
       }
       signal.addEventListener("abort", finish, { once: true });
       if (signal.aborted) finish();

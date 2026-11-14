@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsc -p tsconfig.test.json && node .artifacts/tests/test/research.test.js",
+    "test": "tsc -p tsconfig.test.json && node .artifacts/tests/test/research.test.js && node .artifacts/tests/test/lifecycle.test.js",
     "typecheck": "tsc --noEmit",
     "generate:api": "openapi-typescript http://127.0.0.1:8000/openapi.json -o src/lib/api.generated.ts"
   },

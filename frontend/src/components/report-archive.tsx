@@ -7,17 +7,24 @@ import { demo } from "@/lib/demo";
 import { formatDate, reportHref } from "@/lib/research";
 import { readArchive, type ArchiveEntry } from "@/lib/report-history";
 import { isMockTask } from "@/lib/task-client";
+import { useSession } from "./session";
 
 const example: ArchiveEntry = { taskId: demo.taskId, reportId: demo.reportId, title: demo.title, date: demo.date };
 
 export function ReportArchive({ compact = false }: { compact?: boolean }) {
+  const { session } = useSession();
+  return <ArchiveList key={session.user?.user_id ?? "guest"} userId={session.user?.user_id} compact={compact} />;
+}
+
+function ArchiveList({ compact, userId }: { compact: boolean; userId?: string }) {
   const [reports, setReports] = useState<ArchiveEntry[]>([]);
   useEffect(() => {
-    function update() { setReports(readArchive()); }
+    if (!userId) return;
+    function update() { if (userId) setReports(readArchive(userId)); }
     update();
     window.addEventListener("storage", update);
     return () => window.removeEventListener("storage", update);
-  }, []);
+  }, [userId]);
   const items = [...reports.filter(({ taskId }) => taskId !== demo.taskId), example];
   return (
     <ul className="report-list">

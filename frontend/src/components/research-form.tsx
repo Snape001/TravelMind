@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronDown, MapPin, Search, Zap, Layers, BookOpen } from "lucide-react";
 import { createTask, mockMode } from "@/lib/task-client";
-import { taskStorageKey } from "@/lib/demo";
-import { depthOptions, prepareBrief, type ResearchBrief } from "@/lib/research";
+import { historyKey, rememberTask } from "@/lib/task-history";
+import { depthOptions, prepareBrief, type CurrentUser, type ResearchBrief } from "@/lib/research";
+import { SessionPrompt, useSession } from "./session";
 
 const presets = [
   { destination: "泉州", topics: "古城文化、公共交通", label: "泉州古城" },
@@ -15,6 +16,11 @@ const presets = [
 const depthIcons = { quick: Zap, deep: Layers, academic: BookOpen };
 
 export function ResearchForm() {
+  const { session, handleError } = useSession();
+  return <ResearchFormFields key={session.user?.user_id ?? "guest"} user={session.user} handleError={handleError} />;
+}
+
+function ResearchFormFields({ user, handleError }: { user?: CurrentUser; handleError: (error: unknown) => void }) {
   const router = useRouter();
   const [destination, setDestination] = useState("");
   const [topics, setTopics] = useState("");
@@ -22,24 +28,30 @@ export function ResearchForm() {
   const [depth, setDepth] = useState<ResearchBrief["depth"]>("deep");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-  const submitting = useRef(false);
+  const pending = useRef<AbortController | null>(null);
   const lastRequest = useRef<{ body: string; key: string } | null>(null);
+
+  useEffect(() => () => pending.current?.abort(), []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current) return;
+    if (pending.current || !user) return;
     setError("");
-    submitting.current = true;
+    const controller = new AbortController();
+    pending.current = controller;
     try {
       const brief = prepareBrief(destination, topics, requirements, depth);
       const body = JSON.stringify(brief);
       if (lastRequest.current?.body !== body) lastRequest.current = { body, key: crypto.randomUUID() };
       setSending(true);
-      const task = await createTask(brief, lastRequest.current.key);
-      try { sessionStorage.setItem(taskStorageKey(mockMode), task.task_id); } catch { /* Keep direct task navigation available. */ }
+      const task = await createTask(brief, lastRequest.current.key, user.csrf_token, controller.signal);
+      if (controller.signal.aborted) return;
+      try { rememberTask(localStorage, historyKey(user.user_id, mockMode), task.task_id); } catch { /* Storage may be disabled. */ }
       router.push(`/workbench/${task.task_id}`);
     } catch (problem) {
-      submitting.current = false;
+      if (controller.signal.aborted) return;
+      handleError(problem);
+      pending.current = null;
       setSending(false);
       setError(problem instanceof Error ? problem.message : "提交失败，请重试。");
     }
@@ -82,8 +94,9 @@ export function ResearchForm() {
             setDestination(preset.destination); setTopics(preset.topics); setError("");
           }}>{preset.label}</button>)}
         </div>
-        <button className="button primary" disabled={sending} type="submit">{sending ? "正在创建…" : "开始调研"} <ArrowRight size={17} aria-hidden /></button>
+        {user && <button className="button primary" disabled={sending} type="submit">{sending ? "正在创建…" : "开始调研"} <ArrowRight size={17} aria-hidden /></button>}
       </div>
+      {!user && <SessionPrompt />}
       {error && <p className="error-text" role="alert">{error}</p>}
     </form>
   );

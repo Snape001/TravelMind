@@ -7,8 +7,19 @@ import { EvidenceCard } from "./evidence-card";
 import { expertName, findExpert } from "@/lib/experts";
 import { isMockTask, readReport } from "@/lib/task-client";
 import { formatDate, type ReportRead } from "@/lib/research";
+import { demo } from "@/lib/demo";
+import { SessionPrompt, useSession } from "./session";
 
 export function ReportReader({ taskId, reportId }: { taskId: string; reportId: string }) {
+  const { session } = useSession();
+  if (!session.user && taskId !== demo.taskId) return <main className="shell inner-page">
+    <div className="page-heading"><h1>调研报告</h1></div><SessionPrompt />
+  </main>;
+  return <ReaderSession key={session.user?.user_id ?? "demo"} taskId={taskId} reportId={reportId} />;
+}
+
+function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string }) {
+  const { handleError } = useSession();
   const [report, setReport] = useState<ReportRead | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -17,10 +28,10 @@ export function ReportReader({ taskId, reportId }: { taskId: string; reportId: s
     readReport(taskId, reportId, controller.signal).then((data) => {
       if (!controller.signal.aborted) setReport(data);
     }).catch((problem: Error) => {
-      if (!controller.signal.aborted) setError(problem.message);
+      if (!controller.signal.aborted) { handleError(problem); setError(problem.message); }
     });
     return () => controller.abort();
-  }, [taskId, reportId, attempt]);
+  }, [taskId, reportId, attempt, handleError]);
 
   useEffect(() => {
     if (report && location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();

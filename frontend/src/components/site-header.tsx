@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { Compass, FileText, FlaskConical, House, UsersRound } from "lucide-react";
-import { mockMode } from "@/lib/task-client";
+import { loginHref, mockMode } from "@/lib/task-client";
+import { useSession } from "./session";
 
 const links = [
   { href: "/", match: "/", label: "首页", icon: House },
@@ -14,6 +16,17 @@ const links = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { session, signOut } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function leave() {
+    setBusy(true);
+    setError("");
+    try { await signOut(); }
+    catch (problem) { setError(problem instanceof Error ? problem.message : "退出登录失败。"); }
+    finally { setBusy(false); }
+  }
   return (
     <header className="site-header">
       <div className="shell header-grid">
@@ -29,7 +42,14 @@ export function SiteHeader() {
             </Link>;
           })}
         </nav>
-        {mockMode && <span className="mode"><span className="status-dot" />模拟模式</span>}
+        <div className="header-session">
+          {mockMode && <span className="mode"><span className="status-dot" />模拟模式</span>}
+          {session.user ? <>
+            <span className="account-name" title={session.user.display_name ?? "已登录"}>{session.user.display_name ?? "已登录"}</span>
+            <button className="button secondary" type="button" onClick={leave} disabled={busy}>{busy ? "正在退出…" : "退出"}</button>
+          </> : session.status === "anonymous" && <a className="button secondary" href={loginHref}>登录</a>}
+          {error && <p className="error-text header-session-error" role="alert">{error}</p>}
+        </div>
       </div>
     </header>
   );
