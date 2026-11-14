@@ -7,6 +7,16 @@
 - **下一步**　任务服务实现新增路由、OIDC 和业务迁移，Runtime 实现租约存储对接与 Checkpoint 续跑，Frontend 接入控制与认证流程并生成最终 API 类型。AgentEvent v1 沿用现有线协议。
 - **交付提交**　`feat: freeze Phase 2 public task contracts`。
 
+## Phase 2 · 任务服务与身份认证
+
+- **任务控制**　暂停、恢复和澄清答复已接入现有任务路由。控制命令在持有任务行锁时提交状态、事件与幂等响应快照。创建幂等键按用户隔离。任务可领取后提交事务，再发 Redis 唤醒信号。Redis 不可用时由 Worker 轮询领取。
+- **Worker 交接**　`travelmind.db.worker.PostgresWorkerStore(sessions)` 实现冻结的异步存储协议。Checkpoint 和证据写入分别传入已开启事务的 psycopg 连接和 SQLAlchemy 会话执行租约校验。回收者应先对账已持久化的 Checkpoint，再决定是否继续执行或通过 `AttemptFailure` 结算故障。默认最多 3 次尝试，故障结算按预算重排或进入终态。
+- **迁移**　停止旧 FastAPI 后台执行器后执行 `alembic upgrade head`（业务版本 `0002`）。旧任务缺省无主，历史已启动且无 Checkpoint 的未完成任务会追加失败事件。未启动的历史任务经管理员显式映射用户后，可设置 `available_at` 加入队列。
+- **身份配置**　在后端环境变量或被 Git 忽略的 `backend/.env.oidc` 中设置 `OIDC_ISSUER`、`OIDC_CLIENT_ID`、`OIDC_CLIENT_SECRET` 和 `OIDC_PUBLIC_ORIGIN`。提供方应允许 `{OIDC_PUBLIC_ORIGIN}/api/v1/auth/callback`，浏览器使用同源 HTTPS。可通过 `OIDC_TOKEN_AUTH_METHOD` 选择 `client_secret_basic`（默认）、`client_secret_post` 或公开客户端的 `none`，通过 `OIDC_SESSION_SECONDS` 设置会话期限。后端 OIDC 验签依赖 `PyJWT[crypto]>=2.10,<3`，由 Runtime 分支统一锁定。最终 API 类型可由任务服务的 `/openapi.json` 生成，SSE 使用原 AgentEvent v1。
+- **验收**　专用 PostgreSQL 上 53 项后端测试全部通过，Ruff 和 Alembic 一致性检查通过。实测含历史数据的 `0001 → 0002` 迁移、回滚后升回 `0002`，以及 psycopg 事务中的任务行锁和旧租约拒写。OIDC 由本地测试提供方返回实际签名的 ID Token，覆盖 PKCE、签名、签发者、受众、过期、nonce、Cookie、CSRF、所有权和 SSE 会话吊销。
+- **待联调**　通过实际 OIDC 提供方和 HTTPS 代理完成浏览器登录，并与独立 Worker 验证 Checkpoint 跨进程续跑。
+- **交付提交**　基于 `48df38b` 的 `codex/task-service-auth`，提交 `feat: implement durable task service and OIDC sessions`。冻结契约、公共 Schema、Runtime 和前端文件经差异检查。
+
 ## 阶段 1 · 三分支集成（2026-11-14）
 
 | 顺序 | 功能分支 | 分支头 | 合并提交 |

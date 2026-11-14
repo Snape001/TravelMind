@@ -3,24 +3,27 @@ from contextlib import AsyncExitStack, asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, TimeoutError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from travelmind.api import health, tasks
+from travelmind.api import auth, health, tasks
+from travelmind.api.oidc import AuthSettings, OidcClient
 from travelmind.config import Settings, get_settings
 from travelmind.db.connection import create_database_engine
-from travelmind.research.engine import ResearchEngine
-from travelmind.runtime.model import create_structured_model
-from travelmind.runtime.worker import ResearchWorker
 from travelmind.schemas.api import ErrorInfo, ErrorResponse
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, *, auth_settings: AuthSettings | None = None
+) -> FastAPI:
     config = settings if settings is not None else get_settings()
+    identity = auth_settings if auth_settings is not None else AuthSettings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -29,19 +32,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.engine = None
             app.state.sessions = None
             app.state.redis = None
-            app.state.worker = None
+            app.state.auth_settings = identity
+            app.state.oidc = None
+            if identity.issuer is not None:
+                client = await resources.enter_async_context(httpx.AsyncClient(timeout=10))
+                app.state.oidc = OidcClient(client, identity)
             if config.database_url is not None:
                 engine = create_database_engine(config)
                 resources.push_async_callback(engine.dispose)
                 app.state.engine = engine
                 app.state.sessions = async_sessionmaker(engine, expire_on_commit=False)
-                if config.deepseek_api_key and config.deepseek_api_key.get_secret_value():
-                    http_client = await resources.enter_async_context(httpx.AsyncClient())
-                    app.state.worker = ResearchWorker(
-                        app.state.sessions,
-                        create_structured_model(config),
-                        ResearchEngine(http_client, config),
-                    )
             if config.redis_url is not None:
                 redis = Redis.from_url(
                     config.redis_url.get_secret_value(),
@@ -54,7 +54,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="TravelMind API", version="0.1.0", lifespan=lifespan)
     app.include_router(health.router)
+    app.include_router(auth.router)
     app.include_router(tasks.router)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, exc: RequestValidationError):
+        route = request.scope.get("route")
+        if getattr(route, "name", None) in {"pause_task", "resume_task", "answer_task"}:
+            error = ErrorInfo(code="VALIDATION_ERROR", message="请求参数无效", retryable=False)
+            return JSONResponse(ErrorResponse(detail=error).model_dump(), status_code=422)
+        return await request_validation_exception_handler(request, exc)
 
     @app.exception_handler(SQLAlchemyError)
     @app.exception_handler(OSError)

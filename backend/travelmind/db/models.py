@@ -7,10 +7,13 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -18,6 +21,35 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
     pass
+
+
+class UserRow(Base):
+    __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("issuer", "subject", name="uq_users_identity"),)
+
+    user_id: Mapped[UUID] = mapped_column(primary_key=True)
+    issuer: Mapped[str] = mapped_column(Text)
+    subject: Mapped[str] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(Text)
+
+
+class SessionRow(Base):
+    __tablename__ = "sessions"
+
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class LoginFlowRow(Base):
+    __tablename__ = "oidc_login_flows"
+
+    state_hash: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
+    browser_hash: Mapped[bytes] = mapped_column(LargeBinary)
+    nonce: Mapped[str] = mapped_column(Text)
+    verifier: Mapped[str] = mapped_column(Text)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
 class TaskRow(Base):
@@ -29,17 +61,111 @@ class TaskRow(Base):
             name="ck_research_tasks_status",
         ),
         UniqueConstraint("task_id", "trace_id", name="uq_research_tasks_task_trace"),
+        UniqueConstraint("owner_id", "idempotency_key", name="uq_research_tasks_owner_key"),
+        CheckConstraint(
+            "lease_epoch >= 0 AND attempt_count >= 0 AND projected_index >= 0",
+            name="ck_research_tasks_worker_counters",
+        ),
+        CheckConstraint(
+            "(lease_worker_id IS NULL) = (lease_until IS NULL)",
+            name="ck_research_tasks_lease_pair",
+        ),
+        Index(
+            "ix_research_tasks_claim",
+            "available_at",
+            "created_at",
+            "task_id",
+            postgresql_where=text("owner_id IS NOT NULL AND status = 'queued'"),
+        ),
+        Index(
+            "ix_research_tasks_reclaim",
+            "lease_until",
+            "task_id",
+            postgresql_where=text("owner_id IS NOT NULL AND status = 'running'"),
+        ),
     )
 
     task_id: Mapped[UUID] = mapped_column(primary_key=True)
     trace_id: Mapped[UUID] = mapped_column(unique=True)
-    idempotency_key: Mapped[str | None] = mapped_column(String(128), unique=True)
+    owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.user_id"), index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
     brief: Mapped[dict] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(24), server_default="queued")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+    available_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_worker_id: Mapped[UUID | None]
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_epoch: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    attempt_count: Mapped[int] = mapped_column(server_default="0")
+    pause_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    instruction: Mapped[dict] = mapped_column(JSONB)
+    paused_interrupt_id: Mapped[str | None] = mapped_column(Text)
+    projected_index: Mapped[int] = mapped_column(BigInteger, server_default="0")
+
+
+class ClarificationRow(Base):
+    __tablename__ = "task_clarifications"
+    __table_args__ = (
+        Index(
+            "uq_task_clarifications_pending",
+            "task_id",
+            unique=True,
+            postgresql_where=text("answered_at IS NULL"),
+        ),
+    )
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
+    )
+    clarification_id: Mapped[UUID] = mapped_column(primary_key=True)
+    questions: Mapped[list] = mapped_column(JSONB)
+    answers: Mapped[list | None] = mapped_column(JSONB(none_as_null=True))
+    interrupt_id: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CommandRow(Base):
+    __tablename__ = "task_commands"
+    __table_args__ = (
+        CheckConstraint(
+            "operation IN ('pause', 'resume', 'answer')", name="ck_task_commands_operation"
+        ),
+    )
+
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.user_id"), primary_key=True)
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
+    )
+    operation: Mapped[str] = mapped_column(String(8), primary_key=True)
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    digest: Mapped[bytes] = mapped_column(LargeBinary)
+    status_code: Mapped[int]
+    response: Mapped[dict] = mapped_column(JSONB)
+
+
+class ProjectionRow(Base):
+    __tablename__ = "task_projections"
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
+    )
+    projection_index: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    checkpoint_id: Mapped[str] = mapped_column(Text)
+    digest: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class AttemptFailureRow(Base):
+    __tablename__ = "task_attempt_failures"
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
+    )
+    failure_id: Mapped[UUID] = mapped_column(primary_key=True)
+    digest: Mapped[bytes] = mapped_column(LargeBinary)
 
 
 class EventRow(Base):
@@ -52,6 +178,7 @@ class EventRow(Base):
         ),
         CheckConstraint("sequence BETWEEN 1 AND 9007199254740991", name="ck_agent_events_seq"),
         CheckConstraint("version = 1", name="ck_agent_events_protocol"),
+        UniqueConstraint("task_id", "projection_key", name="uq_agent_events_projection"),
     )
 
     task_id: Mapped[UUID] = mapped_column(primary_key=True)
@@ -61,6 +188,7 @@ class EventRow(Base):
     version: Mapped[int] = mapped_column(server_default="1")
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     payload: Mapped[dict] = mapped_column(JSONB)
+    projection_key: Mapped[UUID | None]
 
 
 class AgentRunRow(Base):
