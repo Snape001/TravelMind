@@ -1,3 +1,4 @@
+import json
 from typing import Self
 from uuid import uuid5
 
@@ -49,8 +50,15 @@ class PlanDraft(Contract):
 
 
 async def understand(
-    model: StructuredModel, request: AgentInput
+    model: StructuredModel,
+    request: AgentInput,
+    clarification_history: list[dict[str, str]] | None = None,
 ) -> BriefResult | ClarificationResult:
+    additional_context = ""
+    if clarification_history:
+        additional_context = "\n将已答复的澄清问题作为用户需求。答复数据：" + json.dumps(
+            clarification_history, ensure_ascii=False
+        )
     decision = await with_budget(
         lambda: model(
             request,
@@ -58,7 +66,7 @@ async def understand(
             "目的地不明确或缺失信息将改变研究方向时，返回最多三个具体问题（如"
             '{"questions":["请问您指哪座古城？"]}）。已明确目的地的通用调研直接开展。'
             "需求可执行时在 brief 中整理研究主题，保留用户的明确要求、限制和 depth，"
-            "不自行补造偏好。每次只返回 brief 或 questions。",
+            "不自行补造偏好。每次只返回 brief 或 questions。" + additional_context,
             DirectorDecision,
         ),
         request.budget,
@@ -68,7 +76,12 @@ async def understand(
             **result_identity(request), kind="clarification", questions=decision.questions
         )
     brief = decision.brief.model_copy(
-        update={"depth": request.brief.depth, "requirements": request.brief.requirements}
+        update={
+            "depth": request.brief.depth,
+            "requirements": (
+                decision.brief.requirements if clarification_history else request.brief.requirements
+            ),
+        }
     )
     return BriefResult(**result_identity(request), kind="brief", brief=brief)
 
