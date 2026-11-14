@@ -2,6 +2,7 @@
 
 ## Phase 2 · 公共契约基线
 
+- **重试预算修订**　[公共契约](docs/phase-2-contract.md#重试预算与领取结果) 定义执行租约的计数、过期回收、仅投影模式和耗尽结算。新增验收用例待 Task Service 与 Runtime 实现后执行。
 - **完成情况**　冻结六种任务状态、暂停与恢复、澄清答复、错误和幂等规则，补充 `TaskRead`、澄清与会话 Schema，并定义带租约校验的异步 `WorkerStore` 协议。数据库字段、迁移责任与任务所有权约定见 [公共契约基线](docs/phase-2-contract.md)。
 - **验收结果**　后端 42 项测试通过，含基于 Alembic 初始化的专用 PostgreSQL 集成测试。前端 10 项测试及 TypeScript 检查通过。Ruff、Python 锁文件和 Alembic 一致性检查通过。FastAPI 测试客户端验证服务启动、OpenAPI 兼容性及已有任务接口。
 - **下一步**　任务服务实现新增路由、OIDC 和业务迁移，Runtime 实现租约存储对接与 Checkpoint 续跑，Frontend 接入控制与认证流程并生成最终 API 类型。AgentEvent v1 沿用现有线协议。

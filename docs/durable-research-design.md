@@ -21,7 +21,8 @@
 | `running` | 图的澄清节点中断 | `needs_clarification` |
 | `paused` | 用户恢复 | `queued`，提交新的可领取指令 |
 | `needs_clarification` | 用户提交当前轮答案 | `queued`，保存答案与续跑指令 |
-| `running` | 租约过期或可重试故障 | 有界退避后回到 `queued`。耗尽预算进入 `failed` |
+| `running` | 租约过期 | 保持 `running` 供回收对账。预算耗尽时仅发放投影许可 |
+| `running` | 显式结算可重试故障 | 尚有预算则退避后可从 `queued` 领取。耗尽预算进入 `failed` |
 | `running` | 审核通过或永久失败 | `completed` 或 `failed`，均为终态 |
 
 暂停是协作式的。Worker 在 Director、Planner、每轮并行专家批次、交叉质询和报告审核等边界检查请求，在已启动节点结束后停止派发。若终态或待澄清先落库，该结果优先并清除暂停请求。暂停已排队的续跑任务时保留其答案和续跑指令。租约回收时先对账最新 Checkpoint，再处理待执行的暂停或续跑指令。
@@ -70,7 +71,7 @@
 | 分支 | 独占修改面 | 交接接口 |
 | --- | --- | --- |
 | 任务服务与身份认证 | `api/`、`db/`、`schemas/`、`main.py`、业务 Alembic 迁移 | 向 Worker 提供 `claim`、`renew`、`load_instruction`、`commit_projection` 和执行租约检查。向前端发布 OpenAPI 与 AgentEvent v1 示例 |
-| Agent Runtime 与 Worker | `runtime/`、Worker 入口与 Checkpoint 初始化、`compose.yaml`、后端依赖和锁文件 | 消费领取结果 `{task_id, trace_id, lease_epoch, instruction}`。输出可幂等投影的状态、事件和资源。依赖变更由该分支统一纳入 |
+| Agent Runtime 与 Worker | `runtime/`、Worker 入口与 Checkpoint 初始化、`compose.yaml`、后端依赖和锁文件 | 从 `TaskClaim` 获取租约和执行许可，从 `load_instruction` 读取指令及游标。预算耗尽时只补齐已有投影或结算失败。依赖变更由该分支统一纳入 |
 | Frontend | `frontend/`，含唯一一份生成的 API 类型 | 消费公共 HTTP 和 SSE，先用契约 fixture 开发，合并前由最终后端 OpenAPI 重生成类型 |
 
 `README.md` 与 `PROGRESS.md` 由集成方一次性汇总。合并验收覆盖两个 Worker 竞争、租约过期后旧 Worker 写入被拒、Checkpoint 与投影之间崩溃、Redis 中断期间继续领取、暂停和澄清跨进程重启、幂等答复、跨用户任务及 SSE 隔离。最后用真实服务跑浏览器链路，确认恢复后任务 ID 和事件序号连续，报告与证据可回读。
