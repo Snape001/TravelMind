@@ -50,7 +50,7 @@ async def ready(request: Request, response: Response) -> Readiness:
         check_dependency(None if engine is None else lambda: check_postgres(engine), timeout),
         check_dependency(None if redis is None else lambda: check_redis(redis), timeout),
     )
-    is_ready = postgres_status == redis_status == "ok"
+    is_ready = postgres_status == "ok"
     model_configured = bool(
         settings.deepseek_api_key and settings.deepseek_api_key.get_secret_value()
     )

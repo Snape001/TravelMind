@@ -3,6 +3,7 @@ import asyncio
 import logging
 import sys
 from contextlib import AsyncExitStack
+from uuid import UUID
 
 import httpx
 from psycopg.rows import dict_row
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from travelmind.config import Settings, get_settings
 from travelmind.db.connection import create_database_engine
+from travelmind.db.worker import PostgresWorkerStore
 from travelmind.research.engine import ResearchEngine
 from travelmind.runtime.checkpoints import (
     FencedPostgresSaver,
@@ -40,10 +42,13 @@ async def listen(redis: Redis, wake: asyncio.Event) -> None:
             await asyncio.sleep(5)
 
 
-async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> None:
-    # The task-service branch owns the Postgres implementation of WorkerStore.
-    from travelmind.db.worker import PostgresWorkerStore
+async def log_liveness(worker_id: UUID) -> None:
+    while True:
+        logger.info("worker.alive worker_id=%s", worker_id)
+        await asyncio.sleep(15)
 
+
+async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> None:
     if not settings.deepseek_api_key or not settings.deepseek_api_key.get_secret_value():
         raise ValueError("DEEPSEEK_API_KEY is required")
     async with AsyncExitStack() as resources:
@@ -71,16 +76,7 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
             lease_seconds=lease_seconds,
             poll_seconds=poll_seconds,
         )
-        if settings.redis_url is None:
-            await worker.serve()
-            return
-        redis = Redis.from_url(
-            settings.redis_url.get_secret_value(),
-            socket_connect_timeout=settings.dependency_timeout_seconds,
-        )
-        resources.push_async_callback(redis.aclose)
         wake = asyncio.Event()
-        subscriber = asyncio.create_task(listen(redis, wake))
 
         async def wait_for_work(seconds: float) -> None:
             try:
@@ -89,11 +85,22 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
                 pass
             wake.clear()
 
-        try:
-            await worker.serve(wait_for_work)
-        finally:
-            subscriber.cancel()
-            await asyncio.gather(subscriber, return_exceptions=True)
+        async with asyncio.TaskGroup() as tasks:
+            heartbeat = tasks.create_task(log_liveness(worker.worker_id))
+            subscriber = None
+            if settings.redis_url is not None:
+                redis = Redis.from_url(
+                    settings.redis_url.get_secret_value(),
+                    socket_connect_timeout=settings.dependency_timeout_seconds,
+                )
+                resources.push_async_callback(redis.aclose)
+                subscriber = tasks.create_task(listen(redis, wake))
+            try:
+                await worker.serve(wait_for_work)
+            finally:
+                heartbeat.cancel()
+                if subscriber is not None:
+                    subscriber.cancel()
 
 
 def main() -> int:
@@ -119,11 +126,6 @@ def main() -> int:
                 runner.run(serve(settings, args.lease_seconds, args.poll_seconds))
     except KeyboardInterrupt:
         return 0
-    except ModuleNotFoundError as exc:
-        if exc.name != "travelmind.db.worker":
-            raise
-        logger.error("PostgresWorkerStore is supplied by the Phase 2 task-service branch")
-        return 1
     except Exception as exc:
         logger.error("worker.startup_failed type=%s", type(exc).__name__)
         return 1

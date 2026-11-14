@@ -1,5 +1,20 @@
 # TravelMind 开发进度
 
+## Phase 2 · 最终集成（2026-11-15）
+
+| 顺序 | 功能分支 | 分支头 | 合并提交 |
+| --- | --- | --- | --- |
+| 1 | `codex/task-service-auth`（含重试预算修复） | `ad337ec` | `0746fd6` |
+| 2 | `codex/durable-runtime`（含预算执行许可及 PyJWT 依赖修复） | `f9eda46` | `b0067ef` |
+| 3 | `codex/frontend-phase2` | `0e2f0a6` | `ecfd4da` |
+
+- **集成**　保留三个分支的原始提交。沿用 AgentEvent v1，从集成版 API 重新生成前端 OpenAPI 类型，内容一致。PostgreSQL 决定 API 就绪，Redis 故障显示为降级，Worker 继续轮询 PostgreSQL，并单独按实例记录存活心跳。
+- **自动化验收**　全新环境从 `uv.lock` 安装 `PyJWT[crypto]` 后，OIDC 正常启动并验证 RS256 签名。专用 PostgreSQL 从空库迁移到 `0003`，后端 78 项、前端 21 项测试全部通过。预算用例覆盖 `max_attempts=1` 下的多次过期、已完成 Checkpoint 的投影补齐、未完成的图停止推进、Worker 竞争、旧 epoch 拒写。Ruff、Alembic 一致性、锁定依赖检查、ESLint、TypeScript 和 Next.js 生产构建全部通过。
+- **浏览器联调**　本地测试 OIDC 提供方通过 HTTPS 签发 ID Token，双账户验证登录、CSRF、任务所有权及 SSE 隔离。固定模型和检索响应的用例验证了暂停、恢复、Worker 重启后答复澄清、报告读取、48 条 SSE 续传事件以及已连接 SSE 在登出后关闭。实测 Redis 断连时就绪返回 200 并降级为轮询，PostgreSQL 断连时返回 503。
+- **外部服务实测**　在 Redis 断连的验收环境，Chrome 提交泉州世界遗产调研，独立 Worker 通过 PostgreSQL 轮询，调用真实 DeepSeek、博查和 Firecrawl。报告获批，含 5 个章节，并从指定游标回放 53 条 SSE 事件。前两轮真实调研在一次返工后仍被审核拒绝，按 `REVIEW_REJECTED` 结算。
+- **部署验证**　业务迁移与 Checkpoint 初始化步骤已列入 [README](README.md#本地启动)。正式环境的 OIDC 提供方与 HTTPS 域名仍待部署联调。
+- **集成收尾提交**　`fix: keep API ready when Redis is unavailable`。
+
 ## Phase 2 · 公共契约基线
 
 - **重试预算修订**　[公共契约](docs/phase-2-contract.md#重试预算与领取结果) 定义执行租约的计数、过期回收、仅投影模式和耗尽结算。新增验收用例待 Task Service 与 Runtime 实现后执行。

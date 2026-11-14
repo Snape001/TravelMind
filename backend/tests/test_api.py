@@ -1,7 +1,9 @@
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
+from travelmind.api import health
 from travelmind.config import Settings
 from travelmind.main import create_app
 
@@ -17,6 +19,41 @@ def test_service_starts_without_external_dependencies():
         response = client.get(f"/api/v1/tasks/{uuid4()}")
         assert response.status_code == 503
         assert response.json()["detail"]["code"] == "DATABASE_UNAVAILABLE"
+
+
+@pytest.mark.parametrize(
+    ("postgres_ok", "redis_status", "status_code"),
+    [
+        (True, "ok", 200),
+        (True, "not_configured", 200),
+        (True, "unavailable", 200),
+        (False, "ok", 503),
+    ],
+)
+def test_readiness_requires_postgres_and_reports_redis_status(
+    monkeypatch, postgres_ok, redis_status, status_code
+):
+    async def check_postgres(_engine):
+        if not postgres_ok:
+            raise OSError("PostgreSQL is unavailable")
+
+    async def check_redis(_redis):
+        if redis_status == "unavailable":
+            raise OSError("Redis is unavailable")
+
+    monkeypatch.setattr(health, "check_postgres", check_postgres)
+    monkeypatch.setattr(health, "check_redis", check_redis)
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+asyncpg://localhost/travelmind",
+        redis_url=None if redis_status == "not_configured" else "redis://localhost",
+    )
+    with TestClient(create_app(settings)) as client:
+        readiness = client.get("/health/ready")
+    assert readiness.status_code == status_code
+    assert readiness.json()["status"] == ("ready" if postgres_ok else "unavailable")
+    assert readiness.json()["postgres"] == ("ok" if postgres_ok else "unavailable")
+    assert readiness.json()["redis"] == redis_status
 
 
 def test_openapi_documents_sse_as_agent_event():

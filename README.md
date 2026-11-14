@@ -21,22 +21,47 @@ npm run dev -- --hostname 127.0.0.1
 
 ## 本地启动
 
-需要 Node.js 20.9+、Python 3.11+、uv，以及 Docker Compose 或可连接的 PostgreSQL 和 Redis 实例。从项目根目录执行以下 PowerShell 命令。
+需要 Node.js 20.9+、Python 3.11+、uv 和 PostgreSQL。Redis 可选，用于提前唤醒 Worker。从项目根目录执行以下 PowerShell 命令。
 
 ```powershell
-docker compose up -d --wait
+docker compose up -d --wait postgres
 if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
+```
+
+Compose 将 PostgreSQL 绑定到本机 `15432`。使用 Redis 时执行 `docker compose up -d --wait redis`，并在 `backend/.env` 配置 `REDIS_URL=redis://127.0.0.1:16379/0`。仅使用 PostgreSQL 时可删除模板中的 `REDIS_URL` 行。核对 `DATABASE_URL` 与实际数据库地址一致。
+
+在 `backend/.env` 填入 `DEEPSEEK_API_KEY`、`BOCHA_API_KEY` 和 `FIRECRAWL_API_KEY`。Worker 启动需要 DeepSeek 密钥，默认使用官方 API `https://api.deepseek.com` 和 `deepseek-flash`。
+
+真实调研通过 OIDC 登录。在后端进程环境或被 Git 忽略的 `backend/.env.oidc` 中设置以下值，使用提供方签发的客户端配置和实际 HTTPS 入口。
+
+```dotenv
+OIDC_ISSUER=https://id.example
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_PUBLIC_ORIGIN=https://travelmind.example
+OIDC_TOKEN_AUTH_METHOD=client_secret_basic
+```
+
+把 `OIDC_PUBLIC_ORIGIN` 对应的 HTTPS 反向代理指向 Next.js，并在身份提供方登记回调 `https://travelmind.example/api/v1/auth/callback`。Next.js 将包括 SSE 在内的同源 `/api/v1/*` 转发至 FastAPI。代理需允许 SSE 长连接并关闭响应缓冲。使用浏览器打开配置的 HTTPS 入口，以便发送安全会话 Cookie。
+
+升级现有环境前，先停止旧版 FastAPI 后台执行器和旧 Worker。在后端目录安装锁定依赖、升级业务迁移并初始化 LangGraph Checkpoint，再启动 API。历史无主任务仍需由管理员显式关联到用户，详见 [Phase 2 公共契约](docs/phase-2-contract.md)。
+
+```powershell
 Set-Location backend
 uv sync --locked
 uv run alembic upgrade head
-uv run uvicorn travelmind.main:app --reload --host 127.0.0.1 --port 8000
+uv run python -m travelmind.runtime.worker_cli init-checkpoints
+uv run uvicorn travelmind.main:app --host 127.0.0.1 --port 8000
 ```
 
-Compose 将 PostgreSQL 和 Redis 分别绑定到本机的 `15432` 和 `16379` 端口。若已有 `backend/.env`，请核对其中的连接串与实际服务地址一致。
+另开一个终端，在项目根目录启动独立 Worker。可以运行多个实例。任务暂停在安全边界生效，恢复和澄清答复通过已保存的 Checkpoint 续跑。 [Worker 运行说明](docs/durable-runtime.md)
 
-启动后端前在 `backend/.env` 填入 `DEEPSEEK_API_KEY`、`BOCHA_API_KEY` 和 `FIRECRAWL_API_KEY`。模板默认使用官方 API `https://api.deepseek.com` 和 `deepseek-flash`。DeepSeek 密钥为空时仍可创建和读取任务，调研执行需要配置密钥。
+```powershell
+Set-Location backend
+uv run python -m travelmind.runtime.worker_cli run
+```
 
-从项目根目录另开一个终端启动前端。
+从项目根目录再开一个终端启动 Next.js。
 
 ```powershell
 Set-Location frontend
@@ -45,18 +70,13 @@ $env:NEXT_PUBLIC_RESEARCH_MODE = 'live'
 npm run dev -- --hostname 127.0.0.1
 ```
 
-前端地址为 `http://127.0.0.1:3000`，FastAPI 文档为 `http://127.0.0.1:8000/docs`。前端将同源的 `/api/v1/*` 转发至 FastAPI。若后端地址不同，可将 `frontend/.env.example` 复制为 `frontend/.env.local`，再修改 `API_ORIGIN`。
+Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend/.env.example` 复制为 `frontend/.env.local`，再修改 `API_ORIGIN`。FastAPI 文档位于 `http://127.0.0.1:8000/docs`。登录工作台后可创建、暂停和恢复任务，或回答当前澄清轮次。报告获批后可从工作台打开正文。SSE 使用 AgentEvent v1，凭当前会话连接，并可通过 `Last-Event-ID` 从指定序号之后续传。
 
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health/ready
-$task = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:3000/api/v1/tasks `
-  -ContentType 'application/json' -Headers @{'Idempotency-Key' = [guid]::NewGuid().ToString()} `
-  -Body (@{destination='泉州'; topics=@('历史文化'); depth='deep'} | ConvertTo-Json)
-Invoke-RestMethod "http://127.0.0.1:3000/api/v1/tasks/$($task.task_id)"
-curl.exe -N "http://127.0.0.1:3000/api/v1/tasks/$($task.task_id)/events"
-```
+### 就绪与进程监控
 
-任务创建后由 FastAPI 后台执行。SSE 从 `queued` 开始，按序推送任务、专家、工具、证据和报告事件。收到 `report.ready` 后通过同一个任务下的报告接口读取正文。用 Ctrl+C 关闭命令行事件流。重连时使用 `Last-Event-ID` 继续读取。
+- `GET /health/live` 检查 API 进程。`GET /health/ready` 在 PostgreSQL 可用且任务表可访问时返回 HTTP 200，否则返回 HTTP 503。
+- `redis=unavailable` 表示唤醒通知降级，`redis=not_configured` 表示使用纯 PostgreSQL 轮询。两种情况下 Worker 均继续轮询。
+- 独立监控 Worker 进程及其日志。每个 Worker 启动后立即记录 `worker.alive worker_id=…`，随后每 15 秒记录一次。事件循环心跳与任务租约续期各自运行。Redis 订阅断连时 Worker 记录 `worker.redis_unavailable`。
 
 ## Research Engine
 
@@ -64,9 +84,9 @@ curl.exe -N "http://127.0.0.1:3000/api/v1/tasks/$($task.task_id)/events"
 
 ## 开发验证
 
-- 后端目录执行 `uv run pytest` 和 `uv run ruff check .`。PostgreSQL 集成测试需要将 `TEST_DATABASE_URL` 指向已经执行首版迁移的专用测试数据库。测试会写入调研任务及事件。
-- 前端目录执行 `npm run test`、`npm run lint`、`npm run typecheck` 和 `npm run build`。测试覆盖需求校验、SSE 帧、续传与去重、任务状态及报告引用。
+- 后端目录执行 `uv run pytest` 和 `uv run ruff check .`。将 `TEST_DATABASE_URL` 指向已经执行 `alembic upgrade head` 的专用测试数据库，以运行任务状态、租约、Checkpoint 投影、OIDC 和权限集成测试。
+- 前端目录执行 `npm test`、`npm run lint`、`npm run typecheck` 和 `npm run build`。测试覆盖任务控制、澄清、会话、跨账号历史隔离和 SSE 续传。
 - 公共契约改动后，启动后端并在前端目录运行 `npm run generate:api`，提交生成的 TypeScript 类型。
 - 如需验证 DeepSeek 密钥、网络和所选模型，从后端目录运行 `uv run python -m travelmind.runtime.check_deepseek`。该命令只读取官方模型列表。
 
-项目结构、接口和数据模型见 [阶段 0 接口与架构](docs/phase-0.md)。本地骨架尚未接入用户身份与任务所有权校验，请保持在本地开发环境运行。
+任务状态机、API、数据模型与身份边界见 [Phase 2 公共契约](docs/phase-2-contract.md)。
