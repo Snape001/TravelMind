@@ -22,8 +22,10 @@ uv run python -m travelmind.runtime.worker_cli run
 - Agent 执行、证据引用事件、报告审核版本和事件标识来自持久化节点输出。终态及资源事件按冻结的投影批次提交。任务存储维护 SSE 序号和资源可见性。
 - 暂停在节点或并行批次之间的安全点生效。澄清问题、答复历史和消费指令 ID 持久化。恢复时使用匹配的 LangGraph 中断 ID，投影确认消费后才推进后续节点。
 - 在外部请求已经发出、节点结果还未持久化时崩溃，恢复过程可能重新调用外部服务。升级图版本或 Checkpointer 前应在测试环境验证旧 Checkpoint 可继续读取。
-- 当前 `WorkerStore` 不暴露剩余重试预算。可结算的执行异常通过 `AttemptFailure` 交给存储层处理。连续进程崩溃导致租约反复过期时，由任务服务在保留成熟 Checkpoint 对账能力的前提下限制重新执行。
+- 任务服务随领取结果返回尝试计数、尝试上限和本次租约的执行许可。最后一次执行租约可正常运行。仅投影租约先补齐已提交 Checkpoint 的报告、事件、终态或暂停及澄清中断。后续仍需推进图时，Worker 以 `ATTEMPT_BUDGET_EXHAUSTED` 结算失败。
 
 ## 验证
 
 从 `backend` 运行 `uv run pytest tests/test_durable_runtime.py`。联调时将 `TEST_DATABASE_URL` 指向专用测试库，应用任务服务的业务迁移后运行 `uv run pytest tests/test_durable_postgres.py`。测试包含投影前崩溃后的重领、旧 epoch 的完整和中间写入拦截，以及澄清、暂停和续跑的跨连接恢复。
+
+重试预算回归覆盖最后一次执行租约、仅投影租约的终态与中断恢复，以及只有未提交中间写入时的耗尽结算。OIDC 签名校验所需的 `PyJWT[crypto]` 随后端锁文件安装。

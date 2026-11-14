@@ -102,12 +102,24 @@ class DurableWorker:
 
     async def execute(self, claim: TaskClaim) -> None:
         """Reconcile the last checkpoint before issuing any further graph work."""
+        execution_permitted = getattr(claim, "execution_permitted", None)
+        attempt_count = getattr(claim, "attempt_count", None)
+        max_attempts = getattr(claim, "max_attempts", None)
+        if (
+            type(execution_permitted) is not bool
+            or type(attempt_count) is not int
+            or type(max_attempts) is not int
+            or not 1 <= attempt_count <= max_attempts
+            or (not execution_permitted and (not claim.reclaimed or attempt_count != max_attempts))
+        ):
+            raise ValueError("TaskClaim is missing a valid retry budget")
+
         lease = claim.lease
         saver = self.saver(lease)
         graph = build_research_graph(
             self.model,
             checkpointer=saver,
-            retrieve=self.retrieve(lease) if self.retrieve else None,
+            retrieve=self.retrieve(lease) if execution_permitted and self.retrieve else None,
         )
         config = {"configurable": {"thread_id": str(lease.task_id), "graph_version": GRAPH_VERSION}}
         force_pause = False
@@ -120,17 +132,8 @@ class DurableWorker:
             # The durable cursor is authoritative after an ambiguous response or restart.
             current = await self.store.load_instruction(lease)
             checkpoint = await saver.aget_tuple(config)
-            if checkpoint is None:
-                if not isinstance(current.instruction, StartResearch):
-                    await self._failure(lease, "CHECKPOINT_MISSING", retryable=False)
-                    return
-                inputs = {
-                    "task_id": UUID(str(lease.task_id)),
-                    "trace_id": UUID(str(claim.trace_id)),
-                    "brief": current.instruction.brief,
-                    "start_instruction_id": UUID(str(current.instruction.instruction_id)),
-                }
-            else:
+            snapshot = None
+            if checkpoint is not None:
                 if checkpoint.metadata.get("graph_version") != GRAPH_VERSION:
                     await self._failure(lease, "CHECKPOINT_VERSION_MISMATCH", retryable=False)
                     return
@@ -150,6 +153,27 @@ class DurableWorker:
                         return
                 if applied != current.projected_index:
                     current = await self.store.load_instruction(lease)
+
+            if not execution_permitted:
+                await self._failure(
+                    lease,
+                    "ATTEMPT_BUDGET_EXHAUSTED",
+                    message="任务执行次数已达上限",
+                    retryable=False,
+                )
+                return
+
+            if snapshot is None:
+                if not isinstance(current.instruction, StartResearch):
+                    await self._failure(lease, "CHECKPOINT_MISSING", retryable=False)
+                    return
+                inputs = {
+                    "task_id": UUID(str(lease.task_id)),
+                    "trace_id": UUID(str(claim.trace_id)),
+                    "brief": current.instruction.brief,
+                    "start_instruction_id": UUID(str(current.instruction.instruction_id)),
+                }
+            else:
                 inputs = None
                 if snapshot.interrupts:
                     [halt] = snapshot.interrupts
@@ -201,11 +225,13 @@ class DurableWorker:
             finally:
                 force_pause = False
 
-    async def _failure(self, lease: LeaseRef, code: str, *, retryable: bool) -> None:
+    async def _failure(
+        self, lease: LeaseRef, code: str, *, retryable: bool, message: str = "调研执行中断"
+    ) -> None:
         await self.store.commit_projection(
             lease,
             AttemptFailure(
                 failure_id=uuid5(lease.task_id, f"attempt:{lease.lease_epoch}"),
-                error=ErrorInfo(code=code, message="调研执行中断", retryable=retryable),
+                error=ErrorInfo(code=code, message=message, retryable=retryable),
             ),
         )

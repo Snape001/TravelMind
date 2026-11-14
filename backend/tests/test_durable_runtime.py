@@ -1,9 +1,11 @@
 import asyncio
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import uuid4, uuid5
 
 import pytest
+from langgraph.checkpoint.base import empty_checkpoint
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph.state import CompiledStateGraph
 from test_runtime import Model, source
 
 from travelmind.runtime.checkpoints import checkpoint_serializer
@@ -12,6 +14,7 @@ from travelmind.schemas.api import ClarificationAnswers
 from travelmind.schemas.domain import ResearchBrief
 from travelmind.schemas.worker import (
     AnswerClarification,
+    AttemptFailure,
     ContinueCheckpoint,
     LeaseLost,
     LeaseRef,
@@ -23,6 +26,13 @@ from travelmind.schemas.worker import (
 )
 
 
+class BudgetClaim(TaskClaim):
+    # On the standalone Runtime branch, the shared TaskClaim still has the old shape.
+    max_attempts: int
+    attempt_count: int
+    execution_permitted: bool
+
+
 class Store:
     def __init__(self, destination):
         self.task_id = uuid4()
@@ -31,6 +41,7 @@ class Store:
             kind="start", instruction_id=uuid4(), brief=ResearchBrief(destination=destination)
         )
         self.batches = []
+        self.failures = []
         self.paused_at = None
 
     async def load_instruction(self, _):
@@ -41,6 +52,9 @@ class Store:
         )
 
     async def commit_projection(self, _, batch):
+        if isinstance(batch, AttemptFailure):
+            self.failures.append(batch)
+            return "applied"
         assert isinstance(batch, ProjectionBatch)
         assert batch.projection_index == len(self.batches) + 1
         self.batches.append(batch)
@@ -51,12 +65,15 @@ class Store:
             )
         return "applied"
 
-    def claim(self, epoch=1):
-        return TaskClaim(
+    def claim(self, epoch=1, *, execution_permitted=True):
+        return BudgetClaim(
             lease=LeaseRef(task_id=self.task_id, worker_id=uuid4(), lease_epoch=epoch),
             trace_id=self.trace_id,
             lease_until=datetime.now(UTC),
             reclaimed=epoch > 1,
+            attempt_count=1,
+            max_attempts=1,
+            execution_permitted=execution_permitted,
         )
 
 
@@ -135,8 +152,18 @@ def test_pause_after_director_and_resume_without_repeating_it():
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("crash_at", ["initialize", "plan.ready", "complete"])
-def test_missing_projection_is_replayed_before_the_next_node(crash_at):
+@pytest.mark.parametrize(
+    ("crash_at", "execution_permitted"),
+    [
+        ("initialize", True),
+        ("plan.ready", True),
+        ("plan.ready", False),
+        ("complete", False),
+        ("clarification_required", False),
+        ("pause_reached", False),
+    ],
+)
+def test_missing_projection_is_replayed_before_the_next_node(crash_at, execution_permitted):
     class StopWorker(Exception):
         pass
 
@@ -144,6 +171,8 @@ def test_missing_projection_is_replayed_before_the_next_node(crash_at):
         dropped = None
 
         async def commit_projection(self, lease, batch):
+            if isinstance(batch, AttemptFailure):
+                return await super().commit_projection(lease, batch)
             types = {entry.payload.type for entry in batch.events}
             crash = (
                 crash_at == batch.transition
@@ -159,7 +188,15 @@ def test_missing_projection_is_replayed_before_the_next_node(crash_at):
         evidence = source()
         store = CrashStore("泉州")
         saver = InMemorySaver(serde=checkpoint_serializer())
-        model = Model(evidence)
+
+        async def reply(request, _):
+            if request.agent_id == "research_director" and crash_at == "clarification_required":
+                return {"questions": ["现在想了解泉州的哪个方面？"]}
+            if request.agent_id == "research_director" and crash_at == "pause_reached":
+                store.paused_at = datetime.now(UTC)
+            return None
+
+        model = Model(evidence, reply=reply)
 
         async def retrieve(_):
             return [evidence]
@@ -170,11 +207,107 @@ def test_missing_projection_is_replayed_before_the_next_node(crash_at):
         with pytest.raises(StopWorker):
             await worker().execute(store.claim())
         assert store.dropped is not None
-        await worker().execute(store.claim(2))
+        before_reclaim = len(model.calls)
+        claim = store.claim(2, execution_permitted=execution_permitted)
+        await worker().execute(claim)
         assert store.batches[store.dropped.projection_index - 1] == store.dropped
-        assert store.batches[-1].transition == "complete"
-        assert [request.agent_id for request, _ in model.calls].count("planner") == 1
-        assert [request.agent_id for request, _ in model.calls].count("reviewer") == 1
+        if execution_permitted:
+            assert store.batches[-1].transition == "complete"
+            assert [request.agent_id for request, _ in model.calls].count("planner") == 1
+            assert [request.agent_id for request, _ in model.calls].count("reviewer") == 1
+            assert not store.failures
+        else:
+            assert len(model.calls) == before_reclaim
+            assert store.batches[-1] == store.dropped
+            if crash_at == "plan.ready":
+                assert_budget_exhausted(store, claim)
+            else:
+                assert store.batches[-1].transition == crash_at
+                assert not store.failures
+
+    asyncio.run(run())
+
+
+def assert_budget_exhausted(store, claim):
+    [failure] = store.failures
+    assert failure.failure_id == uuid5(store.task_id, f"attempt:{claim.lease.lease_epoch}")
+    assert failure.error.model_dump() == {
+        "code": "ATTEMPT_BUDGET_EXHAUSTED",
+        "message": "任务执行次数已达上限",
+        "retryable": False,
+    }
+
+
+@pytest.mark.parametrize("state", ["missing", "pending_writes", "answered"])
+def test_exhausted_budget_prevents_start_or_resume_without_new_checkpoint(
+    state,
+    monkeypatch,
+):
+    async def forbid(*_args, **_kwargs):
+        pytest.fail("projection-only lease attempted to run the graph or write a checkpoint")
+
+    async def run():
+        store = Store("古城")
+        saver = InMemorySaver(serde=checkpoint_serializer())
+
+        async def ask(_request, _instructions, response, /):
+            return response(questions=["哪座古城？"])
+
+        if state == "answered":
+            await DurableWorker(store, ask, lambda _: saver).execute(store.claim())
+            pending = store.batches[-1]
+            store.instruction = AnswerClarification(
+                kind="answer_clarification",
+                instruction_id=uuid4(),
+                interrupt_id=pending.interrupt_id,
+                clarification_id=pending.clarification.clarification_id,
+                response=ClarificationAnswers(
+                    answers=[
+                        {
+                            "question_id": pending.clarification.questions[0].question_id,
+                            "text": "泉州",
+                        },
+                    ]
+                ),
+            )
+        elif state == "pending_writes":
+            # The completed node's result has not reached a committed superstep.
+            config = {"configurable": {"thread_id": str(store.task_id), "checkpoint_ns": ""}}
+            saved = await saver.aput(
+                config, empty_checkpoint(), {"source": "loop", "graph_version": "durable-v1"}, {}
+            )
+            await saver.aput_writes(saved, [("status", "completed")], "uncommitted-reviewer")
+
+        with monkeypatch.context() as m:
+            m.setattr(CompiledStateGraph, "ainvoke", forbid)
+            m.setattr(CompiledStateGraph, "astream", forbid)
+            m.setattr(saver, "aput", forbid)
+            m.setattr(saver, "aput_writes", forbid)
+            claim = store.claim(2, execution_permitted=False)
+            await DurableWorker(store, forbid, lambda _: saver).execute(claim)
+        assert_budget_exhausted(store, claim)
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("field", ["max_attempts", "attempt_count", "execution_permitted"])
+def test_worker_rejects_a_claim_missing_any_required_budget_field(field):
+    async def run():
+        store = Store("泉州")
+        original = store.claim()
+        legacy = BudgetClaim.model_construct(
+            **{
+                name: getattr(original, name)
+                for name in type(original).model_fields
+                if name != field
+            }
+        )
+
+        def saver(_):
+            pytest.fail("an incomplete claim must be rejected before opening a checkpoint")
+
+        with pytest.raises(ValueError, match="retry budget"):
+            await DurableWorker(store, None, saver).execute(legacy)
 
     asyncio.run(run())
 

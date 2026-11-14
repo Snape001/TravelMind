@@ -74,6 +74,7 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
                         trace_id=trace_id,
                         owner_id=owner_id,
                         status="queued",
+                        max_attempts=1,
                         created_at=now,
                         updated_at=now,
                         available_at=now,
@@ -96,6 +97,11 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
                 store = CrashStore(sessions)
                 claim = await store.claim(uuid4(), lease_seconds=30)
                 assert claim.lease.task_id == task_id
+                assert (claim.attempt_count, claim.max_attempts, claim.execution_permitted) == (
+                    1,
+                    1,
+                    True,
+                )
 
                 def retrieve_for(lease):
                     async def retrieve(_):
@@ -121,6 +127,11 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
                     replacement = await recovered.claim(uuid4(), lease_seconds=30)
                     assert replacement.reclaimed
                     assert replacement.lease.lease_epoch == claim.lease.lease_epoch + 1
+                    assert (
+                        replacement.attempt_count,
+                        replacement.max_attempts,
+                        replacement.execution_permitted,
+                    ) == (1, 1, False)
 
                     config = {
                         "configurable": {
@@ -133,15 +144,21 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
                         await stale.aput(config, empty_checkpoint(), {"source": "loop"}, {})
                     with pytest.raises(LeaseLost):
                         await stale.aput_writes(config, [("test", "stale")], "old-worker")
+                    projection_saver = FencedPostgresSaver(pool, recovered, replacement.lease)
+                    with pytest.raises(LeaseLost):
+                        await projection_saver.aput_writes(
+                            config, [("test", "no execution permit")], "projection-worker"
+                        )
                     await DurableWorker(
                         recovered,
                         model,
-                        lambda lease: FencedPostgresSaver(pool, recovered, lease),
+                        lambda _: projection_saver,
                         retrieve=retrieve_for,
                     ).run_claim(replacement)
                     async with sessions() as session:
                         task = await session.get(TaskRow, task_id)
                         assert task.status == "completed"
+                        assert task.attempt_count == 1
                         assert task.projected_index == store.dropped.projection_index
                         runs = (
                             await session.scalars(
