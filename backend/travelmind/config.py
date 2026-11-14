@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     deepseek_base_url: HttpUrl = HttpUrl("https://api.deepseek.com")
     deepseek_model: str = "deepseek-flash"
     dependency_timeout_seconds: Annotated[float, Field(gt=0, le=30)] = 3
+    bocha_api_key: SecretStr | None = None
+    firecrawl_api_key: SecretStr | None = None
+    openalex_api_key: SecretStr | None = None
+    research_timeout_seconds: Annotated[float, Field(gt=0, le=120)] = 35
 
 
 @lru_cache

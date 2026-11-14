@@ -1,25 +1,11 @@
-import os
 from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 
-from travelmind.config import Settings
 from travelmind.db.tasks import events_after
-from travelmind.main import create_app
 
 pytestmark = pytest.mark.postgres
-
-
-@pytest.fixture
-def client():
-    database_url = os.environ.get("TEST_DATABASE_URL")
-    if not database_url:
-        pytest.skip("set TEST_DATABASE_URL to a dedicated migrated test database")
-    api = create_app(Settings(_env_file=None, database_url=database_url, redis_url=None))
-    with TestClient(api) as transport:
-        yield transport
 
 
 def test_concurrent_submission_creates_one_task_and_event(client):
