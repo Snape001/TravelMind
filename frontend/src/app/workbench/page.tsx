@@ -1,22 +1,18 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { demo, taskStorageKey } from "@/lib/demo";
-import { mockMode } from "@/lib/task-client";
+import { TaskHistory } from "@/components/task-history";
+import { demo } from "@/lib/demo";
 
-export default function LatestWorkbench() {
-  const router = useRouter();
-  useEffect(() => {
-    let id: string | null = null;
-    try { id = sessionStorage.getItem(taskStorageKey(mockMode)); } catch { /* Use the example workbench when storage is unavailable. */ }
-    router.replace(`/workbench/${encodeURIComponent(id || demo.taskId)}`);
-  }, [router]);
+export const metadata = { title: "调研历史 · TravelMind" };
 
-  return <main className="shell inner-page">
-    <div className="page-heading"><h1>调研工作台</h1></div>
-    <p role="status" className="muted">正在打开工作台…</p>
-    <Link className="text-link" href={`/workbench/${demo.taskId}`}>查看示例工作台</Link>
+export default function WorkbenchIndex() {
+  return <main className="shell inner-page narrow">
+    <div className="page-heading">
+      <h1>调研历史</h1><p>查看此浏览器中最近创建或打开的任务。</p>
+    </div>
+    <TaskHistory />
+    <div className="history-actions">
+      <Link className="button primary" href="/">新建调研</Link>
+      <Link className="text-link" href={`/workbench/${demo.taskId}`}>查看示例工作台</Link>
+    </div>
   </main>;
 }

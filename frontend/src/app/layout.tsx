@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SiteHeader } from "@/components/site-header";
+import { SessionProvider } from "@/components/session";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN">
-      <body><SiteHeader />{children}</body>
+      <body><SessionProvider><SiteHeader />{children}</SessionProvider></body>
     </html>
   );
 }

@@ -223,8 +223,32 @@ button.chip:hover, a.chip:hover { background: #e1eee4; border-color: #8ab49c; }
 .evidence-card blockquote { margin-block: 6px; white-space: pre-wrap; }
 .evidence-card .muted, .evidence-card .text-link { font-size: 12px; }
 
+.header-session { position: relative; display: flex; gap: 8px; align-items: center; justify-self: end; min-width: 0; }
+.header-session .button { min-height: 33px; padding: 4px 10px; font-size: 12px; }
+.account-name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
+.header-session-error { position: absolute; z-index: 2; top: calc(100% + 5px); right: 0; width: max-content; max-width: 220px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: white; }
+.session-prompt, .history-actions { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-top: 15px; }
+.task-controls { margin-bottom: 16px; }
+.task-actions:not(:empty) { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.task-actions .notice { margin-bottom: 0; background: #fff7e9; }
+.clarification-form { padding: 16px; margin-bottom: 8px; }
+.clarification-form h2 { font-size: 17px; margin-bottom: 4px; }
+.clarification-form fieldset { display: grid; gap: 9px; margin-top: 10px; }
+.clarification-form label { display: grid; gap: 4px; }
+.clarification-form textarea { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; background: var(--canvas); resize: vertical; }
+.clarification-form button { justify-self: start; }
+.task-history-row { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.task-history-row strong { overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+  .header-session .mode { display: none; }
+  .account-name { max-width: 85px; }
+  .task-history-row { gap: 6px; padding-inline: 8px; }
+}
+
 @media (max-width: 890px) {
-  .header-grid { gap: 8px; }
+  .header-grid { gap: 8px; grid-template-columns: 1fr auto; padding-block: 9px 7px; }
+  .site-nav { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; }
   .site-nav a { padding-inline: 8px; }
   .guild-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .workbench-grid { grid-template-columns: minmax(0, 1fr); }
@@ -233,8 +257,7 @@ button.chip:hover, a.chip:hover { background: #e1eee4; border-color: #8ab49c; }
 }
 @media (max-width: 640px) {
   .shell { width: calc(100% - 28px); }
-  .header-grid { grid-template-columns: 1fr auto; padding-block: 9px 7px; }
-  .site-nav { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; gap: 0; }
+  .site-nav { gap: 0; }
   .site-nav a { font-size: 12px; gap: 4px; padding-inline: 5px; }
   .site-nav a svg { width: 13px; }
   .hero { border-radius: 16px; min-height: 293px; }

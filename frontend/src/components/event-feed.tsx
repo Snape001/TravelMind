@@ -5,6 +5,7 @@ import { Activity, FileText, ListFilter, MessagesSquare, Radio } from "lucide-re
 import { useEffect, useRef, useState } from "react";
 import { ExpertIcon } from "./expert-icon";
 import { EvidenceCard } from "./evidence-card";
+import type { Connection } from "./use-task-session";
 import { expertName, findExpert } from "@/lib/experts";
 import { formatTime, reportHref, taskStatusLabels, type AgentEvent } from "@/lib/research";
 
@@ -14,7 +15,7 @@ export function EventFeed({ events, taskId, toolNames, agent, onSelectAgent, con
   toolNames: Map<string, string>;
   agent: string;
   onSelectAgent: (id: string) => void;
-  connection: "connecting" | "open" | "reconnecting" | "closed";
+  connection: Connection;
 }) {
   const [messagesOnly, setMessagesOnly] = useState(false);
   const body = useRef<HTMLOListElement>(null);
@@ -36,7 +37,7 @@ export function EventFeed({ events, taskId, toolNames, agent, onSelectAgent, con
       <div className="panel-heading">
         <span className="icon-tile"><MessagesSquare size={18} aria-hidden /></span><h2 id="event-title">Agent 对话与事件</h2>
         <span className={`connection ${connection}`} role="status"><Radio size={14} aria-hidden />
-          {{ connecting: "连接中", open: "已连接", reconnecting: "正在重连", closed: "回放结束" }[connection]}
+          {{ connecting: "连接中", open: "已连接", reconnecting: "正在重连", closed: "回放结束", unavailable: "无法连接" }[connection]}
         </span>
       </div>
       <div className="event-toolbar">
