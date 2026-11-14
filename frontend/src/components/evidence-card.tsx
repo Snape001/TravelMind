@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { readEvidence } from "@/lib/mock-client";
+import { readEvidence } from "@/lib/task-client";
 import { formatDate, type EvidenceRead } from "@/lib/research";
 
 const sourceTypes: Record<EvidenceRead["source_type"], string> = {

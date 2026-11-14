@@ -1,6 +1,6 @@
 # Research Engine 接入说明
 
-从 `backend` 目录使用 `travelmind.research.engine.ResearchEngine`。调用方管理并复用 `httpx.AsyncClient`，数据库写入使用现有的异步 session。
+从 `backend` 目录使用 `travelmind.research.engine.ResearchEngine`。调用方管理并复用 `httpx.AsyncClient`，数据库写入使用现有的异步 session。FastAPI 的任务流程通过 `ResearchRetriever` 调用此接口。快速调研使用搜索摘要，深度和学术调研会尝试抓取一个网页全文。学术调研并行检索博查与 OpenAlex，其他深度在博查没有结果时尝试 OpenAlex。网页抓取失败时保留可用搜索结果。
 
 ```python
 import httpx

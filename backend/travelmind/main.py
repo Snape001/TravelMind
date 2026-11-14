@@ -1,6 +1,7 @@
 import logging
 from contextlib import AsyncExitStack, asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
@@ -10,6 +11,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from travelmind.api import health, tasks
 from travelmind.config import Settings, get_settings
 from travelmind.db.connection import create_database_engine
+from travelmind.research.engine import ResearchEngine
+from travelmind.runtime.model import create_structured_model
+from travelmind.runtime.worker import ResearchWorker
 from travelmind.schemas.api import ErrorInfo, ErrorResponse
 
 logger = logging.getLogger(__name__)
@@ -25,11 +29,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.engine = None
             app.state.sessions = None
             app.state.redis = None
+            app.state.worker = None
             if config.database_url is not None:
                 engine = create_database_engine(config)
                 resources.push_async_callback(engine.dispose)
                 app.state.engine = engine
                 app.state.sessions = async_sessionmaker(engine, expire_on_commit=False)
+                if config.deepseek_api_key and config.deepseek_api_key.get_secret_value():
+                    http_client = await resources.enter_async_context(httpx.AsyncClient())
+                    app.state.worker = ResearchWorker(
+                        app.state.sessions,
+                        create_structured_model(config),
+                        ResearchEngine(http_client, config),
+                    )
             if config.redis_url is not None:
                 redis = Redis.from_url(
                     config.redis_url.get_secret_value(),

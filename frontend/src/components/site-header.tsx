@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Compass, FileText, FlaskConical, House, UsersRound } from "lucide-react";
+import { mockMode } from "@/lib/task-client";
 
 const links = [
   { href: "/", match: "/", label: "首页", icon: House },
@@ -28,7 +29,7 @@ export function SiteHeader() {
             </Link>;
           })}
         </nav>
-        <span className="mode"><span className="status-dot" />模拟模式</span>
+        {mockMode && <span className="mode"><span className="status-dot" />模拟模式</span>}
       </div>
     </header>
   );

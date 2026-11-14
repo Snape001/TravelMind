@@ -3,8 +3,8 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronDown, MapPin, Search, Zap, Layers, BookOpen } from "lucide-react";
-import { createTask } from "@/lib/mock-client";
-import { lastTaskKey } from "@/lib/demo";
+import { createTask, mockMode } from "@/lib/task-client";
+import { taskStorageKey } from "@/lib/demo";
 import { depthOptions, prepareBrief, type ResearchBrief } from "@/lib/research";
 
 const presets = [
@@ -36,7 +36,7 @@ export function ResearchForm() {
       if (lastRequest.current?.body !== body) lastRequest.current = { body, key: crypto.randomUUID() };
       setSending(true);
       const task = await createTask(brief, lastRequest.current.key);
-      try { sessionStorage.setItem(lastTaskKey, task.task_id); } catch { /* Keep direct task navigation available. */ }
+      try { sessionStorage.setItem(taskStorageKey(mockMode), task.task_id); } catch { /* Keep direct task navigation available. */ }
       router.push(`/workbench/${task.task_id}`);
     } catch (problem) {
       submitting.current = false;

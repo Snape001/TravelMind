@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowUpRight, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { EvidenceCard } from "./evidence-card";
 import { expertName, findExpert } from "@/lib/experts";
-import { readReport } from "@/lib/mock-client";
+import { isMockTask, readReport } from "@/lib/task-client";
 import { formatDate, type ReportRead } from "@/lib/research";
 
 export function ReportReader({ taskId, reportId }: { taskId: string; reportId: string }) {
@@ -37,7 +37,7 @@ export function ReportReader({ taskId, reportId }: { taskId: string; reportId: s
       </div>
       {report ? <>
         <header className="report-masthead">
-          <p className="eyebrow"><FileText size={17} aria-hidden /> 模拟调研报告</p>
+          <p className="eyebrow"><FileText size={17} aria-hidden /> {isMockTask(taskId) ? "模拟调研报告" : "调研报告"}</p>
           <h1>{report.content.title}</h1>
           <p>第 {report.version} 版 · {formatDate(report.created_at)} · {sections.length} 个章节 · {evidence.size} 条引用</p>
         </header>

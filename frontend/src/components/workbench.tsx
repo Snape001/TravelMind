@@ -9,7 +9,7 @@ import { ExpertIcon } from "./expert-icon";
 import { appendEvent, summarize } from "@/lib/agent-events";
 import { demo } from "@/lib/demo";
 import { expertName } from "@/lib/experts";
-import { readReport, readTask, subscribe } from "@/lib/mock-client";
+import { isMockTask, readReport, readTask, subscribe } from "@/lib/task-client";
 import { rememberReport } from "@/lib/report-history";
 import { depthOptions, formatDate, reportHref, taskStatusLabels, type AgentEvent, type TaskRead } from "@/lib/research";
 
@@ -36,7 +36,7 @@ function WorkbenchSession({ taskId, retry }: { taskId: string; retry: () => void
       close = subscribe(record.task_id, 0, (event) => {
         if (event.task_id !== record.task_id || event.trace_id !== record.trace_id) return;
         setEvents((previous) => appendEvent(previous, event, record));
-        if (event.payload.type === "task.status" && ["completed", "failed"].includes(event.payload.status)) {
+        if (event.payload.type === "task.status" && ["completed", "failed", "needs_clarification"].includes(event.payload.status)) {
           close?.();
           setConnection("closed");
         }
@@ -78,7 +78,7 @@ function WorkbenchSession({ taskId, retry }: { taskId: string; retry: () => void
       <Link className="text-link back" href="/"><ArrowLeft size={16} aria-hidden /> 返回首页</Link>
       <div className="page-heading workbench-heading">
         <div>
-          <p className="eyebrow">调研工作台 · {taskId === demo.taskId ? "示例回放" : "模拟任务"}</p>
+          <p className="eyebrow">调研工作台{taskId === demo.taskId ? " · 示例回放" : isMockTask(taskId) ? " · 模拟任务" : ""}</p>
           <h1>{task.brief.destination}调研</h1>
           <div className="meta-row"><span><MapPin size={15} aria-hidden />{task.brief.destination}</span><span>{depth}</span><span>{formatDate(task.created_at)}</span>
             <span className={`task-badge ${view.status}`} role="status"><span className={`status-dot ${view.status}`} />{taskStatusLabels[view.status]}</span>

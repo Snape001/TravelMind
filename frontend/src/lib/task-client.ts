@@ -1,8 +1,11 @@
 import { eventTypes, readEvent } from "./agent-events";
+import { demo } from "./demo";
 import type { AgentEvent, EvidenceRead, ReportRead, ResearchBrief, TaskRead } from "./research";
 
-const base = "/mock/api/v1/tasks";
-const taskUrl = (taskId: string) => `${base}/${encodeURIComponent(taskId)}`;
+export const mockMode = process.env.NEXT_PUBLIC_RESEARCH_MODE === "mock";
+export const isMockTask = (taskId: string) => mockMode || taskId === demo.taskId;
+const collection = (mock: boolean) => mock ? "/mock/api/v1/tasks" : "/api/v1/tasks";
+const taskUrl = (taskId: string) => `${collection(isMockTask(taskId))}/${encodeURIComponent(taskId)}`;
 
 async function json<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, { ...options, cache: "no-store" });
@@ -15,7 +18,7 @@ async function json<T>(url: string, options: RequestInit = {}): Promise<T> {
   return response.json();
 }
 
-export const createTask = (brief: ResearchBrief, key: string) => json<TaskRead>(base, {
+export const createTask = (brief: ResearchBrief, key: string) => json<TaskRead>(collection(mockMode), {
   method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": key }, body: JSON.stringify(brief),
 });
 export const readTask = (taskId: string, signal: AbortSignal) => json<TaskRead>(taskUrl(taskId), { signal });

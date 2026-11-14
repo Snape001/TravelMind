@@ -7,3 +7,4 @@ export const demo = {
 };
 
 export const lastTaskKey = "travelmind.mock-task.v1";
+export const taskStorageKey = (mock: boolean) => mock ? lastTaskKey : "travelmind.task.v1";

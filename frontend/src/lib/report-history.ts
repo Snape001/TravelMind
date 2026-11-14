@@ -1,6 +1,8 @@
+import { mockMode } from "./task-client";
+
 type ReportKey = { taskId: string; reportId: string };
 export type ArchiveEntry = ReportKey & { title: string; date: string };
-const key = "travelmind.mock-reports.v1";
+const key = mockMode ? "travelmind.mock-reports.v1" : "travelmind.reports.v1";
 
 export function readArchive(): ArchiveEntry[] {
   try {

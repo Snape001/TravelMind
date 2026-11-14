@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { demo, lastTaskKey } from "@/lib/demo";
+import { demo, taskStorageKey } from "@/lib/demo";
+import { mockMode } from "@/lib/task-client";
 
 export default function LatestWorkbench() {
   const router = useRouter();
   useEffect(() => {
     let id: string | null = null;
-    try { id = sessionStorage.getItem(lastTaskKey); } catch { /* Use the example workbench when storage is unavailable. */ }
+    try { id = sessionStorage.getItem(taskStorageKey(mockMode)); } catch { /* Use the example workbench when storage is unavailable. */ }
     router.replace(`/workbench/${encodeURIComponent(id || demo.taskId)}`);
   }, [router]);
 

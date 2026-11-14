@@ -1,5 +1,19 @@
 # TravelMind 开发进度
 
+## 阶段 1 · 三分支集成（2026-11-14）
+
+| 顺序 | 功能分支 | 分支头 | 合并提交 |
+| --- | --- | --- | --- |
+| 1 | Agent Runtime | `c43d21e` | `e7ceffc` |
+| 2 | Research Engine | `57243f7` | `72ef565` |
+| 3 | Frontend | `f367119` | `1695017` |
+
+- **冲突与接口**　Research Engine 和 Frontend 合并时均在本进度文件发生冲突，三条功能线的原始验收记录均保留。Runtime 复用 Pydantic Agent 输入输出和 `Evidence`。检索在生成引用前写入 PostgreSQL 并复用已存储的证据 ID。Worker 保存 Agent 执行与各审核版本，使用现有 `AgentEvent v1` 记录可续传事件。Next.js 默认走同源真实 API，支持通过环境变量进入原有模拟模式。重新生成 OpenAPI 类型后无差异。
+- **回归测试**　后端 36 项通过，使用从 Alembic 首版迁移起建的专用 PostgreSQL 库。前端 10 项通过。Ruff、ESLint、TypeScript 和 Next.js 生产构建均通过。Alembic 一致性检查、Python 锁文件与依赖检查、npm 锁定依赖检查均通过。npm 生产依赖审计报告 0 项漏洞。
+- **真实端到端**　Chrome 经 Next.js 提交福建泉州深度调研，用真实 DeepSeek、博查、Firecrawl 和 Compose PostgreSQL、Redis 验证。5 位专家生成 69 条事件，报告经过一次返工后获批，包含 5 个章节和 15 条去重引用。验证工作台、报告归档、来源跳转、各审核版本的引用读回，以及从 `Last-Event-ID: 32` 回放第 33–69 条事件。原有示例工作台和示例报告仍可访问。
+- **联调修复**　关闭了导致浏览器事件缓冲的 Next.js 压缩。模型的无效或截断响应进入有界重试，撰写与审核使用结论和草稿引用到的证据。部分 Firecrawl 抓取超时后使用已取得的搜索摘要，最终任务正常完成。
+- **遗留问题**　后台任务仍在 FastAPI 进程内运行，重启续跑、暂停及澄清后继续原任务的 HTTP 接口待实现。现有部署面向本地开发，用户身份与任务所有权校验待接入。
+
 ## 阶段 0 · 基础架构与接口协议
 
 - **完成情况**　Next.js 与 FastAPI 骨架已运行。已定义 LangGraph State、Pydantic Agent 输入输出、AgentEvent v1 和任务 API。Alembic 首版迁移包含任务、事件、Agent 执行、证据和报告五张表。

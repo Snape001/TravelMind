@@ -33,4 +33,6 @@ inputs = {
 - `budget` 使用 `RunBudget`，分别约束每次检索或模型操作的超时和尝试次数，并限制每次模型调用的输出 Token。`max_revision_rounds` 可配置为 0–2。
 - `custom` 流输出已有 `EventPayload`。API/SSE 接入层负责补齐 `AgentEvent` 的任务 ID、追踪 ID、事件 ID、顺序和时间，并保存报告、证据及任务状态。
 
-当前运行入口是后端 Python 调用。外部检索 Adapter、任务执行持久化和 SSE 事件落库由对应模块接入。LangGraph 图在内存中运行，用户补充信息后由调用方使用更新的简报重新发起。
+FastAPI 配置 DeepSeek 后，任务提交将调度 `ResearchWorker`。Worker 在 PostgreSQL 行锁下领取任务，使用 `ResearchRetriever` 调用 Research Engine，并在专家生成引用前保存证据、取回数据库确认的证据 ID。Worker 把公共事件载荷封装成 AgentEvent v1，保存 Agent 执行记录和报告版本。SSE 回放可在重新连接后继续读取已提交的事件。
+
+LangGraph 在 FastAPI 进程内运行。任务暂停、进程重启续跑和澄清后继续已有任务的 HTTP 接口待实现。图的 Python 接口仍可接收更新后的简报重新执行。

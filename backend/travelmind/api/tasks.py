@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, Response
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -63,7 +63,9 @@ ExistingTask = Annotated[TaskRow, Depends(require_task)]
 )
 async def submit_task(
     brief: ResearchBrief,
+    request: Request,
     response: Response,
+    background: BackgroundTasks,
     sessions: Sessions,
     idempotency_key: Annotated[
         str | None, Header(min_length=1, max_length=128, pattern=r"^[!-~]+$")
@@ -79,6 +81,9 @@ async def submit_task(
         logger.info("task.created task_id=%s trace_id=%s", task.task_id, task.trace_id)
     else:
         response.status_code = 200
+    worker = request.app.state.worker
+    if worker is not None and task.status == "queued":
+        background.add_task(worker.execute, task.task_id)
     return TaskRead.model_validate(task)
 
 

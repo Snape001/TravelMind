@@ -58,6 +58,17 @@ def evidence_for(state: ResearchState, findings: list[Finding]) -> list[Evidence
     return [state["evidence"][evidence_id] for evidence_id in ids]
 
 
+def editorial_sources(state: ResearchState, findings: list[Finding]) -> list[Evidence]:
+    ids = dict.fromkeys(evidence_id for finding in findings for evidence_id in finding.evidence_ids)
+    draft = state.get("draft")
+    if draft is not None:
+        for section in draft.sections:
+            ids.update(dict.fromkeys(section.evidence_ids))
+    return [
+        state["evidence"][evidence_id] for evidence_id in ids if evidence_id in state["evidence"]
+    ]
+
+
 def contributions(state: ResearchState) -> list[ResearchResult]:
     run_ids = state["assignment_runs"]
     available = set(state["usable_research"])
@@ -250,15 +261,18 @@ def build_research_graph(
         return records(result) | {"challenge_runs": {target.run_id: result.run_id}}
 
     async def write(state: ResearchState) -> dict:
+        inputs = contributions(state)
         request = request_for(
             state,
             editorial.WRITER,
-            evidence=list(state["evidence"].values()),
+            evidence=editorial_sources(
+                state, [finding for item in inputs for finding in item.findings]
+            ),
             draft=state.get("draft"),
         )
         result = await run_agent(
             request,
-            lambda: editorial.write(model, request, contributions(state), state.get("review")),
+            lambda: editorial.write(model, request, inputs, state.get("review")),
         )
         if isinstance(result, AgentFailure):
             return records(result) | publish_status("failed", error=result.error)
@@ -266,11 +280,12 @@ def build_research_graph(
 
     async def review(state: ResearchState) -> dict:
         inputs = contributions(state)
+        findings = [finding for item in inputs for finding in item.findings]
         request = request_for(
             state,
             editorial.REVIEWER,
-            evidence=list(state["evidence"].values()),
-            prior_findings=[finding for item in inputs for finding in item.findings],
+            evidence=editorial_sources(state, findings),
+            prior_findings=findings,
             draft=state["draft"],
         )
         result = await run_agent(
