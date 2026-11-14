@@ -40,6 +40,10 @@ curl.exe -N "http://127.0.0.1:3000/api/v1/tasks/$($task.task_id)/events"
 
 事件流收到首条 `task.status` 后保持连接，可用 Ctrl+C 退出。任务初始状态为 `queued`，后续阶段接入任务调度和实际研究。
 
+## Research Engine
+
+在后端的 `.env` 中设置 `BOCHA_API_KEY` 和 `FIRECRAWL_API_KEY`。OpenAlex 支持匿名查询，也可用 `OPENALEX_API_KEY` 提高额度。调用示例、错误处理及证据写入约定见 [Research Engine 接入说明](docs/research-engine.md)。
+
 ## 开发验证
 
 - 后端目录执行 `uv run pytest` 和 `uv run ruff check .`。PostgreSQL 集成测试需要将 `TEST_DATABASE_URL` 指向已经执行首版迁移的专用测试数据库。测试会写入调研任务及事件。
