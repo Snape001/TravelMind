@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "outDir": ".artifacts/tests",
+    "rootDir": "."
+  },
+  "include": ["test/**/*.test.ts"]
+}
