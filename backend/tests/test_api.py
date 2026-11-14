@@ -33,3 +33,24 @@ def test_openapi_documents_sse_as_agent_event():
         ]
         == "type"
     )
+
+
+def test_task_read_and_create_header_publish_compatible_openapi_schema():
+    settings = Settings(_env_file=None, database_url=None, redis_url=None)
+    with TestClient(create_app(settings)) as client:
+        spec = client.get("/openapi.json").json()
+
+    schemas = spec["components"]["schemas"]
+    task = schemas["TaskRead"]
+    assert {"pause_requested_at", "pending_clarification"} <= set(task["properties"])
+    assert {"pause_requested_at", "pending_clarification"}.isdisjoint(task["required"])
+    assert "PendingClarification" in schemas
+    parameters = spec["paths"]["/api/v1/tasks"]["post"]["parameters"]
+    key = next(item for item in parameters if item["name"].lower() == "idempotency-key")
+    assert not key["required"]
+    assert {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[!-~]+$",
+    } in key["schema"]["anyOf"]

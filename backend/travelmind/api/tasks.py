@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from travelmind.db.models import EvidenceRow, ReportRow, TaskRow
 from travelmind.db.tasks import IdempotencyConflict, create_task, events_after
-from travelmind.schemas.api import ErrorResponse, EvidenceRead, ReportRead, TaskRead
+from travelmind.schemas.api import ErrorResponse, EvidenceRead, IdempotencyKey, ReportRead, TaskRead
 from travelmind.schemas.domain import ResearchBrief
 from travelmind.schemas.events import AgentEvent, EventCursor
 
@@ -67,9 +67,7 @@ async def submit_task(
     response: Response,
     background: BackgroundTasks,
     sessions: Sessions,
-    idempotency_key: Annotated[
-        str | None, Header(min_length=1, max_length=128, pattern=r"^[!-~]+$")
-    ] = None,
+    idempotency_key: Annotated[IdempotencyKey | None, Header()] = None,
 ) -> TaskRead:
     try:
         async with sessions() as session:
