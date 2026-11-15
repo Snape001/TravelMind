@@ -1,12 +1,13 @@
 import type { AgentEvent, ErrorInfo, EventPayload, ResearchPlan, TaskRead } from "./research";
 import { taskStatusLabels } from "./research";
+import { canonicalAgentId } from "./experts";
 
 export const eventTypes = [
   "task.status", "task.clarification", "plan.ready", "agent.started", "agent.message",
   "agent.finished", "tool.started", "tool.finished", "evidence.added", "report.ready", "report.reviewed",
 ] as const satisfies EventPayload["type"][];
 
-const record = (value: unknown): value is Record<string, unknown> =>
+export const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
 
@@ -37,21 +38,28 @@ function validPayload(payload: Record<string, unknown>): boolean {
   }
 }
 
-export function readEvent(data: string, name: string, id: string): AgentEvent | null {
+export function readEnvelope(data: string, name: string, id: string) {
   try {
     const event: unknown = JSON.parse(data);
     if (!record(event) || event.version !== 1 || typeof event.event_id !== "string" ||
       typeof event.task_id !== "string" || typeof event.trace_id !== "string" ||
       typeof event.sequence !== "number" || !Number.isSafeInteger(event.sequence) || event.sequence < 1 ||
       String(event.sequence) !== id || typeof event.occurred_at !== "string" || !Number.isFinite(Date.parse(event.occurred_at)) ||
-      !record(event.payload) || event.payload.type !== name || !validPayload(event.payload)) return null;
-    const { error } = event.payload;
-    if (error != null && (!record(error) || typeof error.message !== "string" ||
-      typeof error.code !== "string" || typeof error.retryable !== "boolean")) return null;
-    return event as AgentEvent;
+      !record(event.payload) || event.payload.type !== name) return null;
+    const { version, event_id, task_id, trace_id, sequence, occurred_at, payload } = event;
+    return { version, event_id, task_id, trace_id, sequence, occurred_at, payload };
   } catch {
     return null;
   }
+}
+
+export function readEvent(data: string, name: string, id: string): AgentEvent | null {
+  const event = readEnvelope(data, name, id);
+  if (!event || !validPayload(event.payload)) return null;
+  const { error } = event.payload;
+  if (error != null && (!record(error) || typeof error.message !== "string" ||
+    typeof error.code !== "string" || typeof error.retryable !== "boolean")) return null;
+  return event as unknown as AgentEvent;
 }
 
 export function eventCursor(task: Pick<TaskRead, "task_id" | "trace_id">, after: number) {
@@ -59,7 +67,7 @@ export function eventCursor(task: Pick<TaskRead, "task_id" | "trace_id">, after:
   const seen = new Set<string>();
   return {
     get sequence() { return sequence; },
-    accept(event: AgentEvent) {
+    accept(event: Pick<AgentEvent, "task_id" | "trace_id" | "sequence" | "event_id">) {
       if (event.task_id !== task.task_id || event.trace_id !== task.trace_id ||
         event.sequence <= sequence || seen.has(event.event_id)) return false;
       sequence = event.sequence;
@@ -73,7 +81,7 @@ export function summarize(task: TaskRead, events: AgentEvent[]) {
   let status = task.status;
   let error: ErrorInfo | null = null;
   let plan: ResearchPlan | null = null;
-  let report: Extract<EventPayload, { type: "report.ready" }> | null = null;
+  const reports = new Map<string, Extract<EventPayload, { type: "report.ready" }>>();
   let questions: string[] = [];
   const decisions = new Map<string, Extract<EventPayload, { type: "report.reviewed" }>["decision"]>();
   const latestAssignmentRuns = new Map<string, string>();
@@ -92,14 +100,17 @@ export function summarize(task: TaskRead, events: AgentEvent[]) {
       case "plan.ready": plan = payload.plan; break;
       case "agent.started":
         runStatus.set(payload.run_id, "running");
-        latestAgentRuns.set(payload.agent_id, payload.run_id);
+        latestAgentRuns.set(canonicalAgentId(payload.agent_id), payload.run_id);
         if (payload.assignment_id) latestAssignmentRuns.set(payload.assignment_id, payload.run_id);
         break;
-      case "agent.finished": runStatus.set(payload.run_id, payload.status); break;
-      case "tool.started": toolNames.set(payload.tool_call_id, payload.tool_name); break;
-      case "report.ready":
-        if (!report || payload.version >= report.version) report = payload;
+      case "agent.finished":
+        if (!latestAgentRuns.has(canonicalAgentId(payload.agent_id))) {
+          latestAgentRuns.set(canonicalAgentId(payload.agent_id), payload.run_id);
+        }
+        runStatus.set(payload.run_id, payload.status);
         break;
+      case "tool.started": toolNames.set(payload.tool_call_id, payload.tool_name); break;
+      case "report.ready": reports.set(payload.report_id, payload); break;
       case "report.reviewed": decisions.set(payload.report_id, payload.decision); break;
     }
   }
@@ -108,7 +119,12 @@ export function summarize(task: TaskRead, events: AgentEvent[]) {
     ...assignment,
     status: runStatus.get(latestAssignmentRuns.get(assignment.assignment_id) ?? "") ?? "waiting" as const,
   }));
-  const directorRun = latestAgentRuns.get("research_director");
-  const directorStatus = runStatus.get(directorRun ?? "") ?? "waiting" as const;
-  return { status, error, plan, report, questions, assignments, toolNames, directorStatus, reportDecision: report && decisions.get(report.report_id) };
+  const agents = new Map(Array.from(latestAgentRuns, ([id, runId]) => [id, {
+    runId, status: runStatus.get(runId) ?? "waiting" as const,
+  }]));
+  const orderedReports = [...reports.values()].sort((a, b) => b.version - a.version);
+  const report = orderedReports[0] ?? null;
+  const published = orderedReports.find(({ report_id }) => decisions.get(report_id) === "approved");
+  const directorStatus = agents.get("research_director")?.status ?? "waiting";
+  return { status, error, plan, report, published, questions, assignments, toolNames, agents, directorStatus, reportDecision: report && decisions.get(report.report_id) };
 }

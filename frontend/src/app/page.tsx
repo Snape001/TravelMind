@@ -2,11 +2,13 @@ import { ResearchForm } from "@/components/research-form";
 
 export default function Home() {
   return (
-    <main className="shell destination-home">
-      <div className="destination-intro">
-        <h1>想调研哪里？</h1>
-        <ResearchForm />
-      </div>
+    <main className="destination-home">
+      <section className="destination-hero" aria-labelledby="home-title">
+        <div className="destination-content">
+          <h1 id="home-title"><span>山海寻踪，</span><span>知行有据</span></h1>
+          <ResearchForm />
+        </div>
+      </section>
     </main>
   );
 }

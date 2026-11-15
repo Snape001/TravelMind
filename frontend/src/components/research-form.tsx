@@ -71,7 +71,7 @@ export function ResearchForm() {
 
   return (
     <form className="destination-form" onSubmit={submit}>
-      <div className="destination-input-row">
+      <div className="destination-entry">
         <label>
           <MapPin size={21} aria-hidden />
           <input ref={input} name="destination" aria-label="调研目的地" placeholder="输入目的地，例如泉州开元寺"
@@ -82,7 +82,7 @@ export function ResearchForm() {
         </button>
       </div>
       {session.status === "unavailable" && <p role="status">暂时无法读取登录状态，点击开始调研可重试。</p>}
-      {error && <p className="error-text" role="alert">{error}</p>}
+      {error && <p className="destination-error" role="alert">{error}</p>}
     </form>
   );
 }

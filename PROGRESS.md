@@ -5,6 +5,13 @@
 - 初审通过即发布。需要修改时，Writer 按初审意见返修一次，Runtime 校验引用及署名并自动发布新版。校验失败的章节以「资料待核实」提示代替。自动通过沿用 AgentEvent v1，并在工作台事件中说明发布规则。 [运行说明](docs/agent-runtime.md#调研流程)
 - 隔离 PostgreSQL 14 上全量后端 248 项通过，含初审直接通过、返修后自动发布、无效引用和署名处理，以及终态 Checkpoint 重领后的报告版本和事件去重。Alembic 迁移与一致性检查通过。**交付提交**　`fix: approve reports after one revision`。
 
+## Phase 4 · 报告地图与路线联调
+
+- 报告正文接入 `1b394f2` 提供的版本化 MapData，OpenAPI 类型重新生成。支持多日与交通方式切换、备选方案、编号景点、建议停留、换乘站点、独立分段折线、路线证据及正文双向联动。三栏工作台中的陆知行预览在报告发布前读取任务已选路线，发布后读取完整报告快照。
+- 隔离 PostgreSQL 17、默认 Worker、真实高德和 DeepSeek 生成新泉州报告。正式接口返回 2 天、7 个 POI、7 个方案、2 条已选路线和 73 个几何分段，状态为 `partial`。另一账户访问路线及报告地图均收到 404。
+- Chrome 使用正式接口核对日程、站点、备选方案、证据、三栏预览与部分数据提示。当前公交方案的 4 条 Polyline 与接口分段一一对应。地图返回 503 时仍可阅读报告，重试后恢复。41 项前端测试、ESLint、TypeScript 和生产构建通过。 [实现与联调记录](docs/report-map-ui.md)
+- **交付分支**　`codex/report-map-ui`。**交付提交**　`feat: integrate versioned report MapData`。
+
 ## Phase 4 · 默认 Worker 旅游规划与报告地图（2026-11-15）
 
 - 复用问卷后端 `b7d64a8` 和高德适配器 `e080bf2`。结构化问卷的新任务使用 `durable-v3`。Planner 按实际选择调度陆知行，默认 Worker 使用高德 POI 搜索、详情和路线工具。旧简报任务及已有 `durable-v1`、`durable-v2` Checkpoint 沿用原图。
@@ -73,6 +80,14 @@
 - 使用独立 PostgreSQL 14 执行后端回归，227 项测试通过，含 19 项新增专项用例。Ruff、Alembic 一致性检查和 Checkpoint 初始化通过。泉州公开资料样例真实调用 `deepseek-flash` 五次，产出两章及一条引用，独立 Reviewer 批准。
 - 下一步由 Phase 4 集成工作流启用技能入口，接入正式专家调度、问卷和路线资料。本提交保留旧图及默认 Worker 路径。
 - **交付提交**　`feat: add expert skills and staged report writing`。
+
+## Phase 4 · D 线桌面调研工作台（2026-11-15）
+
+- 首页使用「山海寻踪，知行有据」与单目的地入口，接入 POI 确认、研究问卷和可选出行轮次。桌面工作台采用可拖拽三栏，保留任务控制、AgentEvent v1、任务依赖、历史与报告入口。公会、工作台和报告共用身份映射，Writer 与 Reviewer 独立展示。
+- Research Browser 接入独立 SSE、断点续传和来源正文接口。工具动作展示可展开的技术详情，Hover 只使用扩展流提供的脱敏 Prompt 和供应商 Usage。Phase 3 服务仍可创建默认深度的调研，旧任务继续展示文本澄清、已入库证据和章节引用。 [桌面 UI 与接入说明](docs/phase-4-desktop-ui.md)
+- 34 项前端测试、ESLint、TypeScript 和 Next.js 生产构建通过。Chrome 在 1440 与 1024 像素下通过共享 Fixture 验证三轮问卷、栏宽拖拽、双流、来源列表位置恢复、正文与外链、Usage Hover 及报告署名与争议。扩展流在第 3 条断开后从该游标回放。
+- 新版生产界面通过本地 OIDC 读取已有任务，验证真实 AgentEvent 和旧证据摘录。FastAPI 任务、报告和证据读回为 200。AgentEvent 共 66 条，从第 5 条继续重放 61 条。当前环境的 Phase 4 Intake 和 Research Browser 扩展端点未挂载。新问卷与来源流已按冻结契约接线，待集成环境核对真实高德、来源生命周期与供应商 Usage。
+- **交付提交**　基于 `03d56a1` 的 `feat/research-browser-ui`，提交 `feat: build the desktop research workspace`。
 
 ## Phase 4 · Step 0 公共契约
 
