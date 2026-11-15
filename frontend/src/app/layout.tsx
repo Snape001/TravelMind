@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SessionProvider } from "@/components/session";
 import "./globals.css";
 import "./guild-ui.css";
+import "./intake.css";
 
 export const metadata: Metadata = {
   title: "TravelMind",

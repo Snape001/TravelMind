@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from travelmind.config import WAKE_CHANNEL, Settings, get_settings
 from travelmind.db.connection import create_database_engine
 from travelmind.db.worker import PostgresWorkerStore
+from travelmind.research.amap_client import AmapClient
+from travelmind.research.amap_poi import AmapPoi
 from travelmind.research.engine import ResearchEngine
 from travelmind.research.quality import EvidenceQualityScorer
 from travelmind.runtime.checkpoints import (
@@ -24,6 +26,7 @@ from travelmind.runtime.checkpoints import (
     initialize_checkpoints,
 )
 from travelmind.runtime.durable_worker import DurableWorker
+from travelmind.runtime.intake.worker import IntakeWorker
 from travelmind.runtime.model import StructuredModel, open_structured_model
 from travelmind.runtime.reflection import ReflectionConfig
 from travelmind.runtime.retrieval import ResearchRetriever
@@ -109,6 +112,9 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
             lambda lease: FencedPostgresSaver(pool, store, lease),
             retrieve=lambda lease: ResearchRetriever(research, sessions, store=store, lease=lease),
             reflection=reflection_for(model, settings.deepseek_model),
+            intake=IntakeWorker(
+                store, AmapPoi(AmapClient(client, settings.amap_web_api_key)), model
+            ),
             lease_seconds=lease_seconds,
             poll_seconds=poll_seconds,
         )

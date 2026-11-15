@@ -9,6 +9,7 @@ from langgraph.types import Command
 
 from travelmind.runtime.controls import GRAPH_VERSION, REFLECTION_GRAPH_VERSION
 from travelmind.runtime.experts import EvidenceRetriever
+from travelmind.runtime.intake.worker import IntakeWorker, model_with_intake
 from travelmind.runtime.journal import ControlContext
 from travelmind.runtime.model import StructuredModel
 from travelmind.runtime.projection import batches
@@ -39,6 +40,7 @@ class DurableWorker:
         *,
         retrieve: Callable[[LeaseRef], EvidenceRetriever] | None = None,
         reflection: ReflectionConfig | None = None,
+        intake: IntakeWorker | None = None,
         lease_seconds: int = 45,
         poll_seconds: float = 2,
         worker_id: UUID | None = None,
@@ -50,6 +52,7 @@ class DurableWorker:
         self.saver = saver
         self.retrieve = retrieve
         self.reflection = reflection
+        self.intake = intake
         self.lease_seconds = lease_seconds
         self.poll_seconds = poll_seconds
         self.worker_id = worker_id or uuid4()
@@ -107,6 +110,13 @@ class DurableWorker:
         """Reconcile the last checkpoint before issuing any further graph work."""
         # Validate even if a store constructs its claim without running the schema validators.
         claim = TaskClaim.model_validate(claim.model_dump())
+        model = self.model
+        if self.intake is not None:
+            proceed, intake = await self.intake.prepare(claim)
+            if not proceed:
+                return
+            if intake is not None:
+                model = model_with_intake(model, intake)
         lease = claim.lease
         saver = self.saver(lease)
         config = {"configurable": {"thread_id": str(lease.task_id)}}
@@ -125,7 +135,7 @@ class DurableWorker:
             reflection = self.reflection or ReflectionConfig(model_id="unavailable")
         config["configurable"]["graph_version"] = version
         graph = build_research_graph(
-            self.model,
+            model,
             checkpointer=saver,
             retrieve=self.retrieve(lease) if claim.execution_permitted and self.retrieve else None,
             reflection=reflection,

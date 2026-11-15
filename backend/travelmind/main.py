@@ -10,7 +10,7 @@ from redis.asyncio import Redis
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, TimeoutError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from travelmind.api import auth, health, tasks
+from travelmind.api import auth, health, intake, tasks
 from travelmind.api.oidc import AuthSettings, OidcClient
 from travelmind.config import Settings, get_settings
 from travelmind.db.connection import create_database_engine
@@ -57,12 +57,28 @@ def create_app(
     app = FastAPI(title="TravelMind API", version="0.1.0", lifespan=lifespan)
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(intake.router)
     app.include_router(tasks.router)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError):
         route = request.scope.get("route")
-        if getattr(route, "name", None) in {"pause_task", "resume_task", "answer_task"}:
+        if getattr(route, "name", None) == "submit_questionnaire" and any(
+            item["loc"][0] == "body" for item in exc.errors()
+        ):
+            error = ErrorInfo(
+                code="INVALID_QUESTIONNAIRE_ANSWERS",
+                message="答复格式无效，请核对当前问卷",
+                retryable=False,
+            )
+            return JSONResponse(ErrorResponse(detail=error).model_dump(), status_code=422)
+        if getattr(route, "name", None) in {
+            "pause_task",
+            "resume_task",
+            "answer_task",
+            "submit_destination",
+            "submit_questionnaire",
+        }:
             error = ErrorInfo(code="VALIDATION_ERROR", message="请求参数无效", retryable=False)
             return JSONResponse(ErrorResponse(detail=error).model_dump(), status_code=422)
         return await request_validation_exception_handler(request, exc)
