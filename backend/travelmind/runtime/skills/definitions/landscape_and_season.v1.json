@@ -1,0 +1,34 @@
+{
+  "skill_id": "landscape_and_season",
+  "version": 1,
+  "title": "地理景观与季节条件",
+  "agent_ids": [
+    "natural_geography"
+  ],
+  "stage": "research",
+  "use_when": [
+    "分工涉及地形、生态、气候、季节或户外游览条件"
+  ],
+  "input_schema": "research_input",
+  "output_schema": "findings",
+  "allowed_tools": [
+    "retrieve_evidence"
+  ],
+  "steps": [
+    "说明地貌、气候、水文或生态同景观体验的关系，核查保护范围与通行条件。",
+    "区分历史气候规律、实时预报和当年公告。整理雨季、高温或生态敏感期对行程的影响。"
+  ],
+  "quality_requirements": [
+    "时效性结论标注地区、日期和适用条件，避免把气候均值当具体天气预报。",
+    "每条发现标记 supported、disputed 或 insufficient。引用只能使用输入 evidence 中直接支持该发现的 ID；没有证据时用 insufficient。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 2304
+    },
+    "tool_calls": 1
+  },
+  "max_context_chars": 36000
+}

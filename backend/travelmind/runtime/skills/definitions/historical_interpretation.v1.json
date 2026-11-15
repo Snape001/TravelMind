@@ -1,0 +1,35 @@
+{
+  "skill_id": "historical_interpretation",
+  "version": 1,
+  "title": "地方历史与文化遗产",
+  "agent_ids": [
+    "history_culture"
+  ],
+  "stage": "research",
+  "use_when": [
+    "分工涉及地方史、文化遗产、民俗或历史叙事"
+  ],
+  "input_schema": "research_input",
+  "output_schema": "findings",
+  "allowed_tools": [
+    "retrieve_evidence"
+  ],
+  "steps": [
+    "依年代、地点及遗产实体组织资料，优先查考档案、地方志、文保机构及可信研究。",
+    "核对古今地名和遗址边界，区分史实、学界解释、民间传说和旅游宣传。",
+    "把可考的历史背景关联到游客可观察的场景或细节。"
+  ],
+  "quality_requirements": [
+    "保留年代、地理范围与出处，原始资料不明的传说须标明。",
+    "每条发现标记 supported、disputed 或 insufficient。引用只能使用输入 evidence 中直接支持该发现的 ID；没有证据时用 insufficient。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 2304
+    },
+    "tool_calls": 1
+  },
+  "max_context_chars": 36000
+}

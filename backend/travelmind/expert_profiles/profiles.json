@@ -1,0 +1,221 @@
+{
+  "experts": [
+    {
+      "agent_id": "research_director",
+      "name": "程策远",
+      "title": "首席研究总监",
+      "tier": "leadership",
+      "description": "从 brief 和已答澄清中提取目的地、目标、深度和明确限制。",
+      "portrait": "/images/experts/research_director.webp",
+      "fields": [
+        "调研需求",
+        "研究方向"
+      ],
+      "tools": [],
+      "skills": [
+        {
+          "skill_id": "research_scoping",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "history_culture",
+      "name": "沈观澜",
+      "title": "历史文化专家",
+      "tier": "council",
+      "description": "依年代、地点及遗产实体组织资料，优先查考档案、地方志、文保机构及可信研究。",
+      "portrait": "/images/experts/history_culture.webp",
+      "fields": [
+        "地方史",
+        "遗产文化"
+      ],
+      "tools": [
+        "证据检索"
+      ],
+      "skills": [
+        {
+          "skill_id": "historical_interpretation",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "natural_geography",
+      "name": "顾山河",
+      "title": "自然地理专家",
+      "tier": "council",
+      "description": "说明地貌、气候、水文或生态同景观体验的关系，核查保护范围与通行条件。",
+      "portrait": "/images/experts/natural_geography.webp",
+      "fields": [
+        "地貌",
+        "生态与季节"
+      ],
+      "tools": [
+        "证据检索"
+      ],
+      "skills": [
+        {
+          "skill_id": "landscape_and_season",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "tourism_resources",
+      "name": null,
+      "title": "旅游资源专家",
+      "tier": "council",
+      "description": "按游览目的、可观赏的细节及可达条件比较景点。",
+      "portrait": null,
+      "fields": [
+        "景点",
+        "参观条件"
+      ],
+      "tools": [
+        "证据检索"
+      ],
+      "skills": [
+        {
+          "skill_id": "attraction_assessment",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "social_sentiment",
+      "name": "苏听雨",
+      "title": "社交舆情专家",
+      "tier": "council",
+      "description": "按时间、景点和出行场景归纳可引用的公开反馈，区分个人见闻和推广内容。",
+      "portrait": "/images/experts/social_sentiment.webp",
+      "fields": [
+        "游客意见",
+        "样本范围"
+      ],
+      "tools": [
+        "证据检索"
+      ],
+      "skills": [
+        {
+          "skill_id": "visitor_feedback",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "literature_research",
+      "name": "温文渊",
+      "title": "文献研究专家",
+      "tier": "council",
+      "description": "核查作者、题名、版本、年份、DOI 或其他书目标识，区分原始材料和转引。",
+      "portrait": "/images/experts/literature_research.webp",
+      "fields": [
+        "学术文献",
+        "地方志"
+      ],
+      "tools": [
+        "证据检索"
+      ],
+      "skills": [
+        {
+          "skill_id": "literature_verification",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "internet_research",
+      "name": "谢行舟",
+      "title": "互联网研究专家",
+      "tier": "council",
+      "description": "沿网页转载关系追踪最初发布主体，核对发布日期、生效日与适用地域。",
+      "portrait": "/images/experts/internet_research.webp",
+      "fields": [
+        "网页溯源",
+        "公共信息"
+      ],
+      "tools": [
+        "证据检索"
+      ],
+      "skills": [
+        {
+          "skill_id": "web_source_verification",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "travel_planning",
+      "name": "陆知行",
+      "title": "旅游规划专家",
+      "tier": "council",
+      "description": "从已提供的天数、同行人、交通方式及预算判断游览顺序、区域取舍与换乘约束。",
+      "portrait": "/images/experts/tourism_resources.webp",
+      "fields": [
+        "路线",
+        "交通与住宿"
+      ],
+      "tools": [
+        "证据检索"
+      ],
+      "skills": [
+        {
+          "skill_id": "itinerary_assessment",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "report_writer",
+      "name": "叶知秋",
+      "title": "首席执笔官",
+      "tier": "editorial",
+      "description": "按 brief 明确的用户方向和决策顺序设计结构，宽主题允许多节，窄问题可一到两节直接作答。",
+      "portrait": "/images/experts/report_writer.webp",
+      "fields": [
+        "报告结构",
+        "证据整合",
+        "旅游价值"
+      ],
+      "tools": [],
+      "skills": [
+        {
+          "skill_id": "report_architecture",
+          "version": 1
+        },
+        {
+          "skill_id": "evidence_synthesis",
+          "version": 1
+        },
+        {
+          "skill_id": "editorial_writing",
+          "version": 1
+        },
+        {
+          "skill_id": "travel_value_orientation",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "agent_id": "reviewer",
+      "name": "柳怀真",
+      "title": "监察审议官",
+      "tier": "editorial",
+      "description": "独立对照原始 evidence 和 brief 核对关键事实、引用直接性、时效、署名和用户选定的研究方向。",
+      "portrait": "/images/experts/reviewer.webp",
+      "fields": [
+        "事实核验",
+        "独立审核"
+      ],
+      "tools": [],
+      "skills": [
+        {
+          "skill_id": "independent_report_review",
+          "version": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "skill_id": "visitor_feedback",
+  "version": 1,
+  "title": "游客体验与公开评价",
+  "agent_ids": [
+    "social_sentiment"
+  ],
+  "stage": "research",
+  "use_when": [
+    "分工涉及游客反馈、排队、拥挤、服务体验或意见分歧"
+  ],
+  "input_schema": "research_input",
+  "output_schema": "findings",
+  "allowed_tools": [
+    "retrieve_evidence"
+  ],
+  "steps": [
+    "按时间、景点和出行场景归纳可引用的公开反馈，区分个人见闻和推广内容。",
+    "对比不同样本中的一致体验与反例，说明来源、样本边界、潜在偏差及季节差异。"
+  ],
+  "quality_requirements": [
+    "禁止推断评论者真实身份、样本代表性或未经验证的比例。把评论中的指控和争议明确归因。",
+    "每条发现标记 supported、disputed 或 insufficient。引用只能使用输入 evidence 中直接支持该发现的 ID；没有证据时用 insufficient。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 2304
+    },
+    "tool_calls": 1
+  },
+  "max_context_chars": 36000
+}

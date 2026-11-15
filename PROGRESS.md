@@ -67,6 +67,13 @@
 - 隔离的 PostgreSQL 14 上全量 226 项后端测试通过，含 18 项新增测试。Ruff、冻结契约和 Alembic 一致性检查通过。已用 A 线实际客户端和 HTTP 测试响应核对接口。当前环境缺少高德 Web Key，实际供应商响应与浏览器地图待联调。
 - Phase 4 新图、任务路线持久化及读接口、档案注册和浏览器代理沿用各分支集成分工。**交付提交**　`feat: add Amap travel planning expert`。
 
+## Phase 4 · C 线专家 Skills 与报告
+
+- 交付版本化技能定义、专家档案和按角色及阶段加载的注册表。Writer 依序执行大纲、跨专家证据整合、撰写和全篇编辑，独立 Reviewer 核对事实、引证、覆盖和旅游实用性。沿用现有报告及事件契约。 [技能与集成说明](docs/expert-skills-report.md)
+- 使用独立 PostgreSQL 14 执行后端回归，227 项测试通过，含 19 项新增专项用例。Ruff、Alembic 一致性检查和 Checkpoint 初始化通过。泉州公开资料样例真实调用 `deepseek-flash` 五次，产出两章及一条引用，独立 Reviewer 批准。
+- 下一步由 Phase 4 集成工作流启用技能入口，接入正式专家调度、问卷和路线资料。本提交保留旧图及默认 Worker 路径。
+- **交付提交**　`feat: add expert skills and staged report writing`。
+
 ## Phase 4 · Step 0 公共契约
 
 - 冻结目的地、动态问卷、路线偏好、专家档案与 Skills、Research Browser 事件、模型用量和社交证据。交付 Pydantic Schema、共享合成 Fixture 和独立类型导出。现有路由、AgentEvent v1、六态任务机及 Worker 仍走 Phase 3。 [公共接口](docs/phase-4-contract.md)

@@ -1,0 +1,34 @@
+{
+  "skill_id": "itinerary_assessment",
+  "version": 1,
+  "title": "行程设计与可达性核验",
+  "agent_ids": [
+    "travel_planning"
+  ],
+  "stage": "plan_route",
+  "use_when": [
+    "已安排交通、住宿区位、游览顺序或路线相关分工"
+  ],
+  "input_schema": "research_input",
+  "output_schema": "findings",
+  "allowed_tools": [
+    "retrieve_evidence"
+  ],
+  "steps": [
+    "从已提供的天数、同行人、交通方式及预算判断游览顺序、区域取舍与换乘约束。",
+    "区分证据给出的实测路段与估算的建议停留时间，指出季节、预约及无障碍条件。"
+  ],
+  "quality_requirements": [
+    "没有地图查询数据时保留具体耗时和距离缺口，只描述有出处或明示为建议的方案。",
+    "每条发现标记 supported、disputed 或 insufficient。引用只能使用输入 evidence 中直接支持该发现的 ID；没有证据时用 insufficient。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 2304
+    },
+    "tool_calls": 1
+  },
+  "max_context_chars": 36000
+}

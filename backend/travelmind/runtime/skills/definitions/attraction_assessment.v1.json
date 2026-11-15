@@ -1,0 +1,35 @@
+{
+  "skill_id": "attraction_assessment",
+  "version": 1,
+  "title": "游览资源与现场条件",
+  "agent_ids": [
+    "tourism_resources"
+  ],
+  "stage": "research",
+  "use_when": [
+    "分工涉及景点取舍、场馆参观、预约或游客服务"
+  ],
+  "input_schema": "research_input",
+  "output_schema": "findings",
+  "allowed_tools": [
+    "retrieve_evidence"
+  ],
+  "steps": [
+    "按游览目的、可观赏的细节及可达条件比较景点。",
+    "优先从运营单位或主管部门核对开放、预约、票务、临时闭馆及无障碍信息。",
+    "区分已核验的运营规则、建议的停留安排及资料缺口。"
+  ],
+  "quality_requirements": [
+    "限制和价格带上具体适用条件与来源日期，材料不足时列出出发前应复核的事项。",
+    "每条发现标记 supported、disputed 或 insufficient。引用只能使用输入 evidence 中直接支持该发现的 ID；没有证据时用 insufficient。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 2304
+    },
+    "tool_calls": 1
+  },
+  "max_context_chars": 36000
+}

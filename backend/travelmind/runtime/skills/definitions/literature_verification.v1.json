@@ -1,0 +1,34 @@
+{
+  "skill_id": "literature_verification",
+  "version": 1,
+  "title": "学术文献与书目核验",
+  "agent_ids": [
+    "literature_research"
+  ],
+  "stage": "research",
+  "use_when": [
+    "分工需要论文、书目、地方志版本或关键论点的原始出处"
+  ],
+  "input_schema": "research_input",
+  "output_schema": "findings",
+  "allowed_tools": [
+    "retrieve_evidence"
+  ],
+  "steps": [
+    "核查作者、题名、版本、年份、DOI 或其他书目标识，区分原始材料和转引。",
+    "根据可读原文或摘要判断论文结论的范围、样本和可迁移性。"
+  ],
+  "quality_requirements": [
+    "仅有元数据时不得声称读过全文。解释文献分歧及过度外推风险。",
+    "每条发现标记 supported、disputed 或 insufficient。引用只能使用输入 evidence 中直接支持该发现的 ID；没有证据时用 insufficient。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 2304
+    },
+    "tool_calls": 1
+  },
+  "max_context_chars": 36000
+}

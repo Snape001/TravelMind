@@ -1,0 +1,33 @@
+{
+  "skill_id": "report_architecture",
+  "version": 1,
+  "title": "全篇报告结构规划",
+  "agent_ids": [
+    "report_writer"
+  ],
+  "stage": "outline",
+  "use_when": [
+    "收到当前任务的专家成果，或独立审核提出返工"
+  ],
+  "input_schema": "outline_input",
+  "output_schema": "report_outline",
+  "allowed_tools": [],
+  "steps": [
+    "按 brief 明确的用户方向和决策顺序设计结构，宽主题允许多节，窄问题可一到两节直接作答。",
+    "为每个章节设置可区分的任务，并按章节目的映射给定 finding_ids。每个给定 ID 只出现一次，可将超出用户范围的 ID 放入 omitted_finding_ids。",
+    "用 revision_notes 调整使用户无法作出判断的结构性缺口。"
+  ],
+  "quality_requirements": [
+    "按主题、游览体验或实际决策组织章节。将历史、地理、文化与现场体验自然关联，由材料和用户优先项决定篇幅。",
+    "重要争议、研究局限和用户明确方向要在相应章节留有位置。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 45,
+      "max_attempts": 2,
+      "max_output_tokens": 3072
+    },
+    "tool_calls": 0
+  },
+  "max_context_chars": 65000
+}
