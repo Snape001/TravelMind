@@ -1,5 +1,11 @@
 # TravelMind 开发进度
 
+## 账户认证 · 专项审查与契约（2026-11-15）
+
+- 以 main `123c237` 核对 Keycloak、OIDC 与前端账户链路。运行中的本地登录页只提供登录，注册及密码重置关闭。应用注销已支持本地会话和 SSE 吊销。个人资料和跨设备报告列表待实现。 [设计、接口与验收清单](docs/account-auth-contract.md)
+- 冻结 Keycloak 原生注册、邮箱验证、重置和资料编辑的接入方式。明确服务器端报告列表、会话身份映射、单点退出及后通道吊销。业务实现留到后续开发。
+- 本地 HTTPS、Discovery、JWKS 和 PKCE 探测通过，匿名会话返回 401。隔离 PostgreSQL 认证和 Research Browser 定向回归 5 项、前端 31 项通过。邮件和 Keycloak 单点退出仍需完成真实端到端验证。**交付提交**　`docs: freeze account authentication upgrade contract`。
+
 ## 沈观澜 · 游记与地方志检索（2026-11-15）
 
 - 古籍分支 `dac15fd` 接入 CNKGraph 正文检索和读卷。分支实测从《徐霞客游记》和《大清一统志》取得 3 条原文，均写入独立 PostgreSQL 并进入沈观澜的结构化分析。 [接口和启用方式](docs/research-engine.md#游记与地方志)
