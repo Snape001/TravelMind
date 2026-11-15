@@ -6,7 +6,7 @@ import { ArrowRight, MapPin } from "lucide-react";
 import { destinationLoginDraft, prepareDestination } from "@/lib/intake";
 import { createDestinationTask, loginHref } from "@/lib/task-client";
 import { rememberTask } from "@/lib/task-history";
-import { useSession } from "./session";
+import { saveLoginReturn, useSession } from "./session";
 
 export function ResearchForm() {
   const { session, handleError, refresh } = useSession();
@@ -40,6 +40,7 @@ export function ResearchForm() {
       const body = prepareDestination(input.current?.value ?? "");
       if (session.status === "anonymous") {
         try { sessionStorage.setItem(destinationLoginDraft, body.destination); } catch { /* Optional draft. */ }
+        saveLoginReturn();
         window.location.assign(loginHref);
         return;
       }

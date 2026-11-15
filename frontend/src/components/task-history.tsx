@@ -1,25 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, FlaskConical } from "lucide-react";
 import { ApiError, readTask } from "@/lib/task-client";
-import { destinationLoginDraft } from "@/lib/intake";
 import { readTaskHistory } from "@/lib/task-history";
 import { formatDate, taskStatusLabels, workbenchHref, type TaskRead } from "@/lib/research";
 import { SessionPrompt, useSession } from "./session";
 
 export function TaskHistory() {
   const { session } = useSession();
-  const router = useRouter();
-  const userId = session.user?.user_id;
-  useEffect(() => {
-    if (!userId) return;
-    try {
-      if (sessionStorage.getItem(destinationLoginDraft)) router.replace("/");
-    } catch { /* History remains usable without browser storage. */ }
-  }, [userId, router]);
   return session.user ? <HistoryList key={session.user.user_id} userId={session.user.user_id} /> : <SessionPrompt />;
 }
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { makeAnswers, nextSnapshot, taskControls } from "../src/lib/task-lifecycle";
 import { ApiError, createTask, readSession, sendCommand, subscribe } from "../src/lib/task-client";
+import { rememberLoginReturn, takeLoginReturn } from "../src/lib/login-return";
 import { readTaskHistory, rememberTask } from "../src/lib/task-history";
 import { demoResearch } from "../src/lib/demo";
 import type { AgentEvent, PendingClarification, TaskRead } from "../src/lib/research";
@@ -92,6 +93,30 @@ test("HTTP client sends CSRF and idempotency headers, with a body only for answe
 test("the HTTP client exposes session expiry as a typed 401", async (t) => {
   t.mock.method(globalThis, "fetch", async () => Response.json({ detail: { code: "UNAUTHENTICATED", message: "请登录", retryable: false } }, { status: 401 }));
   await assert.rejects(readSession(), (error: unknown) => error instanceof ApiError && error.status === 401 && error.code === "UNAUTHENTICATED");
+});
+
+test("OIDC return restores the original in-app path once and rejects expired or external destinations", () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  };
+  const origin = "https://travelmind.localhost";
+  const current = new URL(`${origin}/reports?view=recent#evidence-1`);
+  rememberLoginReturn(current, storage, 1000);
+  assert.equal(takeLoginReturn(origin, storage, 2000), "/reports?view=recent#evidence-1");
+  assert.equal(takeLoginReturn(origin, storage, 2000), null);
+  rememberLoginReturn(current, storage, 1000);
+  assert.equal(takeLoginReturn(origin, storage, 601000), null);
+
+  for (const path of ["//example.com", "/\\example.com", "https://example.com", "/api/v1/auth/login"]) {
+    rememberLoginReturn(current, storage, 1000);
+    const [key, value] = [...values.entries()][0];
+    values.set(key, JSON.stringify({ ...JSON.parse(value), path }));
+    assert.equal(takeLoginReturn(origin, storage, 2000), null);
+    assert.equal(values.size, 0);
+  }
 });
 
 test("SSE reconnects from the last accepted sequence and cancels stale streams and reconnects", (t) => {

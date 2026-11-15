@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { Compass, FileText, FlaskConical, House, UsersRound } from "lucide-react";
-import { loginHref } from "@/lib/task-client";
-import { useSession } from "./session";
+import { useRef, useState } from "react";
+import { ChevronDown, Compass, FileText, FlaskConical, House, LogIn, LogOut, UserRound, UsersRound } from "lucide-react";
+import { LoginLink, useSession } from "./session";
 
 const links = [
   { href: "/", match: "/", label: "首页", icon: House },
@@ -17,16 +16,6 @@ const links = [
 export function SiteHeader() {
   const pathname = usePathname();
   const { session, signOut } = useSession();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  async function leave() {
-    setBusy(true);
-    setError("");
-    try { await signOut(); }
-    catch (problem) { setError(problem instanceof Error ? problem.message : "退出登录失败。"); }
-    finally { setBusy(false); }
-  }
   return (
     <header className="site-header">
       <div className="shell header-grid">
@@ -43,13 +32,54 @@ export function SiteHeader() {
           })}
         </nav>
         <div className="header-session">
-          {session.user ? <>
-            <span className="account-name" title={session.user.display_name ?? "已登录"}>{session.user.display_name ?? "已登录"}</span>
-            <button className="button secondary" type="button" onClick={leave} disabled={busy}>{busy ? "正在退出…" : "退出"}</button>
-          </> : session.status === "anonymous" && <a className="button secondary" href={loginHref}>登录</a>}
-          {error && <p className="error-text header-session-error" role="alert">{error}</p>}
+          {session.user ? <AccountMenu key={session.user.user_id} displayName={session.user.display_name} signOut={signOut} /> :
+            session.status === "loading" ? <span className="header-session-loading" role="status">正在检查登录状态…</span> :
+              <LoginLink className="button secondary header-login"><LogIn size={15} aria-hidden />登录 / 注册</LoginLink>}
         </div>
       </div>
     </header>
   );
+}
+
+function AccountMenu({ displayName, signOut }: { displayName?: string | null; signOut: () => Promise<void> }) {
+  const menu = useRef<HTMLDetailsElement>(null);
+  const trigger = useRef<HTMLElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const name = displayName?.trim();
+
+  function close() {
+    if (menu.current) menu.current.open = false;
+  }
+
+  async function leave() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try { await signOut(); }
+    catch (problem) { setError(problem instanceof Error ? problem.message : "退出登录失败，请重试。"); }
+    finally { setBusy(false); }
+  }
+
+  return <details ref={menu} className="account-menu"
+    onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) close(); }}
+    onKeyDown={(event) => {
+      if (event.key === "Escape" && menu.current?.open) {
+        close();
+        trigger.current?.focus();
+      }
+    }}>
+    <summary ref={trigger} className="account-trigger" aria-label="账户菜单" title={name}>
+      <span className="account-avatar" aria-hidden>{name ? Array.from(name)[0] : <UserRound size={17} />}</span>
+      <ChevronDown size={15} aria-hidden />
+    </summary>
+    <div className="account-panel">
+      <p className="account-name">{name || "已登录"}</p>
+      <Link href="/reports" onClick={close}><FileText size={16} aria-hidden />我的报告</Link>
+      <button type="button" onClick={leave} aria-disabled={busy}>
+        <LogOut size={16} aria-hidden />{busy ? "正在退出…" : "退出登录"}
+      </button>
+      {error && <p className="error-text account-error" role="alert">{error}</p>}
+    </div>
+  </details>;
 }
