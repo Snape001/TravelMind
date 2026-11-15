@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, CircleCheck, FileText, MessagesSquare } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowUpRight, CircleCheck, FileText, MapPin, MessagesSquare } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { EvidenceCard } from "./evidence-card";
 import { ExpertLabel } from "./expert-identity";
 import { reportDiscussion } from "@/lib/report-discussion";
@@ -10,7 +10,10 @@ import { canonicalAgentId } from "@/lib/experts";
 import { readReport } from "@/lib/task-client";
 import { formatDate, workbenchHref, type ReportRead } from "@/lib/research";
 import { demo, demoResearch } from "@/lib/demo";
+import { splitPoiMentions } from "@/lib/report-map";
 import { SessionPrompt, useSession } from "./session";
+import { RouteMapPanel, useTaskRouteMap, type ReportChapter } from "./route-map-panel";
+import type { PoiSelection } from "./route-map-canvas";
 
 export function ReportReader({ taskId, reportId }: { taskId: string; reportId: string }) {
   const { session } = useSession();
@@ -28,6 +31,9 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
   const [attempt, setAttempt] = useState(0);
   const report = example ? demoResearch.reports.find(({ report_id }) => report_id === reportId) : loaded;
   const error = example && !report ? "该任务的报告暂不可用。" : loadError;
+  const { state: routeState, retry: retryRoutes } = useTaskRouteMap(taskId, !!report && !example);
+  const [mapSelection, setMapSelection] = useState<PoiSelection | null>(null);
+  const selectPoi = useCallback((id: string) => setMapSelection({ id }), []);
   useEffect(() => {
     if (example) return;
     const controller = new AbortController();
@@ -47,6 +53,24 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
   }, [report]);
 
   const sections = report?.content.sections ?? [];
+  const routeData = routeState.kind === "ready" ? routeState.data : undefined;
+  const linked = useMemo(() => {
+    const stops = routeData?.stops.map(({ place }) => ({ id: place.poi_id, name: place.name })) ?? [];
+    const chapters = new Map<string, ReportChapter[]>();
+    const chaptersWithLinks = report?.content.sections.map((section, index) => {
+      const heading = splitPoiMentions(section.heading, stops);
+      const body = splitPoiMentions(section.body, stops);
+      const ids = new Set([...heading, ...body].flatMap(({ id }) => id ? [id] : []));
+      for (const id of ids) {
+        const chapter = { id: `section-${index + 1}`, title: section.heading };
+        const references = chapters.get(id);
+        if (references) references.push(chapter);
+        else chapters.set(id, [chapter]);
+      }
+      return { heading, body };
+    });
+    return { chapters, chaptersWithLinks };
+  }, [report, routeData]);
   const evidence = new Map(Array.from(new Set(sections.flatMap(({ evidence_ids }) => evidence_ids ?? [])))
     .map((id, index) => [id, index + 1]));
   return (
@@ -64,23 +88,31 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
         <div className="reader-grid">
           <nav className="panel toc" aria-label="报告目录">
             <h2>目录</h2>
-            <ol>{sections.map((section, index) => <li key={index}><a href={`#section-${index + 1}`}>{section.heading}</a></li>)}
+            <ol><li><a href="#report-map">目的地地图与游览规划</a></li>
+              {sections.map((section, index) => <li key={index}><a href={`#section-${index + 1}`}>{section.heading}</a></li>)}
               {evidence.size > 0 && <li><a href="#sources">参考资料与证据</a></li>}
             </ol>
           </nav>
           <article className="panel report-content">
+            <section id="report-map" className="report-section" aria-labelledby="report-map-title">
+              <h2 id="report-map-title" className="report-map-title"><MapPin size={21} aria-hidden />目的地地图与游览规划</h2>
+              <RouteMapPanel state={routeState} selection={mapSelection} onSelect={selectPoi}
+                retry={retryRoutes} chapters={linked.chapters} />
+            </section>
             {sections.map((section, index) => {
               const discussion = reportDiscussion(section.heading);
               const DiscussionIcon = discussion === "consensus" ? CircleCheck : MessagesSquare;
               return <section key={index} id={`section-${index + 1}`} className="report-section">
                 <div className={discussion ? `report-discussion ${discussion}` : undefined}>
-                  <h2>{discussion && <DiscussionIcon size={21} aria-hidden />}{section.heading}</h2>
+                  <h2>{discussion && <DiscussionIcon size={21} aria-hidden />}
+                    <PoiMentions parts={linked.chaptersWithLinks?.[index]?.heading} onSelect={selectPoi} />
+                  </h2>
                   <div className="byline">
                     <span>章节署名</span>
                     <ul aria-label="本章专家">{Array.from(new Set(section.author_agent_ids.map(canonicalAgentId))).map((id) =>
                       <li key={id}><ExpertLabel id={id} avatar /></li>)}</ul>
                   </div>
-                  <p className="report-body">{section.body}</p>
+                  <p className="report-body"><PoiMentions parts={linked.chaptersWithLinks?.[index]?.body} onSelect={selectPoi} /></p>
                   {(section.evidence_ids?.length ?? 0) > 0 && <p className="citation-links">引用 {Array.from(new Set(section.evidence_ids)).map((id) =>
                     <a className="chip" key={id} href={`#evidence-${id}`} aria-label={`查看引用 ${evidence.get(id)}`}>[{evidence.get(id)}]</a>)}</p>}
                 </div>
@@ -100,4 +132,10 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
       </section>}
     </main>
   );
+}
+
+function PoiMentions({ parts, onSelect }: { parts?: ReturnType<typeof splitPoiMentions>; onSelect: (id: string) => void }) {
+  return parts?.map(({ text, id }, index) => id
+    ? <a className="report-poi-link" key={index} href="#report-map" onClick={() => onSelect(id)}>{text}</a>
+    : text);
 }

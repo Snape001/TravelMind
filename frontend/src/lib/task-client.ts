@@ -64,6 +64,8 @@ export const readReport = (taskId: string, reportId: string, signal: AbortSignal
   json<ReportRead>(`${taskUrl(taskId)}/reports/${encodeURIComponent(reportId)}`, { signal });
 export const readEvidence = (taskId: string, id: string, signal: AbortSignal) =>
   json<EvidenceRead>(`${taskUrl(taskId)}/evidence/${encodeURIComponent(id)}`, { signal });
+export const readTaskRoutes = (taskId: string, signal: AbortSignal) =>
+  json<components["schemas"]["TravelRoutesRead"]>(`${taskUrl(taskId)}/routes`, { signal });
 
 export function subscribe(
   task: Pick<TaskRead, "task_id" | "trace_id">, after: number,

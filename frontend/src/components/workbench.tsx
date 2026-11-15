@@ -19,6 +19,7 @@ import { WorkspacePanes } from "./workspace-panes";
 import { SessionPrompt, useSession } from "./session";
 import { TaskControls } from "./task-controls";
 import { useTaskSession } from "./use-task-session";
+import { WorkbenchRoutePreview } from "./workbench-route-preview";
 
 const noResearchEvents: ResearchEvent[] = [];
 
@@ -127,6 +128,8 @@ function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: Curr
         </header>
         <div className="guild-scroll">
           <TeamGraph view={view} selected={agent} onSelect={setAgent} usageFor={research.usageFor} />
+          {user && !example && view.assignments.some(({ agent_id, status }) =>
+            agent_id === "travel_planning" && status === "completed") && <WorkbenchRoutePreview taskId={taskId} />}
           <details className="workflow-details assignments-panel">
             <summary><ListChecks size={15} aria-hidden />任务分工
               {view.assignments.length > 0 && <span className="panel-aside">{completed}/{view.assignments.length} 已完成</span>}
