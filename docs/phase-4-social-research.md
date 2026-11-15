@@ -61,7 +61,9 @@ $job = & $social -Action Collect -Platform xiaohongshu -Keyword '泉州 预约'
 & $social -Action Read -Platform xiaohongshu -Keyword '泉州 预约'
 ```
 
-参数边界：`-MaxNotes` 限制搜索模式单次抓取的原帖数，范围 1–50，默认 20；`-TimeoutSeconds` 范围 60–7200，默认 1800。CLI 固定单并发（`--max_concurrency_num 1`）、每帖评论上限 20、不启用 IP 代理、不下载媒体文件。
+参数边界：`-MaxNotes` 限制搜索模式单次抓取的原帖数，范围 1–50，默认 20；`-TimeoutSeconds` 范围 60–7200，默认 1800。CLI 固定单并发（`--max_concurrency_num 1`）、每帖评论上限 20、不启用 IP 代理、不下载媒体文件。搜索模式按平台单页取数，`MaxNotes` 低于单页时上游会补满一页：小红书、B站、知乎单页 20 条，抖音单页 10 条。
+
+固定版默认启用 CDP 模式，采集通过本机已安装的 Chrome 或 Edge 启动（本机两者都已检测到），浏览数据保存在 `MediaCrawler\browser_data\cdp_<平台>_user_data_dir`，登录状态随该目录复用；只有在没有 Chrome/Edge 时才需要 Playwright Chromium 或改用标准模式。详情模式需要对应平台的内容链接：知乎支持回答、文章和视频链接，纯问题链接没有详情分支；小红书需要带 `xsec_token` 的分享链接；B站和抖音支持视频链接或平台 ID。
 
 护栏与边界：本编排只复用上游自带的二维码登录和反检测脚本，不新增验证码识别、代理池或账号池。运行前须按「上游与使用范围」确认目标平台允许该访问方式和数据使用范围；遇到验证码、拒绝访问或限流时立即停止该渠道，不重试绕过。CLI 错误码：`2` 参数无效，`3` 上游 checkout 或 venv 校验失败，`4` 采集进程非零退出（见 crawler.log），`5` 采集超时，`6` 未产出原帖文件。
 
