@@ -7,11 +7,12 @@ from uuid import UUID, uuid4, uuid5
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.types import Command
 
-from travelmind.runtime.controls import GRAPH_VERSION
+from travelmind.runtime.controls import GRAPH_VERSION, REFLECTION_GRAPH_VERSION
 from travelmind.runtime.experts import EvidenceRetriever
 from travelmind.runtime.journal import ControlContext
 from travelmind.runtime.model import StructuredModel
 from travelmind.runtime.projection import batches
+from travelmind.runtime.reflection import ReflectionConfig
 from travelmind.runtime.workflow import build_research_graph
 from travelmind.schemas.agents import ErrorInfo
 from travelmind.schemas.worker import (
@@ -37,6 +38,7 @@ class DurableWorker:
         saver: Callable[[LeaseRef], BaseCheckpointSaver],
         *,
         retrieve: Callable[[LeaseRef], EvidenceRetriever] | None = None,
+        reflection: ReflectionConfig | None = None,
         lease_seconds: int = 45,
         poll_seconds: float = 2,
         worker_id: UUID | None = None,
@@ -47,6 +49,7 @@ class DurableWorker:
         self.model = model
         self.saver = saver
         self.retrieve = retrieve
+        self.reflection = reflection
         self.lease_seconds = lease_seconds
         self.poll_seconds = poll_seconds
         self.worker_id = worker_id or uuid4()
@@ -106,12 +109,27 @@ class DurableWorker:
         claim = TaskClaim.model_validate(claim.model_dump())
         lease = claim.lease
         saver = self.saver(lease)
+        config = {"configurable": {"thread_id": str(lease.task_id)}}
+        previous = await saver.aget_tuple(config)
+        version = (
+            REFLECTION_GRAPH_VERSION if self.reflection and self.reflection.score else GRAPH_VERSION
+        )
+        if previous is not None:
+            version = previous.metadata.get("graph_version")
+        if version not in (GRAPH_VERSION, REFLECTION_GRAPH_VERSION):
+            await self._failure(lease, "CHECKPOINT_VERSION_MISMATCH", retryable=False)
+            return
+        reflection = None
+        if version == REFLECTION_GRAPH_VERSION:
+            # This configuration also compiles the graph for read-only reconciliation.
+            reflection = self.reflection or ReflectionConfig(model_id="unavailable")
+        config["configurable"]["graph_version"] = version
         graph = build_research_graph(
             self.model,
             checkpointer=saver,
             retrieve=self.retrieve(lease) if claim.execution_permitted and self.retrieve else None,
+            reflection=reflection,
         )
-        config = {"configurable": {"thread_id": str(lease.task_id), "graph_version": GRAPH_VERSION}}
         force_pause = False
 
         async def should_pause() -> bool:
@@ -126,7 +144,7 @@ class DurableWorker:
             checkpoint = await saver.aget_tuple(config)
             snapshot = None
             if checkpoint is not None:
-                if checkpoint.metadata.get("graph_version") != GRAPH_VERSION:
+                if checkpoint.metadata.get("graph_version") != version:
                     await self._failure(lease, "CHECKPOINT_VERSION_MISMATCH", retryable=False)
                     return
                 # Pin to the committed checkpoint. Latest/live state additionally applies
@@ -155,13 +173,17 @@ class DurableWorker:
                 )
                 return
 
+            if reflection is not None and reflection.score is None:
+                await self._failure(lease, "REFLECTION_SCORER_UNAVAILABLE", retryable=True)
+                return
+
             if snapshot is None:
                 if not isinstance(current.instruction, StartResearch):
                     await self._failure(lease, "CHECKPOINT_MISSING", retryable=False)
                     return
                 inputs = {
-                    "task_id": lease.task_id,
-                    "trace_id": claim.trace_id,
+                    "task_id": UUID(str(lease.task_id)),
+                    "trace_id": UUID(str(claim.trace_id)),
                     "brief": current.instruction.brief,
                     "start_instruction_id": current.instruction.instruction_id,
                 }

@@ -1,5 +1,12 @@
 # TravelMind 开发进度
 
+## Phase 3 · Expert Reflection（2026-11-15）
+
+- 各专家独立判断证据覆盖、评级、独立佐证与关键冲突。Research Director 负责分工补查、轮次与预算、全任务最多一次的定向质询。终态保存结构化判断与未解决问题，Writer 和 Reviewer 延续独立职责。[运行说明](docs/expert-reflection.md)
+- Worker 在可用时对接 A 线评分器，启动 `durable-v2`。已保存的 `durable-v1` 任务按旧图续跑。已验证暂停后继续、已提交轮次恢复、仅投影租约补齐结果和旧 epoch 拒写。
+- 临时 PostgreSQL 14 上独立分支 138 项通过，1 项联调随 A 线提供。接入 A 线提交 `8b90fa3` 后 167 项通过，含真实评分器代码及固定语义响应。Ruff 通过，外部模型和检索供应商留待真实任务验收。
+- **交付提交**　`feat: add bounded expert reflection workflow`。
+
 ## Phase 3 · 公共接口基线（2026-11-15）
 
 - 冻结 `EvidenceQuality`、`ReflectionState`、`ReflectionAction`、`ExpertResearchResult` 和 `EvaluationCase`。评分附规则依据或原文摘录，绑定证据、分工、评分版本和时间上下文。反思契约定义四种状态、补查策略和停止条件，离线评测以参考发现及证据快照为基线。[架构及接口](docs/phase-3-contract.md)

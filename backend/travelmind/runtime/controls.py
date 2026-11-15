@@ -10,6 +10,7 @@ from travelmind.schemas.api import ClarificationQuestion, PendingClarification
 from travelmind.schemas.worker import AnswerClarification, ExecutionInstruction, ResumePause
 
 GRAPH_VERSION = "durable-v1"
+REFLECTION_GRAPH_VERSION = "durable-v2"
 instruction_adapter = TypeAdapter(ExecutionInstruction)
 
 
