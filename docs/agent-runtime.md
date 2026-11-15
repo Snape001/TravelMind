@@ -7,8 +7,8 @@
 1. Research Director 整理 `ResearchBrief`。影响研究方向的信息缺失时，持久化工作流发布澄清问题并暂停在 Checkpoint。用户答复后，Worker 恢复同一任务并重新整理简报。
 2. Planner 从历史文化、自然地理、旅游资源、社交舆情和旅游规划五个角色中选出 3–5 个专家，生成任务目标和依赖。图校验专家名册与依赖关系，并生成 `ResearchPlan`。
 3. Runtime 每轮通过 LangGraph `Send` 并行派发依赖已结束的任务。成功的依赖提供结论与引用。必要依赖失败时，其下游专家会收到 `DEPENDENCY_FAILED`，其他任务继续。没有可用研究结果时任务失败。
-4. 两个或以上专家取得研究结果时，每位专家质询另一位专家的一条结论，并由对方依据对应证据答复。质询失败时，流程保留已有结论。Writer 汇总各专家成果及答复。
-5. Reviewer 检查报告正文、证据和署名。未知引用及无对应贡献的署名会被退回。Writer 带审核意见修订，默认最多返工一次。审核通过后，图发布 `report.ready`，耗尽返工次数则以 `REVIEW_REJECTED` 结束。
+4. 在 `durable-v2` 中，专家为自己的发现核对证据评分、出处与冲突。Research Director 依据各分工状态与预算协调补查，并在关键冲突时安排定向质询。`durable-v1` 任务继续原有的专家两两质询流程。[专家反思与恢复](expert-reflection.md)
+5. Writer 汇总已支持的结论、争议及证据缺口。Reviewer 独立检查报告正文、证据等级、原文支撑与署名。Writer 带审核意见修订，默认最多返工一次。审核通过后，图发布 `report.ready`，耗尽返工次数则以 `REVIEW_REJECTED` 结束。
 
 ## 执行与持久化
 

@@ -4,9 +4,9 @@
 
 ## 档案与肖像
 
-- [`frontend/src/lib/experts.ts`](../frontend/src/lib/experts.ts) 提供前端 `ExpertProfile` Fixture，以服务已有的 `agent_id` 为键。档案描述与工具能力是界面展示信息，运行中的工具调用仍以 SSE 事件为准。
+- [`frontend/src/lib/experts.ts`](../frontend/src/lib/experts.ts) 提供统一的前端 `ExpertProfile`，由公会、工作台、事件和报告署名共享。真实 `writer` 事件指向 `report_writer` 档案，`planner` 使用已有研究规划角色的展示身份。工具调用以实际 SSE 事件为准。
 - 九张肖像由内置 imagegen 逐张生成，保存到 [`frontend/public/images/experts/`](../frontend/public/images/experts/)，规格为 640 × 640 的 WebP。文件名是 `<agent_id>.webp`，使用正方形头肩与上身构图，保留头像裁切所需的头部留白。
-- 历史任务仍可通过 `/guild/travel_planning` 打开旅游规划专家的原有档案。旅游规划专家及尚无档案的 Agent 使用图标头像。未登记的 Agent 显示原始 ID。
+- 旅游规划和研究规划使用图标头像，原有 `/guild/travel_planning` 路径继续可用。文献与互联网研究详情展示公会档案，实际动态派发角色由后端专家名册决定。未登记的 Agent 显示原始 ID。
 
 ## 工作台与报告
 

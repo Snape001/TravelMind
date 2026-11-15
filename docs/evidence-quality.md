@@ -2,6 +2,8 @@
 
 `travelmind.research.quality.EvidenceQualityScorer.assess` 接收现有 `AgentInput` 的分工和已持久化的 `Evidence`。调用方为同一分工的各轮提供固定的带时区 `as_of` 和 `max_age_days`。返回结果与输入顺序一致，并带回原始 Evidence ID、来源、摘录和日期。
 
+生产 Worker 在 Research Engine 的结果去重并持久化后调用评分器。首次与增量补查均按 A/B/C/D、同级加权分确定语义评分优先级，增量轮优先新材料。专家依据冻结评分卡和语义核验生成补查动作。超出批次预算的原始材料仍保留在调研快照。
+
 ```python
 from travelmind.research.quality import EvidenceQualityScorer
 
@@ -47,4 +49,4 @@ follow_up = [decision for decision in decisions if decision.target_question is n
 
 调用方可以注入现有 Runtime 的 `StructuredModel` 和实际 `model_id`。默认只对通过溯源、时效和正文检查、相关性仍不明确的材料请求语义判断。下游需要完整的冻结评分卡时使用 `require_contract_cards=True`，从 `decision.quality` 读取通过验证的 `EvidenceQuality`。评分卡仍按 [Phase 3 v1](phase-3-contract.md#evidencequality) 实施五维等权及 `high/medium/low`。A/B/C/D 分数、内容完整性和独立性用于证据筛选。
 
-语义调用每批最多 4 条，每条提交最多 4,000 个摘录字符，复用调用方的 `RunBudget` 超时和重试。模型必须返回该批次的全部 Evidence ID，并用逐字引用提供正分依据。无效或失败的批次保留规则结果，评分卡留空。成功结果存入最多 256 条的实例缓存，按任务、分工、简报、时间窗口、模型、契约版本和证据快照区分。重放或补查时复用同一评分器可复用已经核验的语义判断。
+语义调用每批最多 4 条，每条提交最多 4,000 个摘录字符，复用调用方的 `RunBudget` 超时和重试。应用先检查该批的 Evidence ID，再逐条核对字面摘录。失败的条目保留规则结果，同批通过核验的评分卡照常保留。成功结果存入最多 256 条的实例缓存，按任务、分工、简报、时间窗口、模型、契约版本和证据快照区分。重放或补查时复用同一评分器可复用已经核验的语义判断。

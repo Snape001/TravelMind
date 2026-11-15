@@ -53,7 +53,7 @@ LLM 维度返回 `score`、简短 `reason` 和逐字 `quote`。正分必须给�
 
 接入时继续用 `ResearchState.results`、`evidence` 和 `assignment_runs` 关联运行与材料。把新增结果放在可缺省的 `expert_research` 字典，以既有 `run_id` 为键。并行合并沿用 `merge_records` 的规则，允许回放相同记录，拒绝同键写入不同值。活动轮次按运行 ID 和轮次保存独立的决策及评分快照，恢复时顺序读取已保存的轮次。现有 `ResearchResult.evidence` 的增量语义和 `AgentOutput` 联合类型保持兼容。后续接线需要验证既有 `durable-v1` Checkpoint 的恢复，增减节点或改变边前须确定图版本及接续策略。
 
-展示继续使用 AgentEvent v1。`agent.message` 发送安全的简短状态说明，`tool.started` / `tool.finished` 跟踪追加检索，`evidence.added` 只发布确认入库的新 ID。评分卡与模型摘录留在内部记录。此阶段交付 Schema 和契约测试。
+展示继续使用 AgentEvent v1。`agent.message` 发送安全的简短状态说明，`tool.started` / `tool.finished` 跟踪追加检索，`evidence.added` 只发布确认入库的新 ID。评分卡与模型摘录留在内部记录。集成后的图版本和启动约定见 [专家反思](expert-reflection.md)。
 
 ## EvaluationCase
 

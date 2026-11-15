@@ -1,8 +1,8 @@
 # Expert Reflection
 
-Worker 在 Evidence Quality 模块可用时，使用 `durable-v2` 启动新任务。它通过 A 线 `EvidenceQualityScorer.assess` 读取冻结的 `EvidenceQuality` 评分卡。独立开发和测试可以向 `ReflectionConfig.score` 注入同一契约的评分器。Worker 按已保存的图版本恢复 `durable-v1` 和 `durable-v2` 任务。
+新版 Worker 使用 `durable-v2` 启动新任务。它通过 `EvidenceQualityScorer.assess` 对 Research Engine 已保存的材料筛选及评分。测试可以向 `ReflectionConfig.score` 注入同一契约的评分器。Worker 按已保存的图版本恢复 `durable-v1` 和 `durable-v2` 任务。
 
-混合版本部署时，先让执行任务的 Worker 都支持 `durable-v2`，再随 Evidence Quality 启用新图。较旧的 Worker 遇到 `durable-v2` Checkpoint 会按版本不匹配结算。
+部署时先停止旧 Worker，再启动集成后的 Worker。旧版本遇到 `durable-v2` Checkpoint 会按版本不匹配结算。
 
 ## 局部判断与全局调度
 
@@ -15,7 +15,7 @@ Worker 在 Evidence Quality 模块可用时，使用 `durable-v2` 启动新任�
 | `low_quality` | 优先检索官方和原始发布 |
 | `conflicting` | 针对冲突查找第三方或原始来源 |
 
-一项分工同时存在多个问题时，优先处理冲突，再处理低质量证据和信息缺口。Research Director 可为全任务发起一次定向质询，最多邀请两位其他专家各答复一次。答复作为原专家核验的输入。Writer 从阶段结论读取已支持的事实、争议和待核实问题，Reviewer 继续独立审核。
+一项分工同时存在多个问题时，优先处理冲突，再处理低质量证据和信息缺口。Research Director 可为全任务发起一次定向质询，最多邀请两位其他专家各答复一次。答复作为原专家核验的输入。Writer 接收各分工的等级、争议与未解决问题，报告事实引用限于已有可用评分的材料。Reviewer 先校验引用和署名，再独立核读摘录，复核时效、结论覆盖和保留的争议。低等级或尚无可用评分的引用会送回修订。
 
 ## 执行预算与恢复
 
@@ -24,3 +24,4 @@ Worker 在 Evidence Quality 模块可用时，使用 `durable-v2` 启动新任�
 - 分工派发时保存 UTC 参考时间。开放时间、票价、预约、交通等时效敏感目标采用 365 天窗口，其他目标使用空窗口。该分工后续各轮复用同一窗口和参考时间。
 - 每轮评分与判断快照以运行 ID 和轮次持久化。Director 在发出补查前保存决策、累计额度和质询名额。暂停检查位于派发前。恢复时复用已提交的轮次，只有尚未写入 Checkpoint 的外部操作可能重试。仅投影租约走原有补投影及失败结算流程。
 - 判断失败时保留先前已核实的结论和待查问题。未解决的状态按预算耗尽、没有新增来源、轮次上限结算。结果保存为 `ResearchState.expert_research[run_id]` 中的 `ExpertResearchResult`，补查决策保存在 `reflection_decisions`。现有 AgentEvent v1 用于传递简要进度。
+- 专家开始事件先于首轮检索，结束事件在终态结果生成时发出。同一分工的多轮使用同一个运行 ID，Worker 按保存的首轮时间和最终结果完成业务投影。

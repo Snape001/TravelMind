@@ -1,5 +1,20 @@
 # TravelMind 开发进度
 
+## Phase 3 · 最终集成（2026-11-15）
+
+| 顺序 | 实际来源 | 原始提交 | 合并提交 |
+| --- | --- | --- | --- |
+| 1 | `codex/evidence-quality` | `8b90fa3` | `d5289c9` |
+| 2 | `codex/expert-reflection` | `5e8cf09` | `d7b9bea` |
+| 3 | 原本已在本地 `main` 的 Research Evaluation | `cf05c51` | `0b10e44` |
+| 4 | `codex/guild-ui-optimization` | `50db36b` | `5b855a6` |
+
+- 集成冲突均在本进度文件，各分支的验收记录已保留。Research Engine 保存证据后按质量筛选排序和评分。新版 Worker 用 `durable-v2` 运行专家反思，总监按分工协调定向补查和质询，`durable-v1` 继续按原图恢复。Writer 聚焦已核实结论及重要缺口，Reviewer 独立核对原文、署名和引用分级。[Runtime](docs/agent-runtime.md) · [评分契约](docs/evidence-quality.md)
+- 专家事件按实际执行顺序投影，复用 AgentEvent v1。公会、工作台及报告共用专家档案，真实 Writer 事件使用本地肖像及档案链接。FastAPI OpenAPI 重新生成的前端类型与仓库一致。专用 PostgreSQL 14 上 181 项后端测试全部通过，27 项前端测试全部通过。Ruff、Alembic 一致性、锁文件、ESLint、TypeScript 与 Next.js 生产构建均通过。
+- 泉州遗产题在真实 DeepSeek、博查、Firecrawl 环境下通过生产 Next.js 代理提交，并由 Worker 以 PostgreSQL 领取。旧图完成 3 章，54 条事件。新版首轮真实验收因草稿被退回而失败。修正评分批次保留有效结果、限制调研和撰写范围后，新图在一次返工后通过独立审核，发布 2 章报告、10 条已存证据、19 张评分卡和 56 条 SSE 事件，从中间游标重放 28 条。四个分工各完成一轮补查。Chrome 使用同一真实任务记录重放，验证工作台、Writer 肖像、报告跳转、引用锚点和公会九张本地肖像。
+- 同题配对仅独立判读「列入年份」和「遗产点数量」。两版本均覆盖 2/2 个参考发现，引用可解析 10/10 和 13/13。模型调用 16 → 31，耗时约 35.8 → 57.8 秒。新版将年份标注为间接支撑，仍缺 UNESCO 原始档案。该样本用于诊断，尚需对 36 题人工签核并重复采样。实际运行暂无可比检索排名，未做全文忠实度判断。[配对评测](docs/research-evaluation.md#比较增强前后)
+- **联调提交**　`0b58001`、`bf70de7`、`bb9cf34`。
+
 ## Phase 3 · Evidence Quality（2026-11-15）
 
 - 实现六类来源的 0–100 加权筛选。返回权威性、时效、相关性、完整性和独立性依据，以及 A/B/C/D 对应的使用、交叉核实、补查或排除动作。原始 Evidence ID、来源与摘录随结果保留。[接入与权重说明](docs/evidence-quality.md)

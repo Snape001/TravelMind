@@ -31,4 +31,6 @@ async def collect_evidence(task_id, sessions):
 - 去重使用 DOI、网页 URL 或无 URL 时的来源定位符。网页 URL 去重时忽略片段和常见跟踪参数，保留原始引用链接及有意义的查询参数。搜索返回顺序遵循 `sources` 的优先级及各提供方的排序。
 - `save_evidence(session, task_id, items)` 按任务保留每个来源的首条证据。调用方管理事务。并发写入同一任务时复用已存储的 Evidence ID，后续引用应取自函数返回值。持久化证据可通过现有 `GET /api/v1/tasks/{task_id}/evidence/{evidence_id}` 读取。
 
+Phase 3 Worker 使用保存后的证据和分工上下文执行 Evidence Quality。确定性筛选决定语义评分的处理顺序，冻结评分卡供专家反思和独立审核。保存的原始证据仍通过既有访问接口追溯。 [Evidence Quality](evidence-quality.md)
+
 供应商接口参见 [博查 Web Search](https://github.com/Bocha-Labs/bocha-skills/blob/main/bocha-web-search/SKILL.md)、[Firecrawl Scrape](https://docs.firecrawl.dev/api-reference/endpoint/scrape) 和 [OpenAlex Works](https://help.openalex.org/data/works/)。
