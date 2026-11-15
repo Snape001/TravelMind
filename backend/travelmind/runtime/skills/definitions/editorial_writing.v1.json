@@ -1,0 +1,32 @@
+{
+  "skill_id": "editorial_writing",
+  "version": 1,
+  "title": "统一叙事与章节撰写",
+  "agent_ids": [
+    "report_writer"
+  ],
+  "stage": "write",
+  "use_when": [
+    "有经过引用关系及覆盖校验的大纲和综合材料"
+  ],
+  "input_schema": "writing_input",
+  "output_schema": "report_draft",
+  "allowed_tools": [],
+  "steps": [
+    "沿大纲标题及章节顺序写成简体中文完整报告，使用综合材料把专家证据融入连贯、有重点的叙事。",
+    "在正文说明文化、历史或地理知识为何改变游客的观察、取舍和游览方式。合并重复解释，用句段衔接相关章节。",
+    "每节只使用分配给本节的作者和证据 ID。说明资料适用的时间、条件，保留相关分歧和核验缺口。"
+  ],
+  "quality_requirements": [
+    "事实、建议和不确定性区分清楚，措辞具体、克制。署名来自实际研究贡献者，引用只使用直接支撑正文的来源。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 4608
+    },
+    "tool_calls": 0
+  },
+  "max_context_chars": 120000
+}

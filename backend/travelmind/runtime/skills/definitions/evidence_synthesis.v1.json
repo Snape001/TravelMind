@@ -1,0 +1,32 @@
+{
+  "skill_id": "evidence_synthesis",
+  "version": 1,
+  "title": "跨专家证据整合",
+  "agent_ids": [
+    "report_writer"
+  ],
+  "stage": "synthesize",
+  "use_when": [
+    "已生成并校验全篇大纲"
+  ],
+  "input_schema": "synthesis_input",
+  "output_schema": "evidence_synthesis",
+  "allowed_tools": [],
+  "steps": [
+    "按大纲章节及顺序处理。每条 point 引用本章分配的一个或多个 finding_ids，合并共同支持同一结论的内容，每个分配的 ID 恰好使用一次。",
+    "发现跨章节重复时按各节目的将结论和应用分开定位。对有实质差异的来源说明时间、范围、口径和能否解释；保留未解决的冲突。",
+    "用 gaps 记录未覆盖的用户方向、过期或间接证据与后续核验需求，用 conflicts 保存仍有影响的争议。"
+  ],
+  "quality_requirements": [
+    "supported 只用有直接证据的发现。insufficient 体现为资料缺口，disputed 保留冲突。保留条目之间的溯源关系，不把传闻当一致结论。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 4608
+    },
+    "tool_calls": 0
+  },
+  "max_context_chars": 115000
+}

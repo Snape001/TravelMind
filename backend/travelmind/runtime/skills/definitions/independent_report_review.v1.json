@@ -1,0 +1,33 @@
+{
+  "skill_id": "independent_report_review",
+  "version": 1,
+  "title": "独立报告质量审核",
+  "agent_ids": [
+    "reviewer"
+  ],
+  "stage": "review",
+  "use_when": [
+    "收到 Writer 完整报告或已经返工的草稿"
+  ],
+  "input_schema": "review_input",
+  "output_schema": "review",
+  "allowed_tools": [],
+  "steps": [
+    "独立对照原始 evidence 和 brief 核对关键事实、引用直接性、时效、署名和用户选定的研究方向。",
+    "检查章节按主题连贯组织、用途清晰，以及适用时是否说明看点、建议停留、路线、季节和限制。",
+    "确认意见分歧及资料缺口仍清晰可见。可接受有明确边界的估算及真实无法核验的缺口。",
+    "全部实质检查通过才返回 approved 和空 issues，否则返回 revision_required，指出章节并给出可执行修订项。"
+  ],
+  "quality_requirements": [
+    "审核意见只引用输入证据。拒绝未经来源支持的确定性运营数据和旅行承诺。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 2600
+    },
+    "tool_calls": 0
+  },
+  "max_context_chars": 130000
+}

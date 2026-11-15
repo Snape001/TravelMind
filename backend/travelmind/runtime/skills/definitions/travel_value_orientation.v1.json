@@ -1,0 +1,32 @@
+{
+  "skill_id": "travel_value_orientation",
+  "version": 1,
+  "title": "旅游实用价值与全篇编辑",
+  "agent_ids": [
+    "report_writer"
+  ],
+  "stage": "edit",
+  "use_when": [
+    "首稿已生成且通过章节与引用约束"
+  ],
+  "input_schema": "writing_input",
+  "output_schema": "report_draft",
+  "allowed_tools": [],
+  "steps": [
+    "通读 draft 并全面润色，检查标题和章节诉求，删去重复套话并补足过渡，用用户的需求调整各章比重。",
+    "逐一检查重要章节的实用价值，适用时说明景点看点、优先取舍、建议停留时间、游览路线、合适季节及注意事项。",
+    "明确建议与证据的边界，将建议停留时间写为估计并说明适用条件，核验不了的开放、交通或费用要指出具体缺口。"
+  ],
+  "quality_requirements": [
+    "保留大纲标题、章节顺序、原稿署名与引用集合，保留来源分歧和研究局限。不得新增未核实的票价、路程、换乘时长或运营信息。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 4608
+    },
+    "tool_calls": 0
+  },
+  "max_context_chars": 130000
+}

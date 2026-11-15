@@ -1,0 +1,32 @@
+{
+  "skill_id": "research_scoping",
+  "version": 1,
+  "title": "调研范围与需求澄清",
+  "agent_ids": [
+    "research_director"
+  ],
+  "stage": "research",
+  "use_when": [
+    "任务刚进入需求梳理，或收到针对上一轮的澄清答复"
+  ],
+  "input_schema": "director_input",
+  "output_schema": "director_decision",
+  "allowed_tools": [],
+  "steps": [
+    "从 brief 和已答澄清中提取目的地、目标、深度和明确限制。",
+    "目的地不明确，或缺少会实质改变结果的信息时，提出最多三个具体且可答的问题。否则直接返回可执行 brief。"
+  ],
+  "quality_requirements": [
+    "以用户明确范围为准，保留研究深度、出行限制和方向，不代用户推断预算或偏好。",
+    "brief 和 questions 只能返回其中一个。已明确目的地的一般调研可直接进行。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 45,
+      "max_attempts": 2,
+      "max_output_tokens": 1800
+    },
+    "tool_calls": 0
+  },
+  "max_context_chars": 14000
+}

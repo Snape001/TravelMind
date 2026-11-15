@@ -2,6 +2,10 @@ from uuid import UUID
 
 from travelmind.runtime.execution import InvalidOutput, result_identity, with_budget
 from travelmind.runtime.model import StructuredModel
+from travelmind.runtime.skills import SkillRegistry
+from travelmind.runtime.skills.contracts import ReviewInput
+from travelmind.runtime.skills.research import compact_evidence, compact_findings
+from travelmind.runtime.skills.writer import write_report
 from travelmind.schemas.agents import AgentInput, ReportResult, ResearchResult, ReviewResult
 from travelmind.schemas.domain import ReportDraft, Review, ReviewIssue
 from travelmind.schemas.research_quality import ExpertResearchResult
@@ -36,7 +40,21 @@ async def write(
     previous_review: Review | None,
     *,
     experts: list[ExpertResearchResult] | None = None,
+    skills: SkillRegistry | None = None,
 ) -> ReportResult:
+    if skills is not None:
+        if experts:
+            eligible = usable_evidence(experts)
+            request = request.model_copy(
+                update={
+                    "evidence": [item for item in request.evidence if item.evidence_id in eligible]
+                }
+            )
+        report = await write_report(
+            skills, model, request, contributions, previous_review, experts or []
+        )
+        return ReportResult(**result_identity(request), kind="report", report=report)
+
     findings = [
         {
             "agent_id": result.agent_id,
@@ -95,6 +113,7 @@ async def review(
     contributor_ids: set[str],
     *,
     experts: list[ExpertResearchResult] | None = None,
+    skills: SkillRegistry | None = None,
 ) -> ReviewResult:
     assert request.draft is not None
     evidence_ids = {item.evidence_id for item in request.evidence}
@@ -125,6 +144,12 @@ async def review(
                 )
             )
 
+    def validate_verdict(verdict: Review) -> None:
+        if any(set(issue.evidence_ids) - evidence_ids for issue in verdict.issues):
+            raise InvalidOutput("review cites unknown evidence")
+        if verdict.decision == "approved" and verdict.issues:
+            raise InvalidOutput("approval cannot have unresolved issues")
+
     async def audit() -> Review:
         instructions = (
             "担任独立审核员。阅读 draft 的各章节。"
@@ -143,14 +168,30 @@ async def review(
                 "对时效敏感的结论核对日期，评级不能代替同章摘录支撑。"
             )
         verdict = await model(request, instructions, Review, context=data)
-        if any(set(issue.evidence_ids) - evidence_ids for issue in verdict.issues):
-            raise InvalidOutput("review cites unknown evidence")
-        if verdict.decision == "approved" and verdict.issues:
-            raise InvalidOutput("approval cannot have unresolved issues")
+        validate_verdict(verdict)
         return verdict
 
     if issues:
         verdict = Review(decision="revision_required", issues=issues)
+    elif skills is not None:
+        cited = {ref for section in request.draft.sections for ref in section.evidence_ids}
+        evidence = sorted(request.evidence, key=lambda item: item.evidence_id not in cited)
+        projection = request.model_copy(
+            update={
+                "evidence": compact_evidence(evidence[:40]),
+                "prior_findings": compact_findings(request.prior_findings[:24]),
+            }
+        )
+        session = skills.session(projection, "review")
+        verdict = await session.run(
+            model,
+            ReviewInput(
+                contributor_ids=sorted(contributor_ids),
+                expert_assessments=editorial_assessments(experts or []),
+            ),
+            Review,
+            validate=validate_verdict,
+        )
     else:
         verdict = await with_budget(audit, request.budget)
     return ReviewResult(**result_identity(request), kind="review", review=verdict)

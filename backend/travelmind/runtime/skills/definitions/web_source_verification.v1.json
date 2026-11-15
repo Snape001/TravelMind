@@ -1,0 +1,34 @@
+{
+  "skill_id": "web_source_verification",
+  "version": 1,
+  "title": "网页溯源与时效核验",
+  "agent_ids": [
+    "internet_research"
+  ],
+  "stage": "research",
+  "use_when": [
+    "分工涉及政策、临时公告、新闻或需要溯源的实时信息"
+  ],
+  "input_schema": "research_input",
+  "output_schema": "findings",
+  "allowed_tools": [
+    "retrieve_evidence"
+  ],
+  "steps": [
+    "沿网页转载关系追踪最初发布主体，核对发布日期、生效日与适用地域。",
+    "比较相互独立的来源，记录公告状态、转载关系及原文缺失。"
+  ],
+  "quality_requirements": [
+    "转载不计作独立验证，未核实或已过期的信息不得作为现行规则。",
+    "每条发现标记 supported、disputed 或 insufficient。引用只能使用输入 evidence 中直接支持该发现的 ID；没有证据时用 insufficient。"
+  ],
+  "budget": {
+    "model": {
+      "timeout_seconds": 60,
+      "max_attempts": 2,
+      "max_output_tokens": 2304
+    },
+    "tool_calls": 1
+  },
+  "max_context_chars": 36000
+}
