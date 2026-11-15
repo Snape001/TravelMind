@@ -1,6 +1,6 @@
 # Phase 4 · 社交资料接入
 
-TravelMind 的本地 Sidecar 导入经授权的 MediaCrawler JSONL，也接受自身导出的规范化 JSONL。苏听雨通过 Research Engine 按关键词读取缓存。已入库的观测记录走现有 Evidence Center、EvidenceQuality、报告引用和独立审核。
+TravelMind 的本地 Sidecar 导入经授权的 MediaCrawler JSONL，也接受自身导出的规范化 JSONL，并可按用户指令在固定版本上编排在线采集。苏听雨通过 Research Engine 按关键词读取缓存。已入库的观测记录走现有 Evidence Center、EvidenceQuality、报告引用和独立审核。
 
 ## 上游与使用范围
 
@@ -46,6 +46,24 @@ New-Item -ItemType Directory -Path $batchPath
 ```
 
 `Stop -BatchId <UUID>` 取消正在导入的任务。查询服务、任务和结果的本地接口分别为 `GET /v1/status`、`GET /v1/jobs/{batch_id}` 和 `GET /v1/evidence`。`POST /v1/jobs` 启动导入，`DELETE /v1/jobs/{batch_id}` 取消。重复提交同一个批次 ID 会返回已有任务状态。修正过的文件使用新批次 ID。任务状态含导入耗时、原帖数、保留评论数、拒绝行数及错误码。`data\social.sqlite3` 保存缓存和状态。
+
+## 在线采集（MediaCrawler 编排）
+
+`Collect` 在固定版本 MediaCrawler 上编排一次在线采集：搜索模式按关键词抓原帖，详情模式按内容链接抓单帖，均启用评论与子评论，导出 JSONL 后自动暂存到新批次并提交同一个 Sidecar 导入任务。适用于小红书、B站、抖音、微博和知乎。
+
+前置条件与手动导入相同：`Setup` 已完成、Sidecar 已 `Start`、调用方设置了 `SOCIAL_RESEARCH_TOKEN`。上游使用二维码登录，`Collect` 以非无头模式启动浏览器，用户须本人扫码完成平台登录；登录会话由上游保存在其 `browser_data`，下次采集可复用。子进程输出记录在 `data\runs\<批次>\crawler.log`。
+
+```powershell
+$social = '.\dev\social-research\social.ps1'
+$job = & $social -Action Collect -Platform xiaohongshu -Keyword '泉州 预约'
+& $social -Action Job -BatchId $job.batch_id
+& $social -Action Collect -Platform bilibili -Mode detail -SourceUrl $videoUrl -Keyword '泉州 预约'
+& $social -Action Read -Platform xiaohongshu -Keyword '泉州 预约'
+```
+
+参数边界：`-MaxNotes` 限制搜索模式单次抓取的原帖数，范围 1–50，默认 20；`-TimeoutSeconds` 范围 60–7200，默认 1800。CLI 固定单并发（`--max_concurrency_num 1`）、每帖评论上限 20、不启用 IP 代理、不下载媒体文件。
+
+护栏与边界：本编排只复用上游自带的二维码登录和反检测脚本，不新增验证码识别、代理池或账号池。运行前须按「上游与使用范围」确认目标平台允许该访问方式和数据使用范围；遇到验证码、拒绝访问或限流时立即停止该渠道，不重试绕过。CLI 错误码：`2` 参数无效，`3` 上游 checkout 或 venv 校验失败，`4` 采集进程非零退出（见 crawler.log），`5` 采集超时，`6` 未产出原帖文件。
 
 ## Worker 配置与样本
 

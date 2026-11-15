@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('Setup', 'Start', 'Status', 'Import', 'Job', 'Stop', 'Read', 'ZhihuLogin', 'ZhihuQuota', 'ZhihuCollect')]
+    [ValidateSet('Setup', 'Start', 'Status', 'Import', 'Job', 'Stop', 'Read', 'ZhihuLogin', 'ZhihuQuota', 'ZhihuCollect', 'Collect')]
     [string]$Action,
     [string]$Root = (Join-Path $env:LOCALAPPDATA 'TravelMind\social-research'),
     [ValidateRange(1024, 65535)]
@@ -20,7 +20,13 @@ param(
     [switch]$InstallBrowser,
     [ValidateSet('search', 'answers', 'owned')]
     [string]$ZhihuMode = 'search',
-    [string]$SourceUrl
+    [ValidateSet('search', 'detail')]
+    [string]$Mode = 'search',
+    [string]$SourceUrl,
+    [ValidateRange(1, 50)]
+    [int]$MaxNotes = 20,
+    [ValidateRange(60, 7200)]
+    [int]$TimeoutSeconds = 1800
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,12 +46,12 @@ function Invoke-Checked {
     }
 }
 
-function Invoke-ZhihuCli {
-    param([string[]]$Options)
+function Invoke-SidecarCli {
+    param([string]$Module, [string[]]$Options)
     Push-Location $backend
     try {
         Invoke-Checked (Join-Path $venvPath 'Scripts\python.exe') (
-            @('-m', 'travelmind.research.social.zhihu_api') + $Options
+            @('-m', $Module) + $Options
         )
     } finally {
         Pop-Location
@@ -109,7 +115,7 @@ if ($Action -eq 'ZhihuLogin') {
 }
 
 if ($Action -eq 'ZhihuQuota') {
-    Invoke-ZhihuCli -Options @('--quota') | ConvertFrom-Json
+    Invoke-SidecarCli -Module 'travelmind.research.social.zhihu_api' -Options @('--quota') | ConvertFrom-Json
     return
 }
 if (!$env:SOCIAL_RESEARCH_TOKEN) { throw 'Set SOCIAL_RESEARCH_TOKEN in this shell.' }
@@ -143,7 +149,27 @@ if ($Action -eq 'ZhihuCollect') {
         '--data', $dataPath, "--keyword=$Keyword", '--mode', $ZhihuMode
     )
     if ($SourceUrl) { $cliArgs += @('--url', $SourceUrl) }
-    $body = Invoke-ZhihuCli -Options $cliArgs
+    $body = Invoke-SidecarCli -Module 'travelmind.research.social.zhihu_api' -Options $cliArgs
+    $arguments = @{
+        Uri = "$baseUri/jobs"
+        Method = 'Post'
+        Headers = $headers
+        ContentType = 'application/json; charset=utf-8'
+        Body = [Text.Encoding]::UTF8.GetBytes($body)
+    }
+    Invoke-RestMethod @arguments
+    return
+}
+if ($Action -eq 'Collect') {
+    if ($Mode -ne 'search' -and !$SourceUrl) { throw 'Provide SourceUrl.' }
+    $null = Invoke-RestMethod "$baseUri/status" -Headers $headers
+    $cliArgs = @(
+        '--data', $dataPath, '--source', $sourcePath,
+        '--keyword', $Keyword, '--platform', $Platform, '--mode', $Mode,
+        '--max-notes', $MaxNotes, '--timeout-seconds', $TimeoutSeconds
+    )
+    if ($SourceUrl) { $cliArgs += @('--url', $SourceUrl) }
+    $body = Invoke-SidecarCli -Module 'travelmind.research.social.mediacrawler_api' -Options $cliArgs
     $arguments = @{
         Uri = "$baseUri/jobs"
         Method = 'Post'
