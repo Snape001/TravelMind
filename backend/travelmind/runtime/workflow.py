@@ -39,6 +39,7 @@ from travelmind.schemas.events import (
     ReportReviewedEvent,
     TaskStatusEvent,
 )
+from travelmind.schemas.research_quality import ExpertResearchResult
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,15 @@ def contributions(state: ResearchState) -> list[ResearchResult]:
     return results
 
 
+def expert_assessments(state: ResearchState) -> list[ExpertResearchResult]:
+    results = state.get("expert_research", {})
+    return [
+        ExpertResearchResult.model_validate(results[str(run_id)])
+        for run_id in state["usable_research"]
+        if str(run_id) in results
+    ]
+
+
 def build_research_graph(
     model: StructuredModel,
     *,
@@ -141,7 +151,10 @@ def build_research_graph(
                 )
             return updates
         assert isinstance(result, BriefResult)
-        return records(result) | {"status": "running", "brief": result.brief}
+        updates = records(result) | {"status": "running", "brief": result.brief}
+        if reflection_flow:
+            updates["director_run_id"] = result.run_id
+        return updates
 
     async def planner(state: ResearchState) -> dict:
         request = request_for(state, planning.PLANNER)
@@ -307,6 +320,7 @@ def build_research_graph(
 
     async def write(state: ResearchState) -> dict:
         inputs = contributions(state)
+        assessments = expert_assessments(state)
         request = request_for(
             state,
             editorial.WRITER,
@@ -317,7 +331,9 @@ def build_research_graph(
         )
         result = await run_agent(
             request,
-            lambda: editorial.write(model, request, inputs, state.get("review")),
+            lambda: editorial.write(
+                model, request, inputs, state.get("review"), experts=assessments
+            ),
         )
         if isinstance(result, AgentFailure):
             return records(result) | publish_status("failed", error=result.error)
@@ -325,6 +341,7 @@ def build_research_graph(
 
     async def review(state: ResearchState) -> dict:
         inputs = contributions(state)
+        assessments = expert_assessments(state)
         findings = [finding for item in inputs for finding in item.findings]
         request = request_for(
             state,
@@ -334,7 +351,10 @@ def build_research_graph(
             draft=state["draft"],
         )
         result = await run_agent(
-            request, lambda: editorial.review(model, request, {item.agent_id for item in inputs})
+            request,
+            lambda: editorial.review(
+                model, request, {item.agent_id for item in inputs}, experts=assessments
+            ),
         )
         if isinstance(result, AgentFailure):
             return records(result) | publish_status("failed", error=result.error)

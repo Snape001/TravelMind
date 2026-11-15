@@ -2,7 +2,7 @@ import asyncio
 import unicodedata
 from datetime import UTC, datetime
 from typing import Protocol
-from uuid import UUID, uuid5
+from uuid import uuid5
 
 from langgraph.types import Send
 
@@ -10,11 +10,12 @@ from travelmind.research.sources import source_key
 from travelmind.runtime import experts, planning, reflection
 from travelmind.runtime.execution import RunError, emit, result_identity, run_agent
 from travelmind.runtime.model import StructuredModel
+from travelmind.runtime.reflection import round_key
 from travelmind.runtime.retrieval import research_query
 from travelmind.runtime.state import ResearchState, run_mapping
 from travelmind.schemas.agents import AgentFailure, AgentInput, ResearchResult
 from travelmind.schemas.domain import Assignment
-from travelmind.schemas.events import AgentMessageEvent
+from travelmind.schemas.events import AgentFinishedEvent, AgentMessageEvent, AgentStartedEvent
 from travelmind.schemas.research_quality import ExpertResearchResult, ReflectionAction
 
 SEARCH_HINT = {
@@ -27,10 +28,6 @@ MAX_EXCERPT_CHARS = 4_000
 
 class RequestFactory(Protocol):
     def __call__(self, state: ResearchState, assignment: Assignment, /) -> AgentInput: ...
-
-
-def round_key(run_id: UUID, number: int) -> str:
-    return str(uuid5(run_id, f"reflection:{number}"))
 
 
 def operation_cost(request: AgentInput) -> int:
@@ -117,6 +114,14 @@ class ReflectionWorkflow:
             {item.evidence_id for item in work.previous.evidence} if work.previous else set()
         )
         pending = [item for item in result.evidence if item.evidence_id not in scored]
+        if self.config.rank and pending:
+            pending = list(
+                await self.config.rank(
+                    work.request.model_copy(update={"evidence": pending}),
+                    as_of=work.as_of,
+                    max_age_days=work.max_age_days,
+                )
+            )
         # Favor newly retrieved material over earlier unscored sources on a follow-up round.
         pending.sort(key=lambda item: item.evidence_id in prior_ids)
         size = reflection.QUALITY_BATCH_SIZE
@@ -181,6 +186,14 @@ class ReflectionWorkflow:
                 "assignment_runs": {request.assignment.assignment_id: request.run_id},
             }
         number = previous.round + 1 if previous else 0
+        if number == 0:
+            emit(
+                AgentStartedEvent(
+                    type="agent.started",
+                    **result_identity(request),
+                    assignment_id=request.assignment.assignment_id,
+                )
+            )
         known = previous.evidence if previous else request.evidence
         queries = [*previous.queries, work.query_key] if previous else [query_key(request)]
         questions = (
@@ -324,18 +337,23 @@ class ReflectionWorkflow:
                     additional.append({"work": work.model_dump(mode="json")})
                     if peers:
                         exchange = True
-                        emit(
-                            AgentMessageEvent(
-                                type="agent.message",
-                                **result_identity(request),
-                                message="Research Director 已发起一次定向证据质询。",
-                            )
-                        )
             decisions[key] = {"run_id": str(run_id), "action": action.model_dump(mode="json")}
             if action.stop_reason is not None:
-                final = await self._finish(request, result, action)
+                final = self._finish(request, result, action)
                 completed[assignment.assignment_id] = run_id
                 exports[run_id] = final
+        if additional and (director_run_id := state.get("director_run_id")):
+            message = f"已安排 {len(additional)} 项定向补查。"
+            if exchange and not state.get("reflection_exchange_used"):
+                message += "已邀请其他专家核对冲突来源。"
+            emit(
+                AgentMessageEvent(
+                    type="agent.message",
+                    agent_id=planning.DIRECTOR,
+                    run_id=director_run_id,
+                    message=message,
+                )
+            )
         return {
             "reflection_decisions": decisions,
             "reflection_next": additional,
@@ -359,7 +377,7 @@ class ReflectionWorkflow:
             },
         }
 
-    async def _finish(
+    def _finish(
         self, request: AgentInput, result: reflection.RoundResult, action: ReflectionAction
     ) -> ExpertResearchResult:
         assert request.assignment
@@ -379,8 +397,9 @@ class ReflectionWorkflow:
             ],
         )
 
-        async def finish() -> ResearchResult:
-            return final.research
-
-        await run_agent(request, finish)
+        emit(
+            AgentFinishedEvent(
+                type="agent.finished", **result_identity(request), status="completed"
+            )
+        )
         return final

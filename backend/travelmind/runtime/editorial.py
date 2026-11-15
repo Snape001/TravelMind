@@ -1,10 +1,32 @@
+from uuid import UUID
+
 from travelmind.runtime.execution import InvalidOutput, result_identity, with_budget
 from travelmind.runtime.model import StructuredModel
 from travelmind.schemas.agents import AgentInput, ReportResult, ResearchResult, ReviewResult
 from travelmind.schemas.domain import ReportDraft, Review, ReviewIssue
+from travelmind.schemas.research_quality import ExpertResearchResult
 
 WRITER = "writer"
 REVIEWER = "reviewer"
+
+
+def usable_evidence(experts: list[ExpertResearchResult]) -> set[UUID]:
+    return {
+        card.evidence_id for expert in experts for card in expert.quality if card.level != "low"
+    }
+
+
+def editorial_assessments(experts: list[ExpertResearchResult]) -> list[dict]:
+    return [
+        {
+            "agent_id": expert.research.agent_id,
+            "unresolved_questions": expert.unresolved_questions,
+            "reflection_state": expert.reflection.state,
+            "reflection_reason": expert.reflection.reason,
+            "quality_levels": {str(card.evidence_id): card.level for card in expert.quality},
+        }
+        for expert in experts
+    ]
 
 
 async def write(
@@ -12,6 +34,8 @@ async def write(
     request: AgentInput,
     contributions: list[ResearchResult],
     previous_review: Review | None,
+    *,
+    experts: list[ExpertResearchResult] | None = None,
 ) -> ReportResult:
     findings = [
         {
@@ -42,6 +66,16 @@ async def write(
         "contributions": findings,
         "previous_review": previous_review.model_dump(mode="json") if previous_review else None,
     }
+    if experts:
+        eligible = usable_evidence(experts)
+        request = request.model_copy(
+            update={"evidence": [item for item in request.evidence if item.evidence_id in eligible]}
+        )
+        instructions += (
+            "结合 expert_assessments 说明未解决问题。只能引用 input.evidence 中的 ID。"
+            "材料没有支持时可直接说明无法核实，保留专家分歧及其适用范围。"
+        )
+        data["expert_assessments"] = editorial_assessments(experts)
     report = await with_budget(
         lambda: model(request, instructions, ReportDraft, context=data), request.budget
     )
@@ -49,15 +83,33 @@ async def write(
 
 
 async def review(
-    model: StructuredModel, request: AgentInput, contributor_ids: set[str]
+    model: StructuredModel,
+    request: AgentInput,
+    contributor_ids: set[str],
+    *,
+    experts: list[ExpertResearchResult] | None = None,
 ) -> ReviewResult:
     assert request.draft is not None
     evidence_ids = {item.evidence_id for item in request.evidence}
+    eligible = usable_evidence(experts) if experts else evidence_ids
     issues = []
     for section in request.draft.sections:
         if set(section.evidence_ids) - evidence_ids:
             issues.append(
                 ReviewIssue(category="citation", message=f"核对「{section.heading}」中的未知引用。")
+            )
+        unusable = [
+            item
+            for item in dict.fromkeys(section.evidence_ids)
+            if item in evidence_ids and item not in eligible
+        ]
+        if unusable:
+            issues.append(
+                ReviewIssue(
+                    category="citation",
+                    message=f"「{section.heading}」引用的资料未达到可用等级，请替换或保留核验缺口。",
+                    evidence_ids=unusable,
+                )
             )
         if set(section.author_agent_ids) - contributor_ids:
             issues.append(
@@ -67,16 +119,22 @@ async def review(
             )
 
     async def audit() -> Review:
-        verdict = await model(
-            request,
+        instructions = (
             "担任独立审核员。阅读 draft 的各章节。"
             "逐条核对关键事实是否得到所引 evidence 原文支持。"
             "审查主题覆盖、专家分歧和证据不足时的表述。报告准确标注的资料缺口可以保留。"
             "仅在所有检查通过时返回 approved 和空 issues；"
             "否则返回 revision_required 和针对具体章节、可执行的 issues。"
-            "issues 只引用输入的证据 ID。",
-            Review,
+            "issues 只引用输入的证据 ID。"
         )
+        data = None
+        if experts:
+            data = {"expert_assessments": editorial_assessments(experts)}
+            instructions += (
+                "逐项核对报告是否保留 expert_assessments 中影响用户目标的证据缺口及冲突。"
+                "对时效敏感的结论核对日期，单一来源或评级不能代替同章摘录支撑。"
+            )
+        verdict = await model(request, instructions, Review, context=data)
         if any(set(issue.evidence_ids) - evidence_ids for issue in verdict.issues):
             raise InvalidOutput("review cites unknown evidence")
         if verdict.decision == "approved" and verdict.issues:

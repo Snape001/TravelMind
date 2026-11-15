@@ -19,6 +19,7 @@ export function ExpertAvatar({ id }: { id: string }) {
 }
 
 export function ExpertLabel({ id, avatar = false }: { id: string; avatar?: boolean }) {
+  const profile = findExpert(id);
   const name = expertName(id);
   const title = expertTitle(id);
   const contents = <>
@@ -26,7 +27,7 @@ export function ExpertLabel({ id, avatar = false }: { id: string; avatar?: boole
     <span className="expert-identity-copy"><strong>{name}</strong>{title && <small>{title}</small>}</span>
   </>;
 
-  return findExpert(id) ?
-    <Link className="expert-identity" href={`/guild/${id}`}>{contents}</Link> :
+  return profile ?
+    <Link className="expert-identity" href={`/guild/${profile.id}`}>{contents}</Link> :
     <span className="expert-identity">{contents}</span>;
 }

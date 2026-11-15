@@ -20,7 +20,7 @@ export type ExpertProfile = ExpertRole & {
 
 type ExpertIdentity = ExpertRole & Partial<Pick<ExpertProfile, "name" | "portrait">>;
 
-// Display fixture. All keys match the agent IDs used by tasks, events and reports.
+// Stable profile IDs for routes, portraits and reports.
 const profiles = {
   research_director: {
     name: "程策远", title: "首席研究总监", tier: "leadership",
@@ -90,10 +90,17 @@ const travelPlanning: ExpertRole = {
   tools: ["地图资料", "交通公告"],
 };
 
-export const experts: readonly ExpertIdentity[] = [...guildExperts, travelPlanning];
+const planner: ExpertRole = {
+  id: "planner", title: "研究规划", tier: "leadership",
+  description: "把调研目标拆成专家分工，并安排任务依赖。",
+  fields: ["研究设计", "任务拆解"],
+  tools: ["专家调度计划"],
+};
+
+export const experts: readonly ExpertIdentity[] = [...guildExperts, travelPlanning, planner];
 const byId = new Map(experts.map((expert) => [expert.id, expert]));
 
-export const findExpert = (id: string) => byId.get(id);
+export const findExpert = (id: string) => byId.get(id === "writer" ? "report_writer" : id);
 export function expertName(id: string) {
   const expert = findExpert(id);
   return expert?.name ?? expert?.title ?? id;

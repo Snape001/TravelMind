@@ -2,11 +2,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from pydantic import AwareDatetime, Field, TypeAdapter
 
-from travelmind.research.sources import source_key
+from travelmind.research.quality_rules import origin_signals
 from travelmind.runtime.execution import InvalidOutput, with_budget
 from travelmind.runtime.model import StructuredModel
 from travelmind.schemas.agents import AgentInput, RunBudget
@@ -27,6 +27,10 @@ MAX_QUALITY_BATCHES = 2
 ROUND_MODEL_OPERATIONS = 2 + MAX_QUALITY_BATCHES  # findings, assessment and quality batches
 
 
+def round_key(run_id: UUID, number: int) -> str:
+    return str(uuid5(run_id, f"reflection:{number}"))
+
+
 class QualityScorer(Protocol):
     """Score one batch in a single semantic call. The caller owns retries."""
 
@@ -35,12 +39,19 @@ class QualityScorer(Protocol):
     ) -> Sequence[EvidenceQuality]: ...
 
 
+class EvidenceRanker(Protocol):
+    async def __call__(
+        self, request: AgentInput, *, as_of: datetime, max_age_days: int | None
+    ) -> Sequence[Evidence]: ...
+
+
 @dataclass(frozen=True)
 class ReflectionConfig:
     model_id: str
     score: QualityScorer | None = None
     max_follow_up_searches: int = 2
     max_output_tokens: int = 57_344
+    rank: EvidenceRanker | None = None
 
     def __post_init__(self):
         TypeAdapter(ShortText).validate_python(self.model_id)
@@ -136,7 +147,9 @@ def independent_pair(ids: list[UUID], evidence: dict[UUID, Evidence]) -> bool:
     if len(ids) != 2 or not all(item in evidence for item in ids):
         return False
     left, right = (evidence[item] for item in ids)
-    return source_key(left) != source_key(right) and left.excerpt != right.excerpt
+    return left.excerpt != right.excerpt and origin_signals(left, None).isdisjoint(
+        origin_signals(right, None)
+    )
 
 
 def judge_question(

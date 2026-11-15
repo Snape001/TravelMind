@@ -47,6 +47,7 @@ class ResearchState(ResearchInput, total=False):
     clarification_history: list[dict[str, str]]
     status: TaskStatus
     plan: ResearchPlan
+    director_run_id: UUID
     questions: list[str]
     failure: ErrorInfo
     results: Annotated[dict[UUID | str, AgentOutput | dict], merge_records]

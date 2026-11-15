@@ -4,7 +4,6 @@ import logging
 import sys
 from contextlib import AsyncExitStack
 from datetime import datetime
-from importlib.util import find_spec
 from uuid import UUID
 
 import httpx
@@ -18,6 +17,7 @@ from travelmind.config import WAKE_CHANNEL, Settings, get_settings
 from travelmind.db.connection import create_database_engine
 from travelmind.db.worker import PostgresWorkerStore
 from travelmind.research.engine import ResearchEngine
+from travelmind.research.quality import EvidenceQualityScorer
 from travelmind.runtime.checkpoints import (
     FencedPostgresSaver,
     checkpoint_dsn,
@@ -28,18 +28,25 @@ from travelmind.runtime.model import StructuredModel, open_structured_model
 from travelmind.runtime.reflection import ReflectionConfig
 from travelmind.runtime.retrieval import ResearchRetriever
 from travelmind.schemas.agents import AgentInput
+from travelmind.schemas.domain import Evidence
 from travelmind.schemas.research_quality import EvidenceQuality
 
 logger = logging.getLogger(__name__)
 
 
-def reflection_for(model: StructuredModel, model_id: str) -> ReflectionConfig | None:
-    # The scoring module is delivered on the independent Evidence Quality branch.
-    if find_spec("travelmind.research.quality") is None:
-        return None
-    from travelmind.research.quality import EvidenceQualityScorer
-
+def reflection_for(model: StructuredModel, model_id: str) -> ReflectionConfig:
     scorer = EvidenceQualityScorer(model=model, model_id=model_id)
+    screen = EvidenceQualityScorer()
+
+    async def rank(
+        request: AgentInput, *, as_of: datetime, max_age_days: int | None
+    ) -> list[Evidence]:
+        ranked = await screen.assess(
+            request, request.evidence, as_of=as_of, max_age_days=max_age_days
+        )
+        return [
+            item.evidence for item in sorted(ranked, key=lambda item: (item.grade, -item.score))
+        ]
 
     async def score(
         request: AgentInput, *, as_of: datetime, max_age_days: int | None
@@ -55,7 +62,7 @@ def reflection_for(model: StructuredModel, model_id: str) -> ReflectionConfig | 
         )
         return [item.quality for item in items if item.quality is not None]
 
-    return ReflectionConfig(model_id=model_id, score=score)
+    return ReflectionConfig(model_id=model_id, score=score, rank=rank)
 
 
 async def listen(redis: Redis, wake: asyncio.Event) -> None:

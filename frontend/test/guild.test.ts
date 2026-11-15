@@ -46,6 +46,13 @@ test("existing and unrecognized agent IDs retain their live identities and statu
   assert.ok(view.toolNames.size > 0);
 });
 
+test("live Writer and Planner events resolve through the same profile directory", () => {
+  assert.equal(findExpert("writer"), findExpert("report_writer"));
+  assert.equal(expertName("writer"), "叶知秋");
+  assert.equal(findExpert("planner")?.tier, "leadership");
+  assert.equal(expertName("research_director"), "程策远");
+});
+
 test("only explicit report headings receive consensus or dispute treatment", () => {
   assert.equal(reportDiscussion("专家共识"), "consensus");
   assert.equal(reportDiscussion("6. 专家共识与观点分歧"), "discussion");

@@ -3,6 +3,7 @@ from uuid import UUID, uuid5
 
 from langgraph.types import StateSnapshot
 
+from travelmind.runtime.reflection import round_key
 from travelmind.runtime.state import output_for
 from travelmind.schemas.api import ReportRead
 from travelmind.schemas.events import (
@@ -37,13 +38,21 @@ def batches(task_id: UUID, state: StateSnapshot) -> list[ProjectionBatch]:
             if isinstance(payload, AgentStartedEvent):
                 started[payload.run_id] = (payload, at)
             elif isinstance(payload, AgentFinishedEvent):
-                event, start = started.pop(payload.run_id)
+                if payload.run_id in started:
+                    event, start = started.pop(payload.run_id)
+                    assignment_id = event.assignment_id
+                else:
+                    # Reflection starts and finishes in different committed supersteps.
+                    expert = values["expert_research"][str(payload.run_id)]
+                    first_round = values["reflection_rounds"][round_key(payload.run_id, 0)]
+                    assignment_id = UUID(expert["assignment_id"])
+                    start = datetime.fromisoformat(first_round["as_of"])
                 results = values.get("results", {})
                 runs.append(
                     ProjectedRun(
                         run_id=payload.run_id,
                         agent_id=payload.agent_id,
-                        assignment_id=event.assignment_id,
+                        assignment_id=assignment_id,
                         status=payload.status,
                         result=output_for(values, payload.run_id)
                         if payload.run_id in results or str(payload.run_id) in results

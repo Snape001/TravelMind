@@ -39,6 +39,7 @@ class Scenario:
         self.scored = []
         self.assessments = []
         self.writer_inputs = []
+        self.reviewer_inputs = []
         self.model = Model(first, reply=self.reply)
 
     async def retrieve(self, request):
@@ -80,6 +81,8 @@ class Scenario:
     async def reply(self, request, prompt, context):
         if request.agent_id == "writer":
             self.writer_inputs.append(context["contributions"])
+        if request.agent_id == "reviewer":
+            self.reviewer_inputs.append(context)
         if "答复定向质询" in prompt:
             self.peers.append(request.agent_id)
             return {"findings": [{"statement": "适用范围待核对", "support": "insufficient"}]}
@@ -202,6 +205,58 @@ def test_invalid_assessment_preserves_sources_and_records_gap():
     assert result.unresolved_questions == [QUESTION]
     assert result.research.evidence == [first, other]
     assert {card.evidence_id for card in result.quality} == {first.evidence_id, other.evidence_id}
+
+
+def test_reflection_emits_one_expert_lifecycle_with_tools_inside_it():
+    async def run():
+        scenario = Scenario(source(), state="insufficient")
+        graph = build_research_graph(
+            scenario.model, retrieve=scenario.retrieve, reflection=scenario.config()
+        )
+        request = research_input()
+        request["brief"] = request["brief"].model_copy(update={"depth": "deep"})
+        events = [event async for event in graph.astream(request, stream_mode="custom")]
+        event_types = [
+            event.type
+            for event in events
+            if getattr(event, "agent_id", None) == "history_culture"
+            and event.type != "evidence.added"
+        ]
+        assert event_types[0] == "agent.started"
+        assert event_types[-1] == "agent.finished"
+        assert event_types.count("agent.started") == event_types.count("agent.finished") == 1
+        assert event_types.count("tool.started") == 2
+        assert event_types.count("tool.finished") == 2
+        assert scenario.reviewer_inputs[0]["expert_assessments"]
+
+    asyncio.run(run())
+
+
+def test_reflection_rejects_conflict_from_two_pages_on_the_same_source():
+    first = source()
+    scenario = Scenario(first, state="conflicting")
+    scenario.other = second_source(first, host="whc.unesco.org")
+    result = report(asyncio.run(run_scenario(scenario, depth="quick")))
+    assert result.reflection.state == "insufficient"
+    assert result.research.findings[0].support == "insufficient"
+
+
+def test_quality_review_returns_low_grade_citations_for_revision():
+    class LowEvidence(Scenario):
+        async def score(self, request, **context):
+            return await super().score(
+                request.model_copy(update={"agent_id": "history_culture"}), **context
+            )
+
+    scenario = LowEvidence(source(), state="low_quality")
+    values = asyncio.run(run_scenario(scenario, depth="quick"))
+    assert values["status"] == "failed"
+    assert values["failure"].code == "REVIEW_REJECTED"
+    assert any(
+        issue.category == "citation" and issue.evidence_ids == [scenario.first.evidence_id]
+        for issue in values["review"].issues
+    )
+    assert not scenario.reviewer_inputs
 
 
 def test_academic_research_can_use_two_distinct_follow_ups():
@@ -397,7 +452,8 @@ def test_pause_before_follow_up_defers_retrieval_and_invited_peers():
         async def commit_projection(self, lease, batch):
             if any(
                 event.payload.type == "agent.message"
-                and event.payload.message == "Research Director 已发起一次定向证据质询。"
+                and event.payload.agent_id == "research_director"
+                and "已邀请其他专家核对冲突来源" in event.payload.message
                 for event in getattr(batch, "events", [])
             ):
                 self.paused_at = datetime.now(UTC)
@@ -439,9 +495,6 @@ def test_pause_before_follow_up_defers_retrieval_and_invited_peers():
 
 
 def test_worker_adapter_uses_the_evidence_quality_scorer_after_integration():
-    pytest.importorskip(
-        "travelmind.research.quality", reason="requires the Evidence Quality branch"
-    )
     first = source()
     semantic_calls = []
 
@@ -473,6 +526,14 @@ def test_worker_adapter_uses_the_evidence_quality_scorer_after_integration():
         assert result.reflection.model_id == "integrated-quality-model"
         assert result.reflection.state == "sufficient"
         assert len(result.quality) == 1 and result.quality[0].model_id == "integrated-quality-model"
+        assert semantic_calls == [1, 1, 1]
+        request = next(request for request, _ in scenario.model.calls if request.assignment)
+        invalid = second_source(first, host="localhost", excerpt="点击查看详情")
+        request = request.model_copy(update={"evidence": [invalid, first]})
+        assert await config.rank(request, as_of=datetime.now(UTC), max_age_days=None) == [
+            first,
+            invalid,
+        ]
         assert semantic_calls == [1, 1, 1]
 
     asyncio.run(run())
