@@ -7,6 +7,7 @@ import pytest
 
 from travelmind.research.amap_routes import AmapRoutes
 from travelmind.runtime.execution import RunError
+from travelmind.runtime.travel.attractions import research_attractions
 from travelmind.runtime.travel.map_cache import AmapResultCache
 from travelmind.runtime.travel.places import AmapPlaces
 from travelmind.schemas.phase4_intake import Destination, Gcj02Point
@@ -92,8 +93,15 @@ async def test_poi_details_and_geocodes():
     def handle(request):
         if request.url.path == "/v5/place/detail":
             assert request.url.params["id"] == "B0001"
+            assert request.url.params["show_fields"] == "business,navi"
             return ok(
-                pois=[poi("OTHER"), poi(business={"opentime_week": "09:00-17:00", "cost": "35"})]
+                pois=[
+                    poi("OTHER"),
+                    poi(
+                        business={"opentime_week": "09:00-17:00", "cost": "35"},
+                        navi={"entr_location": "118.581,24.910", "exit_location": []},
+                    ),
+                ]
             )
         if request.url.path == "/v3/geocode/geo":
             assert request.url.params["city"] == "350502"
@@ -117,11 +125,68 @@ async def test_poi_details_and_geocodes():
         detail = await places.detail("B0001")
         assert detail.place.poi_id == "B0001"
         assert detail.opening_hours == "09:00-17:00"
+        assert detail.entrance == Gcj02Point(longitude=118.581, latitude=24.910)
+        assert detail.exit is None
         assert detail.model_dump().get("ticket_price") is None
         (match,) = await places.geocode("泉州开元寺", city="350502")
         assert match.coordinates == detail.place.coordinates
         assert match.model_dump().get("poi_id") is None
         assert (await places.reverse_geocode(match.coordinates)).address == "泉州开元寺"
+
+
+@pytest.mark.anyio
+async def test_attraction_research_uses_city_scope_and_preserves_partial_results():
+    calls = []
+
+    def handle(request):
+        calls.append(request.url.path)
+        if request.url.path == "/v5/place/text":
+            assert dict(request.url.params)["region"] == "0595"
+            assert request.url.params["city_limit"] == "true"
+            assert request.url.params["types"] == "110000"
+            assert request.url.params["page_size"] == "2"
+            return ok(pois=[poi(), poi("B0002", name="清源山")])
+        if request.url.params["id"] == "B0002":
+            return httpx.Response(200, json={"status": "0", "infocode": "10021"})
+        return ok(
+            pois=[
+                poi(
+                    business={"opentime_today": "08:00-18:00", "cost": "199"},
+                    navi={"entr_location": "118.581,24.910"},
+                )
+            ]
+        )
+
+    city = destination("B_CITY").model_copy(
+        update={
+            "name": "泉州市",
+            "administrative": destination().administrative.model_copy(
+                update={"city": "泉州市", "adcode": "350503"}
+            ),
+        }
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        places = AmapPlaces(AmapResultCache(StubTransport(http)))
+        result = await research_attractions(places, "泉州市", confirmed=city)
+    (source,) = result.evidence
+    assert source.source_type == "map"
+    assert str(source.source_url) == "https://uri.amap.com/marker?poiid=B0001&src=TravelMind"
+    assert "08:00-18:00" in source.excerpt and "入口" in source.excerpt
+    assert "199" not in source.excerpt
+    assert [error.code for error in result.errors] == ["AMAP_RATE_LIMIT"]
+    assert calls.count("/v5/place/detail") == 2
+
+
+@pytest.mark.anyio
+async def test_attraction_research_skips_ambiguous_names_without_confirmation():
+    def handle(request):
+        assert request.url.path == "/v5/place/text"
+        return ok(pois=[poi(), poi("B0002", cityname="福州市")])
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        places = AmapPlaces(AmapResultCache(StubTransport(http)))
+        result = await research_attractions(places, "开元寺")
+    assert not result.evidence and not result.errors
 
 
 @pytest.mark.anyio

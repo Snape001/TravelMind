@@ -9,6 +9,7 @@ from pydantic import HttpUrl
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from travelmind.db.evidence import save_evidence
+from travelmind.db.models import IntakeRow
 from travelmind.db.research_browser import source_id_for
 from travelmind.research.engine import ResearchEngine, SearchProvider, ToolResult
 from travelmind.research.http import failure
@@ -16,8 +17,11 @@ from travelmind.research.social.skills import social_keywords
 from travelmind.research.sources import is_public_target, url_key
 from travelmind.runtime.execution import RunError
 from travelmind.runtime.research_telemetry import current_telemetry
+from travelmind.runtime.travel.attractions import research_attractions
+from travelmind.runtime.travel.places import AmapPlaces
 from travelmind.schemas.agents import AgentInput
 from travelmind.schemas.domain import Evidence
+from travelmind.schemas.phase4_intake import Destination
 from travelmind.schemas.worker import LeaseLost, LeaseRef, WorkerStore
 
 logger = logging.getLogger(__name__)
@@ -54,6 +58,7 @@ class ResearchRetriever:
         lease: LeaseRef,
         social_search: SocialSearch | None = None,
         library_enabled: bool = False,
+        attraction_places: AmapPlaces | None = None,
     ):
         self.engine = engine
         self.sessions = sessions
@@ -61,6 +66,9 @@ class ResearchRetriever:
         self.lease = lease
         self.social_search = social_search
         self.library_enabled = library_enabled
+        self.attraction_places = attraction_places
+        self._attraction_lock = asyncio.Lock()
+        self._attraction_result: ToolResult | None = None
         self._library_lock = asyncio.Lock()
         self._library_result: ToolResult | None = None
         self._scrape_locks = defaultdict(asyncio.Lock)
@@ -155,6 +163,26 @@ class ResearchRetriever:
                     self._library_result = ToolResult(errors=[error.error])
             return self._library_result
 
+    async def _search_attractions(self, request: AgentInput, places: AmapPlaces) -> ToolResult:
+        async with self._attraction_lock:
+            if self._attraction_result is None:
+                try:
+                    async with asyncio.timeout(min(8, request.budget.timeout_seconds / 3)):
+                        async with self.sessions() as session:
+                            intake = await session.get(IntakeRow, request.task_id)
+                            confirmed = (
+                                Destination.model_validate(intake.destination)
+                                if intake and intake.destination
+                                else None
+                            )
+                        self._attraction_result = await research_attractions(
+                            places, request.brief.destination, confirmed=confirmed
+                        )
+                except TimeoutError:
+                    error = failure("amap", "AMAP_TIMEOUT", "高德景点检索超时", retryable=True)
+                    self._attraction_result = ToolResult(errors=[error.error])
+            return self._attraction_result
+
     async def __call__(self, request: AgentInput) -> list[Evidence]:
         if request.task_id != self.lease.task_id:
             raise LeaseLost("evidence task does not match the lease")
@@ -173,6 +201,10 @@ class ResearchRetriever:
         ):
             (search, aliases), supplemental = await asyncio.gather(
                 self._web(request), self._search_library(request)
+            )
+        elif self.attraction_places is not None and request.agent_id == "tourism_resources":
+            (search, aliases), supplemental = await asyncio.gather(
+                self._web(request), self._search_attractions(request, self.attraction_places)
             )
         else:
             search, aliases = await self._web(request)

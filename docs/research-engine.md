@@ -1,5 +1,15 @@
 # Research Engine 接入说明
 
+## 高德景点资料
+
+默认 Worker 配置 `AMAP_WEB_API_KEY` 后，林景川（`tourism_resources`）会在资料检索环节并行查询高德和网页。问卷已确认景点时直接按 POI ID 查询。确认的是行政区时，在该区域内搜索并读取最多两个景点。旧简报先尝试匹配唯一同名地点，遇到歧义时继续使用网页资料。
+
+- 复用陆知行的 `AmapPlaces` 与 Worker 级缓存。高德详情查询请求 `business,navi`，以返回内容记录地址、电话、当日与常规营业时间、入口和出口坐标。缺失字段留空。当日营业时间标明对应的北京时间日期。
+- 写入现有 Evidence Center 的 `map` 证据，包含 POI ID、采集时间和可打开的高德地图链接。林景川通过现有游览资源技能读取，资料浏览器可追踪该来源。票务、预约、临时闭馆和无障碍条件由景区官方公告核验。
+- 每次执行租约复用景点查询结果，整组调用最多 8 秒并受单次专家检索预算约束。没有唯一匹配、服务限流或超时时，原有网页和学术检索继续。 [高德地点搜索 2.0](https://lbs.amap.com/api/webservice/guide/api/newpoisearch) · [高德地点标注](https://lbs.amap.com/api/uri-api/guide/mobile-web/point)
+
+## 通用检索
+
 从 `backend` 目录使用 `travelmind.research.engine.ResearchEngine`。调用方管理并复用 `httpx.AsyncClient`。独立 Worker 通过 `ResearchRetriever` 调用检索，并在数据库写入事务内校验当前执行租约。快速调研使用搜索摘要。深度和学术调研为每位专家尝试抓取一个网页的正文，并在同一执行租约内复用相同来源的抓取结果。学术调研并行检索博查与 OpenAlex，其他深度在博查没有结果时尝试 OpenAlex。网页抓取失败时保留可用搜索结果。
 
 ```python

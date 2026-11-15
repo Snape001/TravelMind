@@ -110,6 +110,7 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
         research = ResearchEngine(client, settings, social_client=social_client)
         amap = AmapClient(client, settings.amap_web_api_key)
         map_cache = AmapResultCache(amap)
+        places = AmapPlaces(map_cache)
         pool = await resources.enter_async_context(
             AsyncConnectionPool(
                 checkpoint_dsn(settings),
@@ -131,12 +132,11 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
                 lease=lease,
                 social_search=research.search_social if research.social is not None else None,
                 library_enabled=research.library_enabled,
+                attraction_places=places if settings.amap_web_api_key else None,
             ),
             reflection=reflection_for(model, settings.deepseek_model),
             intake=IntakeWorker(store, AmapPoi(amap), model),
-            travel_planner=TravelPlanner(
-                AmapPlaces(map_cache), AmapRoutes(map_cache), notices=research
-            ),
+            travel_planner=TravelPlanner(places, AmapRoutes(map_cache), notices=research),
             skills=SkillRegistry(),
             telemetry=lambda claim: ResearchTelemetry(store, claim.lease, claim.trace_id),
             lease_seconds=lease_seconds,

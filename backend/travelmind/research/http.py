@@ -11,7 +11,7 @@ from pydantic import SecretStr
 
 from travelmind.schemas.agents import ErrorInfo
 
-Provider = Literal["bocha", "firecrawl", "openalex", "social", "cnkgraph"]
+Provider = Literal["bocha", "firecrawl", "openalex", "social", "cnkgraph", "amap"]
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 logger = logging.getLogger(__name__)
 

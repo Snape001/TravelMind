@@ -162,6 +162,7 @@ AMAP_SECURITY_JS_CODE=
 ```
 
 - `AMAP_WEB_API_KEY` 由后端和 Worker 读取。
+- 林景川在景点资源调研中复用该 Key 查询景点详情，并将高德返回的营业时间、电话和出入口作为可引用的地图证据。 [查询范围和缺失字段处理](docs/research-engine.md#高德景点资料)
 - Next.js 同源转发 `/_AMapService`。地图 SDK 加载器从已登录的服务端配置接口读取公开 JS Key，服务端代理向固定高德上游注入 `AMAP_SECURITY_JS_CODE`。修改值后重启 API 和 Worker 即可，JS Key 在运行时读取。两个敏感值只留在后端。
 - `.env` 与 `.env.local` 已被 Git 忽略。请只提交 `.env.example` 模板。
 

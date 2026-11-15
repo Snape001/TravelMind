@@ -54,6 +54,12 @@
 - 冻结 Keycloak 原生注册、邮箱验证、重置和资料编辑的接入方式。明确服务器端报告列表、会话身份映射、单点退出及后通道吊销。业务实现留到后续开发。
 - 本地 HTTPS、Discovery、JWKS 和 PKCE 探测通过，匿名会话返回 401。隔离 PostgreSQL 认证和 Research Browser 定向回归 5 项、前端 31 项通过。邮件和 Keycloak 单点退出仍需完成真实端到端验证。**交付提交**　`docs: freeze account authentication upgrade contract`。
 
+## 林景川 · 高德景点资料（2026-11-15）
+
+- 默认 Worker 为旅游资源专家接入高德 POI 详情，复用现有 `AMAP_WEB_API_KEY`、客户端和缓存。确认景点后按 POI ID 查询。确认行政区后限区读取最多两个景点。结果转为现有 `map` 证据，并纳入资料浏览器和游览资源技能。 [运行与字段说明](docs/research-engine.md#高德景点资料)
+- 真实高德响应中，泉州大开元寺有查询日与常规营业时间、电话和入口坐标，敦煌莫高窟景区有常规营业时间、电话和入口坐标。出口未返回时省略。确认泉州市后限区取得蟳埔民俗文化村、泉州森林公园两条证据。两次默认 Worker 开元寺任务均将高德证据写入隔离 PostgreSQL，Evidence API 返回 HTTP 200，资料浏览器关联同一 ID，林景川实际引用。复测草稿也引用了该证据。首次写作、复测返修的结构化输出分别未通过既有校验，两次任务均未发布正式报告。
+- PostgreSQL 17 后端全量 289 项、前端 31 项、Ruff、Alembic、TypeScript 和 ESLint 通过。**交付提交**　`feat: connect Amap attraction evidence to Lin Jingchuan`。
+
 ## 沈观澜 · 游记与地方志检索（2026-11-15）
 
 - 古籍分支 `dac15fd` 接入 CNKGraph 正文检索和读卷。分支实测从《徐霞客游记》和《大清一统志》取得 3 条原文，均写入独立 PostgreSQL 并进入沈观澜的结构化分析。 [接口和启用方式](docs/research-engine.md#游记与地方志)
