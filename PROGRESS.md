@@ -1,5 +1,12 @@
 # TravelMind 开发进度
 
+## Phase 4 · 高德配置与连通性检查（2026-11-15）
+
+- `backend/.env.example` 增加 Web 服务 Key、公开 JS Key 和 JS 安全密钥。核对 A 线 POI/输入提示通过统一高德客户端读取 `AMAP_WEB_API_KEY`，B 线地理编码和路线复用该客户端。配置层、README 和架构说明统一使用这三个环境变量名。
+- 增加登录后的同源 JS 配置与固定高德代理。浏览器只取得公开 JS Key，代理注入安全密钥，HTTP 日志过滤高德查询参数。验证根目录、后端和前端的 `.env` 及 `.env.local` 均被 Git 忽略。Phase 4 工作台地图和任务路线仍由功能集成接线。
+- `python -m travelmind.research.check_amap` 可独立验证真实 POI、输入提示和驾车路径规划。已验证缺 Key 时以退出码 2 终止。当前未发起高德请求，待用户填写 Key 后进行连通性测试。
+- PostgreSQL 14 全量后端 213 项通过，含 5 项新增配置测试。前端 27 项、Ruff、Alembic、ESLint、TypeScript、Next.js 生产构建和 Compose 配置检查通过。**交付提交**　`fix: standardize Amap credentials and add live probe`。
+
 ## Phase 4 · Step 0 公共契约
 
 - 冻结目的地、动态问卷、路线偏好、专家档案与 Skills、Research Browser 事件、模型用量和社交证据。交付 Pydantic Schema、共享合成 Fixture 和独立类型导出。现有路由、AgentEvent v1、六态任务机及 Worker 仍走 Phase 3。 [公共接口](docs/phase-4-contract.md)

@@ -1,5 +1,7 @@
 import logging
 
+import httpx
+
 
 class AccessLogFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
@@ -11,3 +13,19 @@ class AccessLogFilter(logging.Filter):
 
 
 access_log_filter = AccessLogFilter()
+
+
+class AmapLogFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(
+                arg.copy_with(query=None, fragment=None)
+                if isinstance(arg, httpx.URL)
+                and arg.host in {"restapi.amap.com", "webapi.amap.com"}
+                else arg
+                for arg in record.args
+            )
+        return True
+
+
+amap_log_filter = AmapLogFilter()

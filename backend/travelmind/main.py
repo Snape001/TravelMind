@@ -10,12 +10,12 @@ from redis.asyncio import Redis
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, TimeoutError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from travelmind.api import auth, health, tasks
+from travelmind.api import amap, auth, health, tasks
 from travelmind.api.oidc import AuthSettings, OidcClient
 from travelmind.config import Settings, get_settings
 from travelmind.db.connection import create_database_engine
 from travelmind.schemas.api import ErrorInfo, ErrorResponse
-from travelmind.server_logging import access_log_filter
+from travelmind.server_logging import access_log_filter, amap_log_filter
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         logging.getLogger("uvicorn.access").addFilter(access_log_filter)
+        logging.getLogger("httpx").addFilter(amap_log_filter)
         async with AsyncExitStack() as resources:
             app.state.settings = config
             app.state.engine = None
@@ -36,6 +37,9 @@ def create_app(
             app.state.redis = None
             app.state.auth_settings = identity
             app.state.oidc = None
+            app.state.amap_http = await resources.enter_async_context(
+                httpx.AsyncClient(timeout=8, follow_redirects=False)
+            )
             if identity.issuer is not None:
                 client = await resources.enter_async_context(httpx.AsyncClient(timeout=10))
                 app.state.oidc = OidcClient(client, identity)
@@ -55,6 +59,7 @@ def create_app(
             yield
 
     app = FastAPI(title="TravelMind API", version="0.1.0", lifespan=lifespan)
+    app.include_router(amap.router)
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(tasks.router)

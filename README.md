@@ -138,6 +138,31 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 
 入库证据先经规则筛选，再由专家结合评分和任务目标判断是否补查。 [Evidence Quality](docs/evidence-quality.md) · [专家反思与预算](docs/agent-runtime.md#专家反思)
 
+## 高德地图配置
+
+在[高德开放平台控制台](https://console.amap.com/)创建应用并分别申请两种 Key。添加 Key 时选择「Web 服务」，供后端的 POI、输入提示、地理编码及路径规划使用。另添加「Web 端（JS API）」Key，取得配套安全密钥，并把本地和生产站点域名加入该 Key 的白名单。使用 Windows OIDC 开发栈时，本地站点为 `travelmind.localhost`。 [申请 Web 服务 Key](https://lbs.amap.com/api/webservice/create-project-and-key) · [JS API 安全密钥](https://lbs.amap.com/api/javascript-api-v2/guide/abc/jscode)
+
+将以下值填到 `backend/.env`。首次配置可复制 `backend/.env.example`。文件已存在时，追加相应的三行并保留原有配置。
+
+```ini
+AMAP_WEB_API_KEY=
+NEXT_PUBLIC_AMAP_JS_API_KEY=
+AMAP_SECURITY_JS_CODE=
+```
+
+- `AMAP_WEB_API_KEY` 由后端和 Worker 读取。
+- Next.js 同源转发 `/_AMapService`。地图 SDK 加载器从已登录的服务端配置接口读取公开 JS Key，服务端代理向固定高德上游注入 `AMAP_SECURITY_JS_CODE`。修改值后重启 API 和 Worker 即可，JS Key 在运行时读取。两个敏感值只留在后端。
+- `.env` 与 `.env.local` 已被 Git 忽略。请只提交 `.env.example` 模板。
+
+填写 Web 服务 Key 后，从仓库根目录运行以下命令。脚本从实际高德返回的两个北京 POI 获取坐标，另外请求目的地输入提示及驾车路线。输出每项状态和安全错误码。退出码 `0` 表示三项通过，`1` 表示请求或结果校验失败，`2` 表示配置缺失或无效。
+
+```powershell
+Set-Location backend
+& .\.venv\Scripts\python.exe -m travelmind.research.check_amap
+```
+
+该脚本可独立验证 Web 服务凭据。Phase 4 工作台地图和任务路线的端到端验收在功能分支接线后进行。
+
 ## 开发验证
 
 - 后端目录执行 `uv run pytest` 和 `uv run ruff check .`。将 `TEST_DATABASE_URL` 指向已经执行 `alembic upgrade head` 的专用测试数据库，以运行任务状态、租约、Checkpoint 投影、OIDC 和权限集成测试。

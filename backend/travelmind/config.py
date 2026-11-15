@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     bocha_api_key: SecretStr | None = None
     firecrawl_api_key: SecretStr | None = None
     openalex_api_key: SecretStr | None = None
+    amap_web_api_key: SecretStr | None = None
+    next_public_amap_js_api_key: SecretStr | None = None
+    amap_security_js_code: SecretStr | None = None
     research_timeout_seconds: Annotated[float, Field(gt=0, le=120)] = 35
 
 
