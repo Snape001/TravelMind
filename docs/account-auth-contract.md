@@ -1,6 +1,6 @@
 # TravelMind 登录、注册与账户管理契约
 
-本契约以本地 `main` 的 `123c237` 为审查基线。本文中的新增接口、迁移及 Realm 配置均为后续实现要求。
+本契约以本地 `main` 的 `123c237` 为审查基线。账户接口已在最终集成中按本契约实现。 [部署与 SMTP](account-auth-deployment.md) · [集成验收](account-auth-qa.md)
 
 ## 当前实现与缺口
 
@@ -9,7 +9,7 @@
 | 本地 Realm 和 Client | Keycloak `26.8.2`，Realm `travelmind-dev`，机密客户端 `travelmind-local`。授权码、PKCE S256、RS256、`client_secret_basic`。隐式授权、密码授权和服务账户关闭。Issuer 为 `https://id.travelmind.localhost:18443/realms/travelmind-dev`，回调为 `https://travelmind.localhost:18443/api/v1/auth/callback`。Caddy 只发布回环 HTTPS，代理开发 Realm 和身份页面静态资源。 [Realm](../dev/local-oidc/realm.json) · [Compose](../dev/local-oidc/compose.yaml) · [Caddy](../dev/local-oidc/Caddyfile) |
 | 登录 | 首页的「登录 / 注册」链接请求 `GET /api/v1/auth/login`。FastAPI 用 `openid profile` 发起授权，在 PostgreSQL 创建绑定浏览器 Cookie 的一次性流程，10 分钟过期。回调核对 `state`，携 PKCE verifier 换码，经 Discovery 和 JWKS 校验签名、Issuer、Audience、时间和 `nonce`。成功后轮换应用会话，跳到 `/workbench`，再由前端读取一次性同源回跳地址。一个浏览器只有一个登录流程 Cookie，第二次发起会覆盖它。 [认证路由](../backend/travelmind/api/auth.py) · [OIDC 校验](../backend/travelmind/api/oidc.py) · [回跳](../frontend/src/lib/login-return.ts) |
 | 注册、验证、恢复 | Realm 将 `registrationAllowed` 和 `resetPasswordAllowed` 设为 `false`，未配置 `verifyEmail` 或 SMTP。Alice、Bob 为预置且已标记邮箱验证的账号。真实邮件验证和重置尚未接通。 [Realm](../dev/local-oidc/realm.json) |
-| 账户前端 | `SessionProvider` 管理加载中、匿名、已登录和不可用四种状态。启动、焦点、页面恢复和已登录可见页每 30 秒检查会话。菜单展示姓名首字、我的报告和退出。「我的报告」指向 `/reports`，列表读取按用户分桶的本机 `localStorage`，最多 20 条，跨设备只能凭已知报告链接访问。缺少个人资料页。 [SessionProvider](../frontend/src/components/session.tsx) · [账户菜单](../frontend/src/components/site-header.tsx) · [报告缓存](../frontend/src/lib/report-history.ts) |
+| 账户前端 | `SessionProvider` 管理加载中、匿名、已登录和不可用四种状态。启动、焦点、页面恢复和已登录可见页每 30 秒检查会话。菜单展示姓名首字、我的报告和退出。「我的报告」指向 `/reports`，列表读取按用户分桶的本机 `localStorage`，最多 20 条，跨设备只能凭已知报告链接访问。缺少个人资料页。旧缓存实现可在 `123c237:frontend/src/lib/report-history.ts` 查看。 [SessionProvider](../frontend/src/components/session.tsx) · [账户菜单](../frontend/src/components/site-header.tsx) |
 | 身份和归属 | `users` 用 `(issuer, subject)` 唯一映射 `user_id`，仅同步 ID Token 的 `name`。`/auth/me` 返回 `user_id`、`display_name`、`csrf_token`。任务使用 `owner_id`，报告、证据、地图、来源及两条 SSE 先校验任务所有权。不存在和无权访问统一返回 404。 [用户和会话持久化](../backend/travelmind/db/auth.py) · [任务接口](../backend/travelmind/api/tasks.py) |
 | Cookie、CSRF 和吊销 | `__Host-travelmind-session` 和登录流程 Cookie 均为 `Secure`、`HttpOnly`、`SameSite=Lax`、`Path=/`，无 `Domain`。数据库保存会话令牌哈希，固定有效期默认 8 小时，由 `OIDC_SESSION_SECONDS` 配置。认证写请求需唯一的同源 `Origin` 和 `X-CSRF-Token`。`POST /auth/logout` 吊销当前应用会话并清除 Cookie，返回 204。Keycloak SSO 可继续有效，FastAPI 缺少 Keycloak Session ID 和后通道吊销入口。两条 SSE 在握手时检查会话和所有权，连接内每 5 秒复查会话。 [认证依赖](../backend/travelmind/api/dependencies.py) · [会话持久化](../backend/travelmind/db/auth.py) · [SSE](../backend/travelmind/api/tasks.py) |
 
@@ -29,7 +29,7 @@
 | `GET /auth/login` | 保留 `302` 和现有授权流程。Keycloak 登录页提供「忘记密码」，进入原生 Reset Credentials 流程。 |
 | `GET /auth/register` | 启用后返回 `302`，复用登录流程并附 `prompt=create`。关闭时返回 `404 ACCOUNT_FEATURE_DISABLED`。 |
 | `GET /auth/callback` | 登录、注册验证完成及资料编辑复用此回调。成功 `302`。现有登录默认 `/workbench`，编辑回 `/account`。非法或过期事务 `400 AUTH_CALLBACK_INVALID`，账户模式下邮箱未通过验证为 `403 AUTH_EMAIL_UNVERIFIED`。前端回跳仅支持应用内路径，服务端编辑目标固定。 |
-| `GET /auth/me` | 已登录返回 `200 CurrentUser`。保留 `user_id: UUID`、`display_name: string \| null`、`csrf_token: string`，增量提供 `email?: string \| null`、`email_verified?: boolean \| null`、`account_management_enabled?: boolean`。旧或通用 OIDC 模式的未知资料可空，缺少能力字段按 `false` 处理。 |
+| `GET /auth/me` | 已登录返回 `200 CurrentUser`。保留 `user_id: UUID`、`display_name: string \| null`、`csrf_token: string`，增量提供 `email?: string \| null`、`email_verified?: boolean \| null`、`avatar_url?: string \| null`、`account_management_enabled?: boolean`。`avatar_url` 来自签名 ID Token 的 HTTPS `picture`。旧或通用 OIDC 模式的未知资料可空，缺少能力字段按 `false` 处理。 |
 | `POST /auth/profile/edit` | 无请求体，要求已登录、账户功能开启和 CSRF。返回 `200 { authorization_url: string }` 并设置登录流程 Cookie。URL 由服务端用固定 `kc_action=UPDATE_PROFILE` 生成。浏览器顶层导航至该 URL。关闭时返回 `404 ACCOUNT_FEATURE_DISABLED`。 |
 | `GET /account/reports?limit=20&cursor=…` | 已登录返回 `200 { items: ReportSummary[], next_cursor: string \| null }`。`ReportSummary` 包含 `task_id: UUID`、`report_id: UUID`、`version: int`、`title: string`、`published_at: ISO 8601 UTC`。`limit` 取 1 至 50，cursor 是服务端生成的不透明游标，非法参数返回 `422 VALIDATION_ERROR`。 |
 | `POST /auth/logout` | 保留已登录且通过 CSRF 后清 Cookie 并返回 `204` 的原契约。 |
@@ -59,7 +59,7 @@
 | Client | 保持机密客户端、授权码、PKCE S256、RS256、精确注册登录回调。验证 `profile` 和 `email` Scope 的 `name`、`email`、`email_verified` 以及原生 `sid` 实际进入签名 ID Token。开发环境精确注册退出返回 `https://travelmind.localhost:18443/`，Backchannel Logout URL 为 `https://travelmind.localhost:18443/api/v1/auth/backchannel-logout`，关闭 Front Channel Logout，开启 Backchannel Logout Session Required。生产使用相应精确 HTTPS 地址。 [Keycloak OIDC Client 设置](https://www.keycloak.org/docs/26.8.2/server_admin/) |
 | 网络和持久 Realm | 检查浏览器、FastAPI 的 Discovery/Token/JWKS 请求和 Keycloak 的回调请求均能验证 HTTPS 并按配置到达。为本地 Keycloak 提供应用域的容器 DNS 和 mkcert CA 信任。管理面仍保持私有。本地初次启动导入与现有 Realm 原地更新分别验收，`--import-realm` 会跳过已存在的 Realm，升级脚本需幂等应用 Realm/Client 改动并保留用户及其主体 ID。开发邮箱、凭据和证书留在本地。 [Keycloak Realm 导入](https://www.keycloak.org/server/importExport) |
 
-## 后续实现边界
+## 实现边界
 
 | 负责面 | 文件和依赖 |
 | --- | --- |
@@ -67,7 +67,7 @@
 | FastAPI / 存储 | `api/auth.py`、`api/oidc.py`、`api/dependencies.py`、账户报告索引路由与查询、`db/auth.py`、`db/models.py`、`schemas/api.py` 及新增 Alembic 迁移。迁移负责资料字段、流程绑定、会话 SID 及有限期回执。由后端提交 OpenAPI，再生成前端类型。保留现有所有权判断与 AgentEvent v1。 |
 | Next.js | `components/session.tsx`、`components/site-header.tsx`、登录回跳、`/account` 与报告列表。消费生成的 OpenAPI 类型，按会话区分加载、空结果、匿名和故障。登录入口始终可用，托管登录页根据 Realm 显示注册和忘记密码。已登录菜单按会话声明的能力选择编辑和退出方式。账户切换清理前账号的私有状态、在途请求和 SSE，服务端列表提供跨设备历史。保留报告示例和旧链接。 |
 
-## 后续验收
+## 验收标准
 
 - 本地受信 HTTPS 真浏览器和真实 Keycloak 登录。既有 Alice/Bob 和新注册邮箱各自进入账户，非预期 `state`、重放、错误 Provider 或回调主体不匹配均被拒绝，直达私有页的登录回跳仍可用。
 - 通过本地 SMTP 捕获器接收注册验证邮件。未验证账号既无法建立会话也无法访问 API。覆盖验证链接过期或使用后重放、超过原授权期限后重新登录，以及重置请求公开提示一致、重置链接过期或重放、旧密码失败、新密码登录。
@@ -75,7 +75,7 @@
 - 检验 Cookie 属性、CSRF 缺失／重复／跨源拒绝、绝对过期和会话轮换。应用退出后旧 Cookie 为 401，两条 SSE 关闭。完整 Keycloak 退出后立即再登录须重新认证。管理员注销和重置时选择退出其他设备均实测送达后通道，验证重复通知、被拒绝的通知、会话签发竞争及多设备隔离。
 - 专用 PostgreSQL 验证迁移和原有所有权。验证首次导入、已有 Keycloak 数据卷升级、无邮件服务时的提示、日志脱敏及关闭账户模式后的通用 OIDC 登录。对真实链路和自动化回归分别记录结果。
 
-## 本次审查验证
+## 集成前的审查验证
 
 运行中的本地 Keycloak 容器为固定版 `26.8.2`。`stack.ps1 check` 验证受信 HTTPS、Discovery、JWKS 与 PKCE S256 授权跳转。实际响应公开 `end_session_endpoint` 和后通道支持元数据。获取跳转后的 Keycloak HTML，看到登录表单，注册和忘记密码链接均未渲染。匿名 `/auth/me` 返回 401。
 

@@ -42,6 +42,7 @@ services:
     volumes:
       - keycloak:/opt/keycloak/data
       - ./realm.json:/opt/keycloak/data/import/travelmind-dev-realm.json:ro
+      - ../../frontend/keycloak-theme/travelmind:/opt/keycloak/themes/travelmind:ro
       - ../../.artifacts/local-oidc/pki/rootCA.pem:/local-pki/rootCA.pem:ro
 
   mailpit:

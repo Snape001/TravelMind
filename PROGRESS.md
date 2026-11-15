@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## 账户认证 · 最终集成（2026-11-15）
+
+- 保留主线前端 `8d28709`、后端 `66c5c06` 及各自原始顺序，合入 `codex/account-auth-qa` 的 `60aa09b`（合并提交 `546179b`）。共同基线为 `476450d`。从运行中的 FastAPI 重新生成前端 OpenAPI，移除前端账户类型补丁，开发 Realm 自动挂载和选用账户主题。
+- 真实 Chrome 经本地 HTTPS、Keycloak 26.8.2 和 Mailpit 完成自助注册、邮箱验证、重置密码、昵称编辑及 OIDC 退出。后通道实测吊销旧会话。退出后两条空闲 SSE 在约 5 秒内关闭。双设备读到同一报告列表，页面分页按 20＋1 验证，跨用户 8 个私有路径返回 404。 [验收结果](docs/account-auth-qa.md)
+- PostgreSQL 17 后端 290 项、前端 35 项通过，Ruff、ESLint、TypeScript、Next.js 生产构建、Compose 校验通过。Alembic 升降级保留旧主体、会话和任务归属。旧 Keycloak 数据卷连续两次原地升级，保留 Alice、Bob 的主体和既有回调。Python 和 npm 锁定依赖无匹配安全公告，真实栈日志抽查命中测试敏感值 0。
+- Keycloak 原生注册仍会在重复邮箱时显示字段错误，公网开放自助注册前需处理该枚举差异。本次 SMTP 仅使用本地 Mailpit。 [SMTP、Realm 导入及生产配置](docs/account-auth-deployment.md)
+- **交付提交**　`chore: finalize TravelMind account authentication integration`。
+
 ## 账户认证后端与 Keycloak（2026-11-15）
 
 - 基于冻结契约 `476450d` 实现 Keycloak 注册、邮箱验证、重置密码及姓名编辑。账户模式校验已签名的邮箱、验证状态及 SID，继续用 `(issuer, subject)` 保留现有用户和任务归属。按需求为 `/auth/me` 增补可空的 `avatar_url`，来源为签名的 `picture`。迁移 `0007` 保存资料和会话绑定，未引入应用密码或 OIDC Token 存储。 [部署说明](docs/account-auth-deployment.md)

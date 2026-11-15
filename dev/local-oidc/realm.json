@@ -3,6 +3,7 @@
   "displayName": "TravelMind Local Development",
   "enabled": true,
   "sslRequired": "all",
+  "loginTheme": "travelmind",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "loginWithEmailAllowed": true,

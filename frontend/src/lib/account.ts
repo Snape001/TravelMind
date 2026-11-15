@@ -1,24 +1,11 @@
 import type { components } from "./api.generated";
 
-// Account additions from docs/account-auth-contract.md, pending the backend OpenAPI release.
-export type AccountUser = components["schemas"]["CurrentUser"] & {
-  email?: string | null;
-  email_verified?: boolean | null;
-  account_management_enabled?: boolean;
-};
-
-export type ReportSummary = {
-  task_id: string;
-  report_id: string;
-  version: number;
-  title: string;
-  published_at: string;
-};
-
-export type ReportPage = {
-  items: ReportSummary[];
-  next_cursor: string | null;
-};
+type Schemas = components["schemas"];
+export type AccountUser = Schemas["CurrentUser"];
+export type ReportSummary = Schemas["ReportSummary"];
+export type ReportPage = Schemas["AccountReports"];
+export type ProfileEdit = Schemas["ProfileEdit"];
+export type ProviderLogout = Schemas["ProviderLogout"];
 
 // Only call this with URLs issued by the same-origin authentication API.
 export function providerNavigation(value: string): string {

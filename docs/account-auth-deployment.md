@@ -8,6 +8,7 @@
 
 ```powershell
 .\dev\local-oidc\stack.ps1 start
+.\dev\local-oidc\stack.ps1 check
 ```
 
 已有本地部署先升级原 Realm，再重建应用。升级短暂停止本机 Keycloak，通过一次性私有管理员原地更新 Realm 和客户端，保留 Alice、Bob、已注册用户、主体 ID 和数据卷。已有仅含旧会话信息的 Cookie 在账户模式下需重新登录。
@@ -18,17 +19,21 @@
 .\dev\local-oidc\stack.ps1 check
 ```
 
-从 `https://travelmind.localhost:18443` 进入登录页，或直接打开同源 `/api/v1/auth/register`。填写用户名、邮箱和姓名，随后在 `http://127.0.0.1:18025` 的 Mailpit 打开验证链接，再设置密码。Mailpit UI 只绑定本机回环地址，SMTP 端口仅在容器网络内使用，邮件留在本地。验证链接有效期 30 分钟，密码重置链接 15 分钟。启用较早邮件时，如果 TravelMind 的 10 分钟授权事务已过期，完成 Keycloak 验证或设定密码后返回应用登录入口重新授权。
+从 `https://travelmind.localhost:18443` 进入登录页，或直接打开同源 `/api/v1/auth/register`。填写用户名、邮箱和姓名，随后在 `http://127.0.0.1:18025` 的 Mailpit 打开验证链接，再设置密码。开发 Realm 使用 Compose 内的 `mailpit:1025` 和发件地址 `no-reply@travelmind.test`，无需 SMTP 密钥。收件箱只绑定本机回环，邮件留在本地。验证链接有效期 30 分钟，密码重置链接 15 分钟。如果打开邮件时 TravelMind 的 10 分钟授权事务已过期，完成 Keycloak 验证或设定密码后返回应用登录入口重新授权。
+
+开发 Compose 挂载 TravelMind 托管登录主题，空 Realm 导入及 `upgrade-auth` 均选用该主题。运行 `stack.ps1 stop` 停止容器并保留 Realm 和业务数据卷。 [主题安装](../frontend/keycloak-theme/README.md)
 
 密码要求 12 至 128 位，且不能等于用户名或邮箱。Keycloak 的默认姓名字段用于应用昵称，邮箱唯一且可用作登录名，原测试账号仍支持用户名。启用了登录失败锁定、原生验证邮件重发冷却和重置后重新认证。重置时选择 **Sign out from other devices** 可以让 Keycloak 吊销其它登录会话。
 
 ## 生产环境
 
-1. 启动生产模式的 Keycloak 26.8.2，使用持久数据库、独立身份域名和受信 HTTPS。复制 [环境模板](../dev/local-oidc/.env.example) 到 Git 忽略的本地环境文件。在 Keycloak 进程环境中注入对应配置，SMTP 授权码填入 `TM_SMTP_PASSWORD`。将 [生产 Realm 模板](../dev/local-oidc/realm.production.json) 挂载到 `/opt/keycloak/data/import`，空 Realm 使用 `start --import-realm`。生产模板无开发测试用户。 [Keycloak 导入](https://www.keycloak.org/server/importExport)
+1. 启动生产模式的 Keycloak 26.8.2，使用持久数据库、独立身份域名和受信 HTTPS。复制 [环境模板](../dev/local-oidc/.env.example) 到 Git 忽略的环境文件。向 Keycloak 注入 `TM_SMTP_HOST`、`TM_SMTP_PORT`、`TM_SMTP_FROM`、`TM_SMTP_USER`、`TM_SMTP_PASSWORD`、`TM_SMTP_SSL` 和 `TM_SMTP_STARTTLS`。将 [生产 Realm 模板](../dev/local-oidc/realm.production.json) 挂载到 `/opt/keycloak/data/import`，空 Realm 使用 `start --import-realm`。生产模板无开发测试用户，主题和实际用户协议由部署方选用及配置。 [Keycloak 导入](https://www.keycloak.org/server/importExport)
 2. 已有 Realm 通过私有管理面原地修改，保留原 Realm 名、客户端、签名密钥和用户。用模板核对 Login、Email、Tokens、Sessions、密码策略和 Client 配置。启用 `UPDATE_EMAIL` Required Action，让 Keycloak 单独处理邮箱变更与验证，TravelMind 的 `UPDATE_PROFILE` 入口用于修改姓名。复制原生 Reset Credentials 流程，将 **Send Reset Email → Force login after reset** 设为 `true`，再绑定到 Realm。Host、用户和授权码从部署环境传入。SMTP 隐式 TLS 使用 465，STARTTLS 通常使用 587，按供应商要求选择一种。 [Keycloak Realm 邮件设置](https://www.keycloak.org/docs/26.8.2/server_admin/#_email)
 3. 先执行 `alembic upgrade head`。FastAPI 进程设 `OIDC_ACCOUNT_ENABLED=true`、`OIDC_ISSUER=https://id.travelmind.example/realms/travelmind`、`OIDC_PUBLIC_ORIGIN=https://travelmind.example`、`OIDC_CLIENT_ID`、`OIDC_CLIENT_SECRET` 和 `OIDC_TOKEN_AUTH_METHOD=client_secret_basic`。独立运行也可把这些变量填入 `backend/.env.oidc`。应用固定会话时钟默认 8 小时，Keycloak SSO 与 Client Session 各自也有独立的 8 小时最大寿命和 30 分钟闲置计时。
 4. 在 Client 精确登记登录回调 `https://travelmind.example/api/v1/auth/callback`、退出返回 `https://travelmind.example/` 和后通道地址 `https://travelmind.example/api/v1/auth/backchannel-logout`。保持 PKCE S256、RS256、Backchannel Logout Session Required。应用端需要访问 Keycloak Discovery、JWKS 和 Token URL，Keycloak 服务端也需能解析并信任应用 HTTPS 域名。后通道按 OIDC 签名认证，反代需放行该 POST 并保留表单正文。两条 SSE 路径保持禁用响应缓冲及长连接。 [OIDC 后通道退出](https://openid.net/specs/openid-connect-backchannel-1_0.html)
 5. 登录私有 Keycloak Admin Console，确认管理员账号配置了接收测试邮件的邮箱，然后使用 **Realm settings → Email → Test connection**。SMTP 测试成功以 Keycloak 接受请求和实际收件记录为准。随后以两个测试用户分别完成注册、验证、重置和退出。退出时若应用返回空的 `provider_logout_url`，应用会话已吊销，Keycloak 退出仍需重试。 [OIDC RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
+
+公网开放自助注册前需处理原生注册的邮箱枚举差异。现有 Keycloak 26.8.2 对已使用邮箱显示字段错误。限制注册尝试频率可降低滥用，表单差异仍然存在。 [浏览器实测](account-auth-qa.md#最终集成实测--2026-11-15)
 
 生产反代应对注册、重置和验证重发的 POST 请求限流。例如在 Keycloak 的 Nginx 入口使用以下配置，阈值可按共享出口网络和发送配额调整。管理路由留在私网。访问日志使用 `$uri` 和状态码，省略查询串、Cookie、认证头及正文。
 

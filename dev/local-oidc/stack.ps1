@@ -127,7 +127,7 @@ function Update-LocalRealm {
     }
 
     $properties = @(
-        'registrationAllowed', 'registrationEmailAsUsername', 'loginWithEmailAllowed',
+        'loginTheme', 'registrationAllowed', 'registrationEmailAsUsername', 'loginWithEmailAllowed',
         'duplicateEmailsAllowed', 'verifyEmail', 'resetPasswordAllowed', 'passwordPolicy',
         'bruteForceProtected', 'failureFactor', 'waitIncrementSeconds', 'maxFailureWaitSeconds',
         'ssoSessionIdleTimeout', 'ssoSessionMaxLifespan', 'clientSessionIdleTimeout',

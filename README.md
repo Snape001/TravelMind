@@ -20,7 +20,7 @@ npm run dev -- --hostname 127.0.0.1
 
 ## Windows 本地 OIDC 与 HTTPS
 
-开发栈包含 Keycloak、Caddy、Next.js、FastAPI、PostgreSQL、Redis 和独立 Worker。使用 Docker Desktop 的 Linux 容器、Compose 2.24+、Windows PowerShell 5.1 或 PowerShell 7，以及 mkcert。可从官方发布页下载对应 Windows 架构的 mkcert，放入 PATH 或 `.artifacts/local-oidc/tools/mkcert.exe`，也可给脚本传入 `-MkcertPath`。 [mkcert 发布页](https://github.com/FiloSottile/mkcert/releases/tag/v1.4.4)
+开发栈包含 Keycloak、Mailpit、Caddy、Next.js、FastAPI、PostgreSQL、Redis 和独立 Worker。使用 Docker Desktop 的 Linux 容器、Compose 2.24+、Windows PowerShell 5.1 或 PowerShell 7，以及 mkcert。可从官方发布页下载对应 Windows 架构的 mkcert，放入 PATH 或 `.artifacts/local-oidc/tools/mkcert.exe`，也可给脚本传入 `-MkcertPath`。 [mkcert 发布页](https://github.com/FiloSottile/mkcert/releases/tag/v1.4.4)
 
 启动 Docker Desktop 后，从项目根目录运行。首次允许 mkcert 将此工作区的开发 CA 加入 Windows 信任存储。实际调研使用 `backend/.env` 中的 DeepSeek、博查和 Firecrawl 密钥，已有文件会保留。
 
@@ -38,7 +38,9 @@ Get-Content .artifacts/local-oidc/.env | Select-String '^TM_LOCAL_(ALICE|BOB)_PA
 Start-Process 'https://travelmind.localhost:18443'
 ```
 
-使用 `alice` 或 `bob` 登录。要同时验证两人权限，请分别使用两个浏览器配置文件。TravelMind 的退出会吊销应用会话并关闭已建立的 SSE。Keycloak 的单点登录会话独立保存，同一浏览器配置文件再次登录可能自动选回原账号。
+已有开发 Realm 的机器先执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack upgrade-auth`，再执行 `start`。升级脚本原地启用账户功能并保留原有用户。空数据卷首次启动时自动导入 Realm。
+
+可以使用 `alice` 或 `bob` 登录，也可以用测试邮箱注册。注册和密码重置邮件由 Keycloak 通过本地 SMTP 发送到 [Mailpit 收件箱](http://127.0.0.1:18025)。邮箱验证后设置密码并登录，资料页可修改昵称。账户菜单退出时先吊销 TravelMind 会话，再进入 Keycloak 单点退出，完成后可重新登录。使用独立浏览器配置文件验证多设备及跨用户权限。 [SMTP、Realm 导入和生产配置](docs/account-auth-deployment.md)
 
 ```powershell
 $stack = '.\dev\local-oidc\stack.ps1'
@@ -64,10 +66,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack stop
 | 找不到 mkcert，或浏览器提示证书不可信 | 用 `-MkcertPath` 传入可执行文件路径，运行 `init`，重启浏览器并用上述域名访问。证书过期时，停止开发栈，移走 `pki/site.pem` 与 `pki/site-key.pem`，再运行 `start`。 |
 | HTTPS 端口被占用 | 运行 `Get-NetTCPConnection -LocalPort 18443 -State Listen` 定位当前监听者。 |
 | 登录提示回调无效或身份服务暂不可用 | 运行 `check` 检查本机信任、Discovery、JWKS 和授权跳转。用下面的日志命令定位 Caddy、Keycloak 或 FastAPI 错误。避免手工替换本地密码文件中的客户端密钥。 |
+| 没有注册入口，或收不到验证和重置邮件 | 已有 Realm 先执行 `upgrade-auth`，再执行 `start` 和 `check`。确认 Mailpit 监听本机 18025，查看 Keycloak 和 Mailpit 日志。 |
 | 登录后任务长期排队 | 在 `status` 确认 Worker 运行和迁移任务正常退出，查看 Worker 日志及 `backend/.env`。修改供应商配置后重新运行 `start`。 |
 
 ```powershell
-docker compose -p travelmind-local-oidc --env-file .artifacts/local-oidc/.env -f dev/local-oidc/compose.yaml logs --tail 80 caddy keycloak api migrate worker
+docker compose -p travelmind-local-oidc --env-file .artifacts/local-oidc/.env -f dev/local-oidc/compose.yaml logs --tail 80 caddy keycloak mailpit api migrate worker
 ```
 
 ## 本地启动
@@ -97,6 +100,8 @@ OIDC_TOKEN_AUTH_METHOD=client_secret_basic
 
 把 `OIDC_PUBLIC_ORIGIN` 对应的 HTTPS 反向代理指向 Next.js，并在身份提供方登记回调 `https://travelmind.example/api/v1/auth/callback`。Next.js 将包括 SSE 在内的同源 `/api/v1/*` 转发至 FastAPI。代理需允许 SSE 长连接、关闭响应缓冲，并配置访问日志仅记录路径，避免记录 OIDC 回调参数。使用浏览器打开配置的 HTTPS 入口，以便发送安全会话 Cookie。
 
+使用 Keycloak 账户模式时，完成 SMTP、邮箱验证、精确的退出返回地址和后通道配置，应用迁移 `0007` 后再设置 `OIDC_ACCOUNT_ENABLED=true`。通用 OIDC 可继续使用应用本地注销。 [账户部署步骤](docs/account-auth-deployment.md)
+
 升级现有环境时，在后端目录安装锁定依赖、升级业务迁移并初始化 LangGraph Checkpoint，再启动 API。启用 Phase 3 前须替换所有旧 Worker。新版 Worker 默认用 `durable-v2` 启动新任务，已有 `durable-v1` Checkpoint 按旧图恢复。历史无主任务仍需由管理员显式关联到用户。 [Phase 2 公共契约](docs/phase-2-contract.md) · [专家反思与部署](docs/agent-runtime.md#专家反思)
 
 ```powershell
@@ -124,7 +129,7 @@ npm run dev -- --hostname 127.0.0.1
 
 Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend/.env.example` 复制为 `frontend/.env.local`，在启动开发服务或运行生产构建前设置 `API_ORIGIN`。FastAPI 文档位于 `http://127.0.0.1:8000/docs`。登录工作台后可创建、暂停和恢复任务，或回答当前澄清轮次。报告获批后可从工作台打开正文。SSE 使用 AgentEvent v1，凭当前会话连接，并可通过 `Last-Event-ID` 从指定序号之后续传。
 
-工作台和报告中心按账户将最近链接保存在当前浏览器。换设备时可打开已知链接，服务器仍校验任务归属。
+工作台的最近任务链接保存在当前浏览器。「我的报告」由 PostgreSQL 按会话所有权分页，同一账户可跨设备查看已发布报告和访问自己的历史链接。
 
 ### 就绪与进程监控
 
@@ -191,7 +196,7 @@ docker compose @travelCompose up -d --no-deps --force-recreate api worker
 ## 开发验证
 
 - 后端目录执行 `uv run pytest` 和 `uv run ruff check .`。将 `TEST_DATABASE_URL` 指向已经执行 `alembic upgrade head` 的专用测试数据库，以运行任务状态、租约、Checkpoint 投影、OIDC 和权限集成测试。
-- 前端目录执行 `npm test`、`npm run lint`、`npm run typecheck` 和 `npm run build`。测试覆盖任务控制、澄清、会话、跨账号历史隔离和 SSE 续传。
+- 前端目录执行 `npm test`、`npm run lint`、`npm run typecheck` 和 `npm run build`。测试覆盖任务控制、澄清、会话、报告分页和 SSE 续传。真实浏览器用例及合成报告装载说明见 [账户认证验收](docs/account-auth-qa.md)。
 - 公共契约改动后，启动后端并在前端目录运行 `npm run generate:api`，提交生成的 TypeScript 类型。
 - 如需验证 DeepSeek 密钥、网络和所选模型，从后端目录运行 `uv run python -m travelmind.runtime.check_deepseek`。该命令只读取官方模型列表。
 

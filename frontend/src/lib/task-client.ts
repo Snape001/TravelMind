@@ -5,7 +5,7 @@ import { isTerminal } from "./task-lifecycle";
 import { readResearchEvent, type ResearchEvent, type ResearchSource } from "./research-browser";
 import type { DestinationTaskCreate, Intake, Submission } from "./intake";
 import type { components as LiveComponents } from "./api.generated";
-import type { ReportPage } from "./account";
+import type { ProfileEdit, ProviderLogout, ReportPage } from "./account";
 
 const collection = "/api/v1/tasks";
 const taskUrl = (taskId: string) => `${collection}/${encodeURIComponent(taskId)}`;
@@ -49,11 +49,11 @@ function write(csrf: string, key?: string, body?: object, signal?: AbortSignal):
 
 export const readSession = (signal?: AbortSignal) => json<CurrentUser>(`${auth}/me`, { ...accountRequest, signal });
 export const editProfile = (csrf: string, signal?: AbortSignal) =>
-  json<{ authorization_url: string }>(`${auth}/profile/edit`, { ...accountRequest, ...write(csrf), signal });
+  json<ProfileEdit>(`${auth}/profile/edit`, { ...accountRequest, ...write(csrf), signal });
 export async function logoutAccount(user: CurrentUser): Promise<string | null> {
   const options = { ...accountRequest, ...write(user.csrf_token) };
   if (user.account_management_enabled === true) {
-    const result = await json<{ provider_logout_url: string | null }>(`${auth}/logout/oidc`, options);
+    const result = await json<ProviderLogout>(`${auth}/logout/oidc`, options);
     return result.provider_logout_url;
   }
   await request(`${auth}/logout`, options);
