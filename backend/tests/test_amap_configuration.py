@@ -15,36 +15,21 @@ from travelmind.main import create_app
 from travelmind.server_logging import amap_log_filter
 
 
-def test_settings_load_all_amap_values_from_backend_dotenv(monkeypatch):
+def test_amap_dotenv_credentials_keep_the_js_config_public_key_only(tmp_path, monkeypatch):
     for name in ("AMAP_WEB_API_KEY", "NEXT_PUBLIC_AMAP_JS_API_KEY", "AMAP_SECURITY_JS_CODE"):
         monkeypatch.delenv(name, raising=False)
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as file:
-        file.write(
-            "AMAP_WEB_API_KEY=fixture-web\n"
-            "NEXT_PUBLIC_AMAP_JS_API_KEY=fixture-browser\n"
-            "AMAP_SECURITY_JS_CODE=fixture-security\n"
-        )
-    dotenv = Path(file.name)
-    try:
-        settings = Settings(_env_file=dotenv)
-    finally:
-        dotenv.unlink()
+    dotenv = tmp_path / ".env"
+    dotenv.write_text(
+        "AMAP_WEB_API_KEY=fixture-web\n"
+        "NEXT_PUBLIC_AMAP_JS_API_KEY=fixture-browser\n"
+        "AMAP_SECURITY_JS_CODE=fixture-security\n",
+        encoding="utf-8",
+    )
+    settings = Settings(_env_file=dotenv, database_url=None, redis_url=None)
     assert settings.amap_web_api_key.get_secret_value() == "fixture-web"
-    assert settings.next_public_amap_js_api_key.get_secret_value() == "fixture-browser"
     assert settings.amap_security_js_code.get_secret_value() == "fixture-security"
     assert "fixture-security" not in repr(settings)
-
-
-def test_map_config_exposes_only_js_key_and_is_not_cached():
-    app = create_app(
-        Settings(
-            _env_file=None,
-            amap_web_api_key="fixture-web",
-            next_public_amap_js_api_key="fixture-browser",
-            amap_security_js_code="fixture-security",
-        ),
-        auth_settings=AuthSettings(_env_file=None),
-    )
+    app = create_app(settings, auth_settings=AuthSettings(_env_file=None))
     app.dependency_overrides[current_session] = object
     with TestClient(app) as client:
         config = client.get("/_AMapService/config")

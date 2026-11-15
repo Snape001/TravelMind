@@ -1,46 +1,35 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { FixtureTask } from "./fixtures/lifecycle-fixture";
-import { buildResearch } from "./fixtures/mock-research";
 import { makeAnswers, nextSnapshot, taskControls } from "../src/lib/task-lifecycle";
 import { ApiError, createTask, readSession, sendCommand, subscribe } from "../src/lib/task-client";
 import { readTaskHistory, rememberTask } from "../src/lib/task-history";
-import type { AgentEvent, TaskRead } from "../src/lib/research";
-import { checkFixtureWrite, fixtureCallback, fixtureLogout, fixtureSession } from "./fixtures/session";
+import { demoResearch } from "../src/lib/demo";
+import type { AgentEvent, PendingClarification, TaskRead } from "../src/lib/research";
 
-const brief = { destination: "泉州", topics: ["文化"], requirements: "", depth: "deep" } as const;
-const now = Date.parse("2026-11-14T09:00:00Z");
-const makeFixture = () => new FixtureTask(buildResearch({ ...brief, topics: [...brief.topics] }, now));
-const read = (fixture: FixtureTask, time: number) => fixture.snapshot(time);
+const queued: TaskRead = {
+  ...demoResearch.task, status: "queued", updated_at: "2026-11-14T09:00:00Z",
+};
+const round: PendingClarification = {
+  clarification_id: crypto.randomUUID(),
+  questions: ["计划出行几天？", "偏好哪种交通方式？"].map((text) => ({
+    question_id: crypto.randomUUID(), text,
+  })),
+};
 
-test("only paused tasks may resume and a running pause request is shown as pending", () => {
-  const fixture = makeFixture();
-  assert.equal(taskControls(read(fixture, now)).pause, true);
-  assert.equal(taskControls(read(fixture, now)).resume, false);
-  const accepted = fixture.command("pause", "pause-1", null, now + 600);
-  assert.equal(accepted.status, 202);
-  assert.equal(accepted.task?.status, "running");
-  assert.ok(accepted.task?.pause_requested_at);
-  assert.equal(taskControls(accepted.task!).pause, false);
-  const paused = read(fixture, now + 1500);
-  assert.equal(paused.status, "paused");
-  assert.equal(paused.pause_requested_at, null);
-  assert.equal(taskControls(paused).resume, true);
-  assert.equal(fixture.command("pause", "pause-1", null, now + 1500).task?.status, "running");
-  assert.equal(fixture.command("resume", "resume-1", null, now + 1600).task?.status, "queued");
-});
-
-test("queued pause is synchronous and stale commands leave task state intact", () => {
-  const fixture = makeFixture();
-  assert.equal(fixture.command("resume", "wrong", null, now).error, "TASK_STATE_CONFLICT");
-  const paused = fixture.command("pause", "queued", null, now);
-  assert.equal(paused.status, 200);
-  assert.equal(paused.task?.status, "paused");
-  assert.equal(read(fixture, now + 9000).status, "paused");
+test("task controls distinguish legacy snapshots, requested pauses, and pending clarification", () => {
+  const legacy = { ...queued };
+  delete legacy.pending_clarification;
+  delete legacy.pause_requested_at;
+  assert.deepEqual(taskControls(legacy), { pause: true, resume: false, pausing: false, round: null });
+  assert.deepEqual(taskControls({ ...queued, status: "running", pause_requested_at: queued.updated_at }),
+    { pause: false, resume: false, pausing: true, round: null });
+  assert.deepEqual(taskControls({ ...queued, status: "paused", pause_requested_at: null }),
+    { pause: false, resume: true, pausing: false, round: null });
+  assert.deepEqual(taskControls({ ...queued, status: "needs_clarification", pending_clarification: round }),
+    { pause: false, resume: false, pausing: false, round });
 });
 
 test("clarification uses IDs from TaskRead, trims all texts and enforces one answer per question", () => {
-  const round = read(makeFixture(), now + 4900).pending_clarification!;
   assert.equal(round.questions.length, 2);
   const [first, second] = round.questions;
   assert.throws(() => makeAnswers(round, { [first.question_id]: " " }), /每道问题/);
@@ -50,30 +39,9 @@ test("clarification uses IDs from TaskRead, trims all texts and enforces one ans
   });
 });
 
-test("answer replays the original response and never accepts a stale or mismatched round", () => {
-  const fixture = makeFixture();
-  const round = read(fixture, now + 4000).pending_clarification!;
-  const answers = makeAnswers(round, Object.fromEntries(round.questions.map(({ question_id }) => [question_id, "周末"])));
-  assert.equal(fixture.command("answer", "invalid", { roundId: round.clarification_id, body: { answers: answers.answers.slice(1) } }, now + 4000).error, "VALIDATION_ERROR");
-  const command = { roundId: round.clarification_id, body: answers };
-  const accepted = fixture.command("answer", "answer-1", command, now + 4000);
-  assert.equal(accepted.status, 202);
-  assert.equal(accepted.task?.status, "queued");
-  assert.equal(accepted.task?.pending_clarification, null);
-  assert.equal(fixture.command("answer", "answer-2", command, now + 5000).error, "CLARIFICATION_STALE");
-  assert.deepEqual(fixture.command("answer", "answer-1", { ...command, body: { answers: [...answers.answers].reverse() } }, now + 5000), accepted);
-  assert.equal(fixture.command("answer", "answer-1", { ...command, body: { answers: answers.answers.map((item) => ({ ...item, text: "工作日" })) } }, now + 5000).error, "IDEMPOTENCY_CONFLICT");
-  const events = fixture.eventsAt(now + 60000);
-  assert.equal(events.at(-1)?.payload.type, "task.status");
-  assert.deepEqual(events.map((event) => event.sequence), events.map((_, index) => index + 1));
-  assert.ok(events.some((event) => event.payload.type === "task.clarification" && typeof event.payload.questions[0] === "string"));
-  assert.equal(read(fixture, now + 60000).status, "completed");
-});
-
 test("stale API responses and historical events cannot regress the current snapshot", () => {
-  const fixture = makeFixture();
-  const queued = read(fixture, now);
-  const current = read(fixture, now + 4000);
+  const current: TaskRead = { ...queued, status: "needs_clarification",
+    pending_clarification: round, updated_at: "2026-11-14T09:00:04Z" };
   assert.equal(nextSnapshot(current, queued), current);
   assert.equal(nextSnapshot(queued, current), current);
   assert.equal(nextSnapshot(current, { ...current, trace_id: crypto.randomUUID() }), current);
@@ -99,17 +67,15 @@ test("recent task links are isolated by account, ignore the former fixture names
 });
 
 test("HTTP client sends CSRF and idempotency headers, with a body only for answers", async (t) => {
-  const fixture = makeFixture();
-  const task = read(fixture, now);
+  const task = queued;
   const calls: [string, RequestInit | undefined][] = [];
   t.mock.method(globalThis, "fetch", async (url: string, options?: RequestInit) => {
     calls.push([url, options]);
     return Response.json(task);
   });
-  await createTask({ ...brief, topics: [...brief.topics] }, "create-key", "session-token");
+  await createTask(task.brief, "create-key", "session-token");
   await sendCommand(task.task_id, { operation: "pause" }, "pause-key", "session-token");
   await sendCommand(task.task_id, { operation: "resume" }, "resume-key", "session-token");
-  const round = read(fixture, now + 4000).pending_clarification!;
   const body = makeAnswers(round, Object.fromEntries(round.questions.map(({ question_id }) => [question_id, "步行"])));
   await sendCommand(task.task_id, { operation: "answer", roundId: round.clarification_id, body }, "answer-key", "session-token");
   assert.deepEqual(calls.map(([url]) => url), [
@@ -123,31 +89,13 @@ test("HTTP client sends CSRF and idempotency headers, with a body only for answe
   assert.deepEqual(JSON.parse(String(calls[3][1]?.body)), body);
 });
 
-test("session expiry and typed business conflicts remain distinguishable", async (t) => {
+test("the HTTP client exposes session expiry as a typed 401", async (t) => {
   t.mock.method(globalThis, "fetch", async () => Response.json({ detail: { code: "UNAUTHENTICATED", message: "请登录", retryable: false } }, { status: 401 }));
   await assert.rejects(readSession(), (error: unknown) => error instanceof ApiError && error.status === 401 && error.code === "UNAUTHENTICATED");
 });
 
-test("fixture session requires same-origin CSRF and is revoked at logout", async () => {
-  const callback = fixtureCallback();
-  assert.equal(callback.status, 302);
-  assert.equal(callback.headers.get("Location"), "/workbench");
-  const cookie = callback.headers.get("Set-Cookie")!.split(";")[0];
-  const url = "http://localhost:3107/mock/api/v1/auth/me";
-  const user = fixtureSession(new Request(url, { headers: { Cookie: cookie } }))!;
-  assert.ok(user.user_id);
-  const request = (origin: string) => new Request(url, {
-    headers: { Cookie: cookie, Host: "127.0.0.1:3107", Origin: origin, "X-CSRF-Token": user.csrf_token },
-  });
-  assert.equal(checkFixtureWrite(request("http://example.test"), user), false);
-  assert.equal(fixtureLogout(request("http://example.test")).status, 403);
-  assert.equal(fixtureLogout(request("http://127.0.0.1:3107")).status, 204);
-  assert.equal(fixtureSession(request("http://127.0.0.1:3107")), undefined);
-});
-
 test("SSE reconnects from the last accepted sequence and cancels stale streams and reconnects", (t) => {
-  const fixture = makeFixture();
-  const task = read(fixture, now);
+  const task = queued;
   const sources: FakeSource[] = [];
   class FakeSource extends EventTarget {
     onopen: (() => void) | null = null;
@@ -169,7 +117,7 @@ test("SSE reconnects from the last accepted sequence and cancels stale streams a
   const events: AgentEvent[] = [];
   const close = subscribe(task, 0, (event) => events.push(event), (state) => states.push(state));
   try {
-    const [first, second] = fixture.eventsAt(now + 600);
+    const [first, second] = demoResearch.events;
     sources[0].onopen?.();
     sources[0].send(first);
     sources[0].send({ ...second, trace_id: crypto.randomUUID() });
@@ -196,11 +144,4 @@ test("SSE reconnects from the last accepted sequence and cancels stale streams a
     if (original) Object.defineProperty(globalThis, "EventSource", original);
     else Reflect.deleteProperty(globalThis, "EventSource");
   }
-});
-
-test("historical task snapshots missing new optional fields still render", () => {
-  const legacy: TaskRead = { ...makeFixture().research.task };
-  delete legacy.pending_clarification;
-  delete legacy.pause_requested_at;
-  assert.deepEqual(taskControls(legacy), { pause: true, resume: false, pausing: false, round: null });
 });

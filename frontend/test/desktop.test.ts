@@ -3,12 +3,11 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { eventCursor, summarize } from "../src/lib/agent-events";
 import { demoResearch } from "../src/lib/demo";
-import { prepareDestination, visibleQuestions, buildSubmission } from "../src/lib/intake";
+import { buildSubmission, prepareDestination, questionnairePages, visibleQuestions, type Answers, type Questionnaire } from "../src/lib/intake";
 import { readResearchEvent, projectResearch, publicSourceUrl, usageTotals, toolAction, mergeActivity, type ResearchEvent } from "../src/lib/research-browser";
 import { createDestinationTask, readIntake, readResearchSource, sendCommand, subscribeResearch } from "../src/lib/task-client";
 import type { components } from "../src/lib/api.generated";
 
-type Questionnaire = components["schemas"]["ResearchQuestionnaire"];
 const fixture = JSON.parse(readFileSync("../fixtures/phase4.json", "utf8")) as {
   destination_questionnaire: Questionnaire;
   research_questionnaire: Questionnaire;
@@ -17,25 +16,59 @@ const fixture = JSON.parse(readFileSync("../fixtures/phase4.json", "utf8")) as {
   source: components["schemas"]["ResearchSourceRead"];
 };
 
-test("destination entry and conditionally visible questionnaire answers follow the Phase 4 contract", () => {
+test("destination entry normalizes input and requires confirmation even for a single POI", () => {
   assert.deepEqual(prepareDestination("  开元寺  "), { destination: "开元寺" });
   assert.throws(() => prepareDestination("馆".repeat(81)));
-  assert.throws(() => buildSubmission(fixture.destination_questionnaire, {}));
-  const poi = fixture.destination_questionnaire.questions[0];
-  const option = poi.options![0].option_id;
-  assert.deepEqual(buildSubmission(fixture.destination_questionnaire, { [poi.question_id]: [option] }).answers,
-    [{ question_id: poi.question_id, kind: "single_choice", option_ids: [option] }]);
-  const research = fixture.research_questionnaire;
-  const dependent = research.questions.find(({ visible_if }) => visible_if)!;
-  const parent = dependent.visible_if!;
-  assert.ok(!visibleQuestions(research, { [dependent.question_id]: "hidden" }).includes(dependent));
-  const active = { [parent.question_id]: [parent.includes_option_id] };
-  assert.ok(visibleQuestions(research, active).includes(dependent));
-  assert.deepEqual(buildSubmission(research, { [dependent.question_id]: "hidden" }), { answers: [] });
-  assert.deepEqual(buildSubmission(fixture.travel_questionnaire, {}), { answers: [] });
-  assert.deepEqual(buildSubmission(fixture.travel_questionnaire, { budget_cny: "0" }).answers,
-    [{ question_id: "budget_cny", kind: "integer", value: 0 }]);
-  assert.throws(() => buildSubmission(fixture.travel_questionnaire, { budget_cny: "-1" }));
+  const round = fixture.destination_questionnaire;
+  const question = round.questions[0];
+  const onlyOne = { ...round, questions: [{ ...question, options: question.options?.slice(0, 1) }] };
+  assert.throws(() => buildSubmission(onlyOne, {}), /请选择/);
+  const answers: Answers = { [question.question_id]: [question.options![0].option_id] };
+  assert.deepEqual(buildSubmission(onlyOne, answers).answers, [
+    { question_id: question.question_id, kind: "single_choice", option_ids: answers[question.question_id] },
+  ]);
+  assert.throws(() => buildSubmission(onlyOne, { [question.question_id]: ["unknown-poi"] }), /选项/);
+  assert.throws(() => buildSubmission(round, {
+    [question.question_id]: question.options!.map(({ option_id }) => option_id),
+  }), /选项/);
+});
+
+test("pages follow branching and only submit visible answers before the final notes", () => {
+  const round = fixture.research_questionnaire;
+  const followup = round.questions.find((question) => question.visible_if)!;
+  const parent = followup.visible_if!;
+  const [option] = followup.options ?? [];
+  const answers: Answers = {
+    [parent.question_id]: [parent.includes_option_id],
+    [followup.question_id]: option ? [option.option_id] : " 石刻 ",
+    additional_notes: " 参考地方档案 ",
+  };
+  assert.equal(questionnairePages(round, answers).at(-1)?.questions[0].question_id, "additional_notes");
+  assert.ok(visibleQuestions(round, answers).includes(followup));
+  assert.ok(buildSubmission(round, answers).answers.some((answer) => answer.question_id === followup.question_id));
+  const hidden = { [followup.question_id]: "hidden" };
+  assert.ok(!visibleQuestions(round, hidden).includes(followup));
+  assert.deepEqual(buildSubmission(round, hidden), { answers: [] });
+  const submission = buildSubmission(round, { ...answers, [parent.question_id]: [] });
+  assert.deepEqual(submission.answers.map((answer) => answer.question_id), ["additional_notes"]);
+  assert.deepEqual(submission.answers.at(-1), {
+    question_id: "additional_notes", kind: "text", text: "参考地方档案",
+  });
+});
+
+test("travel is optional, preserves zero budget and validates calendar order", () => {
+  const round = fixture.travel_questionnaire;
+  assert.equal(questionnairePages(round, {}).length, 3);
+  assert.deepEqual(buildSubmission(round, {}).answers, []);
+  assert.deepEqual(buildSubmission(round, { budget_cny: "0" }).answers, [
+    { kind: "integer", question_id: "budget_cny", value: 0 },
+  ]);
+  assert.deepEqual(buildSubmission(round, { start_date: "2026-12-16" }).answers, [
+    { kind: "date", question_id: "start_date", value: "2026-12-16" },
+  ]);
+  assert.throws(() => buildSubmission(round, { budget_cny: "-1" }));
+  assert.throws(() => buildSubmission(round, { start_date: "2026-02-30" }), /有效日期/);
+  assert.throws(() => buildSubmission(round, { start_date: "2026-12-16", end_date: "2026-12-15" }), /返程日期/);
 });
 
 test("research stream validates frames and has its own task-bound cursor", () => {
@@ -122,18 +155,12 @@ test("merged activity preserves order inside each independent stream", () => {
 
 test("Phase 4 HTTP and streaming use same-origin paths, typed answers, and an independent replay cursor", async (t) => {
   const original = fixture.research_events[0];
-  const urls: string[] = [];
+  const requests: [string, RequestInit][] = [];
   const controller = new AbortController();
   const received: ResearchEvent[] = [];
   let connects = 0;
   t.mock.method(globalThis, "fetch", async (url: string, options: RequestInit) => {
-    urls.push(url);
-    if (url.endsWith("/from-destination")) {
-      assert.equal(options.body, JSON.stringify({ destination: "开元寺" }));
-      assert.equal(new Headers(options.headers).get("X-CSRF-Token"), "csrf");
-      assert.equal(new Headers(options.headers).get("Idempotency-Key"), "key");
-    }
-    if (url.includes("/questionnaires/")) assert.equal(options.body, '{"answers":[]}');
+    requests.push([url, options]);
     if (url.includes("/research-sources/")) return Response.json(fixture.source);
     if (url.includes("/research-events?")) {
       const events = ++connects === 1 ? [original] : [original, fixture.research_events[1]];
@@ -159,6 +186,15 @@ test("Phase 4 HTTP and streaming use same-origin paths, typed answers, and an in
       }, reject);
   });
   assert.deepEqual(received.map(({ sequence }) => sequence), [1, 2]);
-  assert.deepEqual(urls.filter((url) => url.includes("/research-events")), [0, 1].map((cursor) =>
-    `/api/v1/tasks/${original.task_id}/research-events?after=${cursor}`));
+  const base = `/api/v1/tasks/${original.task_id}`;
+  assert.deepEqual(requests.slice(0, 4).map(([url]) => url), [
+    "/api/v1/tasks/from-destination", `${base}/intake`, `${base}/questionnaires/round/answer`,
+    `${base}/research-sources/${fixture.source.source_id}`,
+  ]);
+  assert.deepEqual(requests.filter(([, options]) => options.method === "POST").map(([, options]) => [
+    new Headers(options.headers).get("X-CSRF-Token"), new Headers(options.headers).get("Idempotency-Key"),
+    JSON.parse(String(options.body)),
+  ]), [["csrf", "key", { destination: "开元寺" }], ["csrf", "key", { answers: [] }]]);
+  assert.deepEqual(requests.map(([url]) => url).filter((url) => url.includes("/research-events")),
+    [0, 1].map((cursor) => `${base}/research-events?after=${cursor}`));
 });

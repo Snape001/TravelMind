@@ -245,6 +245,11 @@ def test_intake_http_worker_and_planner_survive_new_claims(client, route):
 
         client.portal.call(execute)
 
+    for field in ("topics", "requirements"):
+        unaccepted = client.post(f"{base}/from-destination", json=payload | {field: []})
+        assert unaccepted.status_code == 422
+        assert unaccepted.json()["detail"]["code"] == "VALIDATION_ERROR"
+
     created = client.post(
         f"{base}/from-destination", json=payload, headers={"Idempotency-Key": key}
     )

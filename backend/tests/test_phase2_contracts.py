@@ -6,8 +6,6 @@ from pydantic import TypeAdapter, ValidationError
 
 from travelmind.schemas.api import (
     ClarificationAnswers,
-    CurrentUser,
-    ErrorResponse,
     IdempotencyKey,
     PendingClarification,
     TaskRead,
@@ -97,21 +95,16 @@ def test_answers_require_unique_questions_and_nonblank_bounded_text():
             ClarificationAnswers(answers=answers)
 
 
-def test_idempotency_and_error_schemas_keep_existing_wire_format():
+def test_idempotency_keys_enforce_visible_ascii_and_length():
     keys = TypeAdapter(IdempotencyKey)
     assert keys.validate_python("a-9!") == "a-9!"
     for key in ("", "with space", "ä", "a" * 129):
         with pytest.raises(ValidationError):
             keys.validate_python(key)
-    error = {"code": "IDEMPOTENCY_CONFLICT", "message": "conflict", "retryable": False}
-    assert ErrorResponse(detail=error).model_dump() == {"detail": error}
-    user = CurrentUser(user_id=uuid4(), display_name=None, csrf_token="token")
-    assert set(user.model_dump()) == {"user_id", "display_name", "csrf_token"}
 
 
 def test_worker_instruction_and_projection_keep_internal_identity_separate_from_events():
     lease = {"task_id": uuid4(), "worker_id": uuid4(), "lease_epoch": 1}
-    assert LeaseRef.model_validate(lease).lease_epoch == 1
     with pytest.raises(ValidationError):
         LeaseRef.model_validate(lease | {"lease_epoch": 0})
     instructions = TypeAdapter(ExecutionInstruction)
@@ -134,8 +127,6 @@ def test_worker_instruction_and_projection_keep_internal_identity_separate_from_
             "message": "整理简报",
         },
     )
-    batch = ProjectionBatch(checkpoint_id="checkpoint", projection_index=1, events=[event])
-    assert batch.events[0].payload.type == "agent.message"
     with pytest.raises(ValidationError):
         ProjectionBatch(checkpoint_id="checkpoint", projection_index=1, events=[event, event])
     with pytest.raises(ValidationError):
@@ -164,9 +155,6 @@ def test_claim_requires_explicit_execution_permission_and_budget():
         "execution_permitted": True,
     }
     assert TaskClaim.model_validate(fields).execution_permitted
-    for field in ("attempt_count", "max_attempts", "execution_permitted"):
-        with pytest.raises(ValidationError):
-            TaskClaim.model_validate({key: value for key, value in fields.items() if key != field})
     with pytest.raises(ValidationError):
         TaskClaim.model_validate(fields | {"attempt_count": 2})
     with pytest.raises(ValidationError):

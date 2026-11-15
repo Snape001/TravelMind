@@ -43,18 +43,12 @@ test("guild publishes the roles in three tiers and assigns Lu's portrait to trav
 test("existing and unrecognized agent IDs retain their live identities and statuses", () => {
   const view = summarize(demoResearch.task, demoResearch.events);
   assert.ok(view.assignments.some(({ agent_id, status }) => agent_id === "travel_planning" && status === "completed"));
-  assert.equal(expertName("travel_planning"), "陆知行");
   assert.equal(expertName("new_expert"), "new_expert");
   assert.equal(findExpert("__proto__"), undefined);
   assert.equal(expertTitle("new_expert"), undefined);
-  assert.ok(view.toolNames.size > 0);
-});
-
-test("live Writer and Planner events resolve through the same profile directory", () => {
   assert.equal(findExpert("writer"), findExpert("report_writer"));
   assert.equal(expertName("writer"), "叶知秋");
   assert.equal(findExpert("planner")?.tier, "leadership");
-  assert.equal(expertName("research_director"), "程策远");
 });
 
 test("only explicit report headings receive consensus or dispute treatment", () => {

@@ -1,13 +1,16 @@
 import logging
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from travelmind.api import health
 from travelmind.config import Settings
 from travelmind.db.connection import create_database_engine
 from travelmind.main import create_app
+from travelmind.schemas.events import AgentEvent
 from travelmind.server_logging import AccessLogFilter
 
 
@@ -78,8 +81,9 @@ def test_readiness_requires_postgres_and_reports_redis_status(
     assert readiness.json()["redis"] == redis_status
 
 
-def test_openapi_documents_sse_as_agent_event():
-    with TestClient(create_app()) as client:
+def test_openapi_preserves_sse_task_and_idempotency_contracts():
+    settings = Settings(_env_file=None, database_url=None, redis_url=None)
+    with TestClient(create_app(settings)) as client:
         spec = client.get("/openapi.json").json()
     stream = spec["paths"]["/api/v1/tasks/{task_id}/events"]["get"]
     content = stream["responses"]["200"]["content"]
@@ -92,12 +96,6 @@ def test_openapi_documents_sse_as_agent_event():
         ]
         == "type"
     )
-
-
-def test_task_read_and_create_header_publish_compatible_openapi_schema():
-    settings = Settings(_env_file=None, database_url=None, redis_url=None)
-    with TestClient(create_app(settings)) as client:
-        spec = client.get("/openapi.json").json()
 
     schemas = spec["components"]["schemas"]
     task = schemas["TaskRead"]
@@ -113,3 +111,15 @@ def test_task_read_and_create_header_publish_compatible_openapi_schema():
         "maxLength": 128,
         "pattern": "^[!-~]+$",
     } in key["schema"]["anyOf"]
+
+    with pytest.raises(ValidationError):
+        AgentEvent.model_validate(
+            {
+                "task_id": uuid4(),
+                "trace_id": uuid4(),
+                "event_id": uuid4(),
+                "sequence": 1,
+                "occurred_at": datetime.now(UTC),
+                "payload": {"type": "evidence.added", "status": "queued"},
+            }
+        )

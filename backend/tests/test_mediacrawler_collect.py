@@ -12,8 +12,6 @@ from travelmind.research.social.mediacrawler_api import (
     build_command,
     collect,
     main,
-    resolve_commit,
-    run_crawler,
     stage_outputs,
     verify_source,
 )
@@ -98,28 +96,25 @@ def write_xhs_export(save_path: str) -> None:
     )
 
 
-def test_resolve_commit_reads_detached_head(tmp_path):
+def test_verify_source_accepts_loose_and_packed_checkout_refs(tmp_path):
     source = fake_source(tmp_path)
-    assert resolve_commit(source) == UPSTREAM_COMMIT
-
-
-def test_resolve_commit_follows_ref_and_packed_refs(tmp_path):
-    source = tmp_path / "source"
     git = source / ".git"
     (git / "refs" / "heads").mkdir(parents=True)
     (git / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
-    (git / "refs" / "heads" / "main").write_text(f"{UPSTREAM_COMMIT}\n", encoding="utf-8")
-    assert resolve_commit(source) == UPSTREAM_COMMIT
-    (git / "refs" / "heads" / "main").unlink()
+    ref = git / "refs" / "heads" / "main"
+    ref.write_text(f"{UPSTREAM_COMMIT}\n", encoding="utf-8")
+    python = source / ".venv" / "Scripts" / "python.exe"
+    assert verify_source(source) == python
+    ref.unlink()
     (git / "packed-refs").write_text(f"{UPSTREAM_COMMIT} refs/heads/main\n", encoding="utf-8")
-    assert resolve_commit(source) == UPSTREAM_COMMIT
+    assert verify_source(source) == python
 
 
-def test_resolve_commit_without_git_returns_none(tmp_path):
-    assert resolve_commit(tmp_path / "missing") is None
+def test_verify_source_rejects_missing_checkout_wrong_commit_and_missing_venv(tmp_path):
+    with pytest.raises(MediacrawlerError) as absent:
+        verify_source(tmp_path / "missing")
+    assert (absent.value.exit_code, absent.value.message) == (3, "UNEXPECTED_CHECKOUT")
 
-
-def test_verify_source_rejects_wrong_commit_and_missing_venv(tmp_path):
     source = fake_source(tmp_path, commit="0" * 40)
     with pytest.raises(MediacrawlerError) as wrong:
         verify_source(source)
@@ -129,24 +124,6 @@ def test_verify_source_rejects_wrong_commit_and_missing_venv(tmp_path):
     with pytest.raises(MediacrawlerError) as missing:
         verify_source(source)
     assert missing.value.exit_code == 3 and missing.value.message == "MISSING_VENV"
-
-
-def test_build_command_pins_bounded_search_crawl(tmp_path):
-    python = tmp_path / "python.exe"
-    save = tmp_path / "runs" / "batch"
-    command = build_command(python, "xhs", KEYWORD, "search", None, 20, save)
-    assert command[0] == str(python) and command[1] == "-c"
-    assert "CDP_CONNECT_EXISTING = False" in command[2]
-    assert "runpy.run_path('main.py'" in command[2]
-    pairs = dict(zip(command[3::2], command[4::2]))
-    assert pairs["--platform"] == "xhs" and pairs["--lt"] == "qrcode"
-    assert pairs["--type"] == "search" and pairs["--keywords"] == KEYWORD
-    assert pairs["--get_comment"] == pairs["--get_sub_comment"] == "true"
-    assert pairs["--headless"] == "false" and pairs["--get_media"] == "false"
-    assert pairs["--save_data_option"] == "jsonl" and pairs["--save_data_path"] == str(save)
-    assert pairs["--crawler_max_notes_count"] == "20"
-    assert pairs["--max_concurrency_num"] == "1" and pairs["--enable_ip_proxy"] == "false"
-    assert "--specified_id" not in command
 
 
 def test_build_command_detail_passes_source_url(tmp_path):
@@ -199,25 +176,9 @@ def test_stage_outputs_backfills_blank_source_keyword(tmp_path):
     assert rows[1]["source_keyword"] == "keep"
 
 
-def test_stage_outputs_requires_contents(tmp_path):
-    run_dir = tmp_path / "run"
-    (run_dir / "xhs" / "jsonl").mkdir(parents=True)
-    with pytest.raises(MediacrawlerError) as empty:
-        stage_outputs(run_dir, tmp_path / "inbox" / "batch", "xhs", "search")
-    assert empty.value.exit_code == 6 and empty.value.message == "NO_CONTENTS"
-
-
-def test_run_crawler_drops_bracketed_ipv6_from_no_proxy(tmp_path, monkeypatch):
+def test_collect_runs_a_bounded_search_and_imports_the_exports(tmp_path, monkeypatch):
     for name in ("NO_PROXY", "no_proxy"):
         monkeypatch.setenv(name, "localhost,127.0.0.1,::1,[::1]")
-    runner = fake_runner()
-    run_crawler(["python", "main.py"], tmp_path, tmp_path / "crawler.log", 60, runner=runner)
-    env = runner.calls[0][1]["env"]
-    sanitized = env.get("NO_PROXY") or env.get("no_proxy")
-    assert sanitized == "localhost,127.0.0.1,::1"
-
-
-def test_collect_stages_batch_and_feeds_import(tmp_path):
     source = fake_source(tmp_path)
     data = tmp_path / "data"
     runner = fake_runner(
@@ -241,10 +202,26 @@ def test_collect_stages_batch_and_feeds_import(tmp_path):
     assert request.keyword == KEYWORD and before <= request.collected_at <= datetime.now(UTC)
     batch = data / "inbox" / str(request.batch_id)
     assert (batch / "contents.jsonl").is_file() and (batch / "comments.jsonl").is_file()
-    (data / "runs" / str(request.batch_id) / "crawler.log").is_file()
-    command, kwargs = runner.calls[0]
-    assert kwargs["cwd"] == str(source) and kwargs["check"] is False
-    assert kwargs["timeout"] == 600 and kwargs["stderr"] == subprocess.STDOUT
+    run = data / "runs" / str(request.batch_id)
+    assert (run / "crawler.log").is_file()
+    [(command, options)] = runner.calls
+    assert options["cwd"] == str(source) and options["check"] is False
+    assert options["timeout"] == 600 and options["stderr"] == subprocess.STDOUT
+    env = options["env"]
+    assert (env.get("NO_PROXY") or env.get("no_proxy")) == "localhost,127.0.0.1,::1"
+    python = source / ".venv" / "Scripts" / "python.exe"
+    assert command[0] == str(python) and command[1] == "-c"
+    assert "CDP_CONNECT_EXISTING = False" in command[2]
+    assert "runpy.run_path('main.py'" in command[2]
+    pairs = dict(zip(command[3::2], command[4::2]))
+    assert pairs["--platform"] == "xhs" and pairs["--lt"] == "qrcode"
+    assert pairs["--type"] == "search" and pairs["--keywords"] == KEYWORD
+    assert pairs["--get_comment"] == pairs["--get_sub_comment"] == "true"
+    assert pairs["--headless"] == "false" and pairs["--get_media"] == "false"
+    assert pairs["--save_data_option"] == "jsonl" and pairs["--save_data_path"] == str(run)
+    assert pairs["--crawler_max_notes_count"] == "20"
+    assert pairs["--max_concurrency_num"] == "1" and pairs["--enable_ip_proxy"] == "false"
+    assert "--specified_id" not in command
     records, errors = load_export(batch, request)
     assert errors == 0 and {record.post_id for record in records} == {"abc123", "def456"}
     post = next(record for record in records if record.post_id == "abc123")

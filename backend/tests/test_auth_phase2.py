@@ -168,6 +168,17 @@ def test_auth_and_resource_ownership_apply_to_every_task_route(client):
     )
     assert client.post(path + "/pause", headers={"X-CSRF-Token": "other"}).status_code == 403
 
+    missing = f"/api/v1/tasks/{uuid4()}"
+    for missing_path, code in (
+        (missing, "TASK_NOT_FOUND"),
+        (f"{missing}/events", "TASK_NOT_FOUND"),
+        (f"{path}/reports/{uuid4()}", "REPORT_NOT_FOUND"),
+        (f"{path}/evidence/{uuid4()}", "EVIDENCE_NOT_FOUND"),
+    ):
+        response = client.get(missing_path)
+        assert response.status_code == 404
+        assert response.json()["detail"]["code"] == code
+
     async def other_session():
         async with client.app.state.sessions.begin() as session:
             return await start_session(
@@ -228,6 +239,7 @@ def test_sse_replays_from_exclusive_header_and_closes_terminal_task(client):
         )
 
     client.portal.call(run)
+    assert client.get(task.headers["location"] + "/events?after=-1").status_code == 422
     stream = client.get(
         task.headers["location"] + "/events?after=1",
         headers={"Last-Event-ID": "2"},

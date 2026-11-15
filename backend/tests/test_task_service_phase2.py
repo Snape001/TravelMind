@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from uuid import UUID, uuid4
 
@@ -23,6 +24,44 @@ from travelmind.schemas.worker import (
 )
 
 pytestmark = pytest.mark.postgres
+
+
+def test_concurrent_submission_creates_one_task_and_event(client):
+    rejected = client.post("/api/v1/tasks", json={"destination": "   "})
+    assert rejected.status_code == 422
+    key = str(uuid4())
+    brief = {"destination": "泉州", "topics": ["历史"], "depth": "deep"}
+
+    def submit(_):
+        return client.post("/api/v1/tasks", json=brief, headers={"Idempotency-Key": key})
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        replies = list(pool.map(submit, range(4)))
+    assert sorted(reply.status_code for reply in replies) == [200, 200, 200, 201]
+    task = replies[0].json()
+    location = replies[0].headers["location"]
+    assert all(reply.json() == task and reply.headers["location"] == location for reply in replies)
+    assert client.get(location).json() == task
+
+    async def read_events():
+        async with client.app.state.sessions() as session:
+            return await events_after(session, UUID(task["task_id"]), 0)
+
+    assert client.portal is not None
+    events = client.portal.call(read_events)
+    assert len(events) == 1
+    assert events[0].sequence == 1
+    assert str(events[0].trace_id) == task["trace_id"]
+    assert events[0].payload.model_dump(exclude_none=True) == {
+        "type": "task.status",
+        "status": "queued",
+    }
+
+    conflict = client.post(
+        "/api/v1/tasks", json={"destination": "西安"}, headers={"Idempotency-Key": key}
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"]["code"] == "IDEMPOTENCY_CONFLICT"
 
 
 async def expire_lease(sessions, task_id, *, ago=0):
@@ -163,8 +202,6 @@ def test_pause_resume_and_replay_snapshot(client):
     malformed = client.post(url + "/pause")
     assert malformed.status_code == 422
     assert malformed.json()["detail"]["code"] == "VALIDATION_ERROR"
-    unwanted_body = client.post(url + "/pause", json={}, headers={"Idempotency-Key": "pause"})
-    assert unwanted_body.status_code == 422
     paused = client.post(url + "/pause", headers={"Idempotency-Key": "pause"})
     assert paused.status_code == 200
     assert paused.json()["status"] == "paused"

@@ -57,9 +57,16 @@ def test_loads_only_selected_version_and_preserves_profile_identity(monkeypatch)
     assert reads == ["report_architecture"]
 
 
-@pytest.mark.parametrize(
-    ("role", "stage", "tool_calls"),
-    [
+def test_all_profile_skill_refs_resolve_with_their_stage_budget():
+    registry = SkillRegistry()
+    profiles = {profile.agent_id: profile for profile in registry.profiles().experts}
+    declared = {
+        (profile.agent_id, ref.skill_id, ref.version)
+        for profile in profiles.values()
+        for ref in profile.skills
+    }
+    resolved = set()
+    for role, stage, tool_calls in (
         ("research_director", "research", 0),
         ("history_culture", "research", 1),
         ("natural_geography", "research", 1),
@@ -73,17 +80,14 @@ def test_loads_only_selected_version_and_preserves_profile_identity(monkeypatch)
         ("report_writer", "write", 0),
         ("report_writer", "edit", 0),
         ("reviewer", "review", 0),
-    ],
-)
-def test_profile_ref_has_versioned_definition_and_own_budget(role, stage, tool_calls):
-    registry = SkillRegistry()
-    profile = next(item for item in registry.profiles().experts if item.agent_id == role)
-    definition = registry.select(role, stage)
-    assert (definition.skill_id, definition.version) in {
-        (ref.skill_id, ref.version) for ref in profile.skills
-    }
-    assert definition.budget.tool_calls == tool_calls
-    assert definition.max_context_chars > definition.budget.model.max_output_tokens
+    ):
+        definition = registry.select(role, stage)
+        key = (role, definition.skill_id, definition.version)
+        assert key in declared, (role, stage)
+        assert definition.budget.tool_calls == tool_calls, (role, stage)
+        assert definition.max_context_chars > definition.budget.model.max_output_tokens, key
+        resolved.add(key)
+    assert resolved == declared
 
 
 def agent(agent_id, *, objective=None):

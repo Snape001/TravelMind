@@ -118,34 +118,6 @@ def test_runtime_persists_report_evidence_and_replayable_events(client):
     assert client.get(f"{location}/evidence/{evidence.evidence_id}").status_code == 200
 
 
-def test_runtime_persists_clarification_and_stops(client):
-    task = client.post("/api/v1/tasks", json={"destination": "古城"}).json()
-    task_id = UUID(task["task_id"])
-
-    async def director(request, _, response_type, *, context):
-        assert request.agent_id == "research_director"
-        assert context["clarification_answers"] == []
-        return response_type.model_validate({"questions": ["请问是哪座古城？"]})
-
-    async def run():
-        async with worker_connections(client.app.state.settings) as (sessions, pool):
-            store = PostgresWorkerStore(sessions)
-            worker = DurableWorker(
-                store, director, lambda lease: FencedPostgresSaver(pool, store, lease)
-            )
-            claim = await store.claim(worker.worker_id, lease_seconds=45)
-            assert claim is not None and claim.lease.task_id == task_id
-            await worker.run_claim(claim)
-            async with sessions() as session:
-                return [event.payload for event in await events_after(session, task_id, 0)]
-
-    with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
-        payloads = runner.run(run())
-    assert payloads[-2].questions == ["请问是哪座古城？"]
-    assert payloads[-1].status == "needs_clarification"
-    assert client.get(f"/api/v1/tasks/{task_id}").json()["status"] == "needs_clarification"
-
-
 def test_optional_scraping_timeout_keeps_search_evidence(client):
     task = client.post("/api/v1/tasks", json={"destination": "泉州", "depth": "deep"}).json()
     evidence = Evidence(

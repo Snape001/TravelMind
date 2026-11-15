@@ -43,23 +43,21 @@ test("report links use the longest unambiguous exact POI without rewriting repor
   assert.equal(parts.map(({ text }) => text).join(""), body);
 });
 
-test("routes are loaded only from the frozen same-origin task endpoint", async (context) => {
+test("map reads use the owning task and exact report version without caching", async (context) => {
+  const selected = { task_id: "my task", routes: [route] };
+  const unavailable = { task_id: "my task", report_id: "x/y", status: "unavailable" };
+  const requests: string[] = [];
   context.mock.method(globalThis, "fetch", async (path: string, request: RequestInit) => {
-    assert.equal(path, "/api/v1/tasks/my%20task/routes");
     assert.equal(request.cache, "no-store");
-    return Response.json({ task_id: "my task", routes: [route] });
+    requests.push(path);
+    return Response.json(path.endsWith("/routes") ? selected : unavailable);
   });
-  assert.deepEqual((await readTaskRoutes("my task", new AbortController().signal)).routes, [route]);
-});
-
-test("published map uses the exact report version and preserves the unavailable state", async (context) => {
-  const data = { task_id: "a b", report_id: "x/y", status: "unavailable" };
-  context.mock.method(globalThis, "fetch", async (path: string, request: RequestInit) => {
-    assert.equal(path, "/api/v1/tasks/a%20b/reports/x%2Fy/map-data");
-    assert.equal(request.cache, "no-store");
-    return Response.json(data);
-  });
-  assert.deepEqual(await readReportMap("a b", "x/y", new AbortController().signal), data);
+  const { signal } = new AbortController();
+  assert.deepEqual(await readTaskRoutes("my task", signal), selected);
+  assert.deepEqual(await readReportMap("my task", "x/y", signal), unavailable);
+  assert.deepEqual(requests, [
+    "/api/v1/tasks/my%20task/routes", "/api/v1/tasks/my%20task/reports/x%2Fy/map-data",
+  ]);
 });
 
 test("report MapData keeps day boundaries, stop times and ranked alternatives", () => {

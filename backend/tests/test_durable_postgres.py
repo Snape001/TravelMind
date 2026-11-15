@@ -17,7 +17,7 @@ from travelmind.db.connection import create_database_engine
 from travelmind.db.control import apply_command
 from travelmind.db.evidence import save_evidence
 from travelmind.db.models import AgentRunRow, EventRow, ReportRow, TaskRow, UserRow
-from travelmind.db.tasks import create_task, pending_clarification
+from travelmind.db.tasks import create_task, events_after, pending_clarification
 from travelmind.db.worker import PostgresWorkerStore
 from travelmind.runtime.checkpoints import (
     FencedPostgresSaver,
@@ -319,6 +319,10 @@ def test_pause_and_clarification_resume_from_postgres_with_new_worker_connection
             async with sessions() as session:
                 pending = await pending_clarification(session, task_id)
                 assert pending is not None
+                assert (await session.get(TaskRow, task_id)).status == "needs_clarification"
+                before_answer = await events_after(session, task_id, 0)
+                assert before_answer[-2].payload.questions == ["请问是哪座古城？"]
+                assert before_answer[-1].payload.status == "needs_clarification"
             answer = ClarificationAnswers(
                 answers=[
                     {"question_id": pending.questions[0]["question_id"], "text": "泉州"},

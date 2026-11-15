@@ -2,6 +2,9 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
+
+from travelmind.runtime.state import merge_records
 from travelmind.runtime.workflow import build_research_graph
 from travelmind.schemas.agents import AgentFailure, ResearchResult, RunBudget
 from travelmind.schemas.domain import Evidence, ResearchBrief
@@ -373,3 +376,10 @@ def test_failed_dependency_blocks_only_its_dependent_expert():
         assert not any(call.agent_id == "travel_planning" for call, _ in model.calls)
 
     asyncio.run(run())
+
+
+def test_reducer_can_replay_records_and_rejects_conflicts():
+    record_id = uuid4()
+    assert merge_records({record_id: "a"}, {record_id: "a"}) == {record_id: "a"}
+    with pytest.raises(ValueError, match="conflicting"):
+        merge_records({record_id: "a"}, {record_id: "b"})

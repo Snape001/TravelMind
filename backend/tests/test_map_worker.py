@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from sqlalchemy import update
 from test_expert_reflection import Scenario
 from test_runtime import source
@@ -12,7 +12,7 @@ from test_runtime import source
 from travelmind.api.dependencies import SESSION_COOKIE
 from travelmind.db.auth import start_session
 from travelmind.db.evidence import save_evidence
-from travelmind.db.models import TaskRow
+from travelmind.db.models import ReportRow, TaskRow
 from travelmind.db.tasks import events_after
 from travelmind.db.worker import PostgresWorkerStore
 from travelmind.research.amap_client import AmapClient
@@ -25,7 +25,7 @@ from travelmind.runtime.travel.map_cache import AmapResultCache
 from travelmind.runtime.travel.places import AmapPlaces
 from travelmind.runtime.travel.planner import TravelPlanner
 from travelmind.schemas.domain import ReportDraft
-from travelmind.schemas.map_data import MapData
+from travelmind.schemas.map_data import MapData, MapDay, MapStop
 from travelmind.schemas.phase4_intake import QuestionnaireDraft
 from travelmind.schemas.worker import LeaseLost, MapProjectionBatch
 
@@ -323,3 +323,50 @@ def test_typed_worker_projects_map_and_publishes_report(client, mode):
     client.cookies.set(SESSION_COOKIE, client.portal.call(another_user))
     assert client.get(map_url).status_code == 404
     assert client.get(f"{base}/routes").status_code == 404
+
+
+def test_map_data_rejects_dangling_poi_references():
+    with pytest.raises(ValidationError, match="unknown POI"):
+        MapData(
+            task_id=uuid4(),
+            status="partial",
+            days=[MapDay(day_number=1, stops=[MapStop(poi_id="foreign", suggested_minutes=45)])],
+        )
+
+
+@pytest.mark.postgres
+def test_legacy_reports_keep_their_content_without_a_map_snapshot(client):
+    task = client.post("/api/v1/tasks", json={"destination": "泉州"}).json()
+    base = f"/api/v1/tasks/{task['task_id']}"
+    assert client.get(f"{base}/routes").json() == {"task_id": task["task_id"], "routes": []}
+    assert (
+        client.get(f"{base}/reports/{uuid4()}/map-data").json()["detail"]["code"]
+        == "REPORT_NOT_FOUND"
+    )
+    report_id = uuid4()
+
+    async def legacy_report():
+        async with client.app.state.sessions.begin() as session:
+            session.add(
+                ReportRow(
+                    task_id=UUID(task["task_id"]),
+                    report_id=report_id,
+                    version=1,
+                    content={
+                        "title": "历史报告",
+                        "sections": [
+                            {
+                                "heading": "旧内容",
+                                "body": "旧正文",
+                                "author_agent_ids": ["history_culture"],
+                            }
+                        ],
+                    },
+                )
+            )
+
+    client.portal.call(legacy_report)
+    assert client.get(f"{base}/reports/{report_id}").json()["content"]["title"] == "历史报告"
+    historical = client.get(f"{base}/reports/{report_id}/map-data")
+    assert historical.status_code == 200
+    assert historical.json()["status"] == "unavailable"

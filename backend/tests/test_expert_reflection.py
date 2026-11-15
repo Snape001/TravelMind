@@ -239,6 +239,7 @@ def test_reflection_rejects_conflict_from_two_pages_on_the_same_source():
     result = report(asyncio.run(run_scenario(scenario, depth="quick")))
     assert result.reflection.state == "insufficient"
     assert result.research.findings[0].support == "insufficient"
+    assert not scenario.peers
 
 
 def test_quality_review_revises_then_omits_persistently_low_grade_citations():
@@ -303,15 +304,6 @@ def test_academic_research_can_use_two_distinct_follow_ups():
     searches = [q for agent, q in scenario.searches if agent == "history_culture"]
     assert len(set(searches)) == 3
     assert "官方" in searches[1] and "官方" not in searches[2]
-
-
-def test_same_source_cannot_trigger_conflict_or_exchange():
-    first = source()
-    scenario = Scenario(first, state="conflicting")
-    scenario.other = second_source(first).model_copy(update={"source_url": first.source_url})
-    result = report(asyncio.run(run_scenario(scenario, "quick")))
-    assert result.reflection.state == "insufficient"
-    assert not scenario.peers
 
 
 def test_director_invites_two_peers_once_even_with_multiple_conflicts():

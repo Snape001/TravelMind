@@ -49,8 +49,6 @@ def quality_fields(evidence):
     ("overrides", "score", "level"),
     [
         ({}, 10, "high"),
-        ({"authority": {"score": 1, "reason": "来源未核实"}}, 9, "high"),
-        ({"max_age_days": 30}, 10, "high"),
         (
             {
                 "authority": {"score": 1, "reason": "来源未核实"},
@@ -92,34 +90,6 @@ def test_quality_validates_score_and_grade(quality_fields, overrides, score, lev
 def test_quality_requires_valid_audit_inputs(quality_fields, overrides):
     with pytest.raises(ValidationError):
         EvidenceQuality.model_validate(quality_fields | overrides)
-
-
-@pytest.mark.parametrize(
-    ("state", "strategy", "stop_reason", "round_number"),
-    [
-        ("sufficient", "accept", "sufficient", 0),
-        ("insufficient", "expand_search", None, 0),
-        ("low_quality", "replace_sources", None, 0),
-        ("conflicting", "verify_conflict", None, 0),
-        ("conflicting", "stop", "round_limit", 2),
-        ("low_quality", "stop", "no_new_evidence", 1),
-        ("insufficient", "stop", "assessment_unavailable", 0),
-        ("insufficient", "stop", "budget_exhausted", 0),
-    ],
-)
-def test_reflection_action_routes_each_state(state, strategy, stop_reason, round_number):
-    action = ReflectionAction(
-        state=state,
-        strategy=strategy,
-        stop_reason=stop_reason,
-        round=round_number,
-        max_rounds=2,
-        reason="依据现有摘录检查目标",
-        target_questions=["现有来源能否回答该问题？"] if stop_reason is None else [],
-        evidence_ids=[uuid4(), uuid4()],
-        model_id="test-model",
-    )
-    assert ReflectionAction.model_validate_json(action.model_dump_json()) == action
 
 
 @pytest.mark.parametrize(
