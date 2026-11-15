@@ -1,5 +1,10 @@
 # TravelMind 开发进度
 
+## Phase 4 · 报告返修一次后自动通过（2026-11-15）
+
+- 初审通过即发布。需要修改时，Writer 按初审意见返修一次，Runtime 校验引用及署名并自动发布新版。校验失败的章节以「资料待核实」提示代替。自动通过沿用 AgentEvent v1，并在工作台事件中说明发布规则。 [运行说明](docs/agent-runtime.md#调研流程)
+- 隔离 PostgreSQL 14 上全量后端 248 项通过，含初审直接通过、返修后自动发布、无效引用和署名处理，以及终态 Checkpoint 重领后的报告版本和事件去重。Alembic 迁移与一致性检查通过。**交付提交**　`fix: approve reports after one revision`。
+
 ## Phase 4 · 默认 Worker 旅游规划与报告地图（2026-11-15）
 
 - 复用问卷后端 `b7d64a8` 和高德适配器 `e080bf2`。结构化问卷的新任务使用 `durable-v3`。Planner 按实际选择调度陆知行，默认 Worker 使用高德 POI 搜索、详情和路线工具。旧简报任务及已有 `durable-v1`、`durable-v2` Checkpoint 沿用原图。

@@ -32,8 +32,12 @@ from travelmind.schemas.worker import LeaseLost, ProjectionBatch
 pytestmark = pytest.mark.postgres
 
 
-@pytest.mark.parametrize("enable_reflection", [False, True])
-def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes(enable_reflection):
+@pytest.mark.parametrize(
+    ("enable_reflection", "revise"), [(False, False), (True, False), (True, True)]
+)
+def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes(
+    enable_reflection, revise
+):
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:
         pytest.skip("set TEST_DATABASE_URL to a dedicated migrated test database")
@@ -62,6 +66,17 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes(en
         scenario = Scenario(item)
         model = scenario.model if enable_reflection else Model(item)
         reflection = scenario.config() if enable_reflection else None
+        if revise:
+
+            async def request_revision(request, prompt, context):
+                if request.agent_id == "reviewer":
+                    return {
+                        "decision": "revision_required",
+                        "issues": [{"category": "coverage", "message": "补充遗产范围"}],
+                    }
+                return await scenario.reply(request, prompt, context)
+
+            model.reply = request_revision
         try:
             async with sessions.begin() as session:
                 session.add(
@@ -181,9 +196,11 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes(en
                                 select(AgentRunRow).where(AgentRunRow.task_id == task_id)
                             )
                         ).all()
-                        [report] = (
+                        reports = (
                             await session.scalars(
-                                select(ReportRow).where(ReportRow.task_id == task_id)
+                                select(ReportRow)
+                                .where(ReportRow.task_id == task_id)
+                                .order_by(ReportRow.version)
                             )
                         ).all()
                         events = (
@@ -193,13 +210,27 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes(en
                                 .order_by(EventRow.sequence)
                             )
                         ).all()
-                    assert report.report_id == store.dropped.reports[0].report_id
+                    assert [report.version for report in reports] == ([1, 2] if revise else [1])
+                    assert reports[-1].report_id == store.dropped.reports[0].report_id
                     assert [event.sequence for event in events] == list(range(1, len(events) + 1))
                     assert {event.trace_id for event in events} == {trace_id}
                     assert events[-1].payload["status"] == "completed"
-                    assert sum(event.payload["type"] == "report.ready" for event in events) == 1
+                    [ready] = [
+                        event.payload for event in events if event.payload["type"] == "report.ready"
+                    ]
+                    assert ready["report_id"] == str(reports[-1].report_id)
+                    assert ready["version"] == reports[-1].version
+                    reviews = [
+                        event.payload["decision"]
+                        for event in events
+                        if event.payload["type"] == "report.reviewed"
+                    ]
+                    assert reviews == (
+                        ["revision_required", "approved"] if revise else ["approved"]
+                    )
                     assert sum(event.payload["type"] == "evidence.added" for event in events) == 1
                     assert [request.agent_id for request, _ in model.calls].count("reviewer") == 1
+                    assert model.drafts == len(reports)
                     assert {run.result["kind"] for run in runs if run.result} >= {
                         "report",
                         "review",

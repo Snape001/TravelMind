@@ -29,9 +29,17 @@ from travelmind.schemas.agents import (
     ClarificationResult,
     ErrorInfo,
     ResearchResult,
+    ReviewResult,
     RunBudget,
 )
-from travelmind.schemas.domain import Assignment, Evidence, Finding, ReportSection, TaskStatus
+from travelmind.schemas.domain import (
+    Assignment,
+    Evidence,
+    Finding,
+    ReportSection,
+    Review,
+    TaskStatus,
+)
 from travelmind.schemas.events import (
     AgentMessageEvent,
     ClarificationEvent,
@@ -120,15 +128,12 @@ def build_research_graph(
     *,
     retrieve: experts.EvidenceRetriever | None = None,
     budget: RunBudget | None = None,
-    max_revision_rounds: int = 1,
     checkpointer: BaseCheckpointSaver | None = None,
     reflection: ReflectionConfig | None = None,
     travel_intake: ResearchIntakeContext | None = None,
     travel_planner: TravelPlanner | None = None,
 ):
     """Compile the research workflow. Custom stream items are AgentEvent payloads."""
-    if not 0 <= max_revision_rounds <= 2:
-        raise ValueError("max_revision_rounds must be between 0 and 2")
     run_budget = budget or RunBudget()
     durable = checkpointer is not None
     reflection_flow = ReflectionWorkflow(reflection, model, retrieve) if reflection else None
@@ -408,6 +413,10 @@ def build_research_graph(
         inputs = contributions(state)
         assessments = expert_assessments(state)
         findings = [finding for item in inputs for finding in item.findings]
+        contributor_ids = {item.agent_id for item in inputs}
+        verified_map = verified_map_evidence(state)
+        round_number = state.get("review_round", 0) + 1
+        revised = round_number > 1
         request = request_for(
             state,
             editorial.REVIEWER,
@@ -415,20 +424,36 @@ def build_research_graph(
             prior_findings=findings,
             draft=state["draft"],
         )
-        result = await run_agent(
-            request,
-            lambda: editorial.review(
+
+        async def assess() -> ReviewResult:
+            if revised:
+                emit(
+                    AgentMessageEvent(
+                        type="agent.message",
+                        **result_identity(request),
+                        message="报告已完成一次返修，按发布规则自动通过。",
+                    )
+                )
+                return ReviewResult(
+                    **result_identity(request), kind="review", review=Review(decision="approved")
+                )
+            return await editorial.review(
                 model,
                 request,
-                {item.agent_id for item in inputs},
+                contributor_ids,
                 experts=assessments,
-                verified_map=verified_map_evidence(state),
-            ),
-        )
+                verified_map=verified_map,
+            )
+
+        updates = {}
+        if revised:
+            updates["draft"] = editorial.finalize_revision(
+                request, contributor_ids, experts=assessments, verified_map=verified_map
+            )
+        result = await run_agent(request, assess)
         if isinstance(result, AgentFailure):
             return records(result) | publish_status("failed", error=result.error)
         decision = result.review.decision
-        round_number = state.get("review_round", 0) + 1
         report_id = state["report_id"]
         emit(
             ReportReviewedEvent(
@@ -438,7 +463,7 @@ def build_research_graph(
                 decision=decision,
             )
         )
-        updates = records(result) | {"review": result.review, "review_round": round_number}
+        updates |= records(result) | {"review": result.review, "review_round": round_number}
         if decision == "approved":
             emit(
                 ReportReadyEvent(
@@ -449,11 +474,6 @@ def build_research_graph(
                 )
             )
             return updates | publish_status("completed")
-        if round_number > max_revision_rounds:
-            error = ErrorInfo(
-                code="REVIEW_REJECTED", message="报告达到返工上限，仍未通过审核", retryable=False
-            )
-            return updates | publish_status("failed", error=error)
         return updates
 
     def running_edges(origin: str, target: str) -> None:

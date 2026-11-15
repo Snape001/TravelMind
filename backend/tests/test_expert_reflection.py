@@ -241,7 +241,7 @@ def test_reflection_rejects_conflict_from_two_pages_on_the_same_source():
     assert result.research.findings[0].support == "insufficient"
 
 
-def test_quality_review_returns_low_grade_citations_for_revision():
+def test_quality_review_revises_then_omits_persistently_low_grade_citations():
     class LowEvidence(Scenario):
         async def score(self, request, **context):
             return await super().score(
@@ -250,11 +250,15 @@ def test_quality_review_returns_low_grade_citations_for_revision():
 
     scenario = LowEvidence(source(), state="low_quality")
     values = asyncio.run(run_scenario(scenario, depth="quick"))
-    assert values["status"] == "failed"
-    assert values["failure"].code == "REVIEW_REJECTED"
+    assert values["status"] == "completed"
+    assert values["review"].decision == "approved"
+    assert values["review_round"] == 2
+    assert not any(section.evidence_ids for section in values["draft"].sections)
     assert any(
         issue.category == "citation" and issue.evidence_ids == [scenario.first.evidence_id]
-        for issue in values["review"].issues
+        for result in values["results"].values()
+        if result.kind == "review"
+        for issue in result.review.issues
     )
     assert not scenario.reviewer_inputs
 

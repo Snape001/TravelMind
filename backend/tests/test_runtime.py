@@ -2,8 +2,6 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import uuid4
 
-import pytest
-
 from travelmind.runtime.workflow import build_research_graph
 from travelmind.schemas.agents import AgentFailure, ResearchResult, RunBudget
 from travelmind.schemas.domain import Evidence, ResearchBrief
@@ -150,8 +148,7 @@ def test_parallel_experts_preserve_successful_results_and_pass_dependency_contex
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("approve_revision", [True, False])
-def test_review_checks_the_draft_and_bounds_revision(approve_revision):
+def test_initial_review_requests_one_revision_followed_by_automatic_approval():
     evidence = source()
 
     async def retrieve(_):
@@ -160,11 +157,11 @@ def test_review_checks_the_draft_and_bounds_revision(approve_revision):
     async def reply(request, instructions, context):
         if request.agent_id == "reviewer":
             assert request.draft is not None
-            if "第 1 版" in request.draft.sections[0].body or not approve_revision:
-                return {
-                    "decision": "revision_required",
-                    "issues": [{"category": "coverage", "message": "补充遗产范围"}],
-                }
+            assert "第 1 版" in request.draft.sections[0].body
+            return {
+                "decision": "revision_required",
+                "issues": [{"category": "coverage", "message": "补充遗产范围"}],
+            }
         if request.agent_id == "writer":
             assert "author_agent_ids 只能使用以下专家 ID" in instructions
             assert "history_culture" in instructions and "tourism_resources" in instructions
@@ -175,17 +172,19 @@ def test_review_checks_the_draft_and_bounds_revision(approve_revision):
 
     async def run():
         model = Model(evidence, reply=reply)
-        graph = build_research_graph(model, retrieve=retrieve, max_revision_rounds=1)
+        graph = build_research_graph(model, retrieve=retrieve)
         state = await graph.ainvoke(research_input())
         assert model.drafts == 2
         assert state["review_round"] == 2
-        assert state["status"] == ("completed" if approve_revision else "failed")
-        assert state["review"].decision == ("approved" if approve_revision else "revision_required")
+        assert state["status"] == "completed"
+        assert state["review"].decision == "approved"
+        assert "第 2 版" in state["draft"].sections[0].body
+        assert [request.agent_id for request, _ in model.calls].count("reviewer") == 1
 
     asyncio.run(run())
 
 
-def test_unknown_report_reference_cannot_be_approved_and_events_use_existing_contract():
+def test_auto_approved_report_omits_invalid_sections_and_uses_existing_event_contract():
     evidence = source()
 
     async def retrieve(_):
@@ -201,16 +200,35 @@ def test_unknown_report_reference_cannot_be_approved_and_events_use_existing_con
                         "body": "有世界遗产点。",
                         "author_agent_ids": ["tourism_resources"],
                         "evidence_ids": [uuid4()],
-                    }
+                    },
+                    {
+                        "heading": "遗产价值",
+                        "body": "泉州是宋元时期的海洋商贸中心。",
+                        "author_agent_ids": ["history_culture"],
+                        "evidence_ids": [evidence.evidence_id],
+                    },
+                    {
+                        "heading": "署名有误",
+                        "body": "有丰富的历史资料。",
+                        "author_agent_ids": ["writer"],
+                    },
                 ],
             }
         return None
 
     async def run():
         request = research_input()
-        graph = build_research_graph(
-            Model(evidence, reply=reply), retrieve=retrieve, max_revision_rounds=0
-        )
+        model = Model(evidence, reply=reply)
+        graph = build_research_graph(model, retrieve=retrieve)
+        stream = [item async for item in graph.astream(request, stream_mode=["values", "custom"])]
+        state = [data for mode, data in stream if mode == "values"][-1]
+        assert [section.heading for section in state["draft"].sections] == [
+            "遗产价值",
+            "资料待核实",
+        ]
+        assert state["draft"].sections[0].evidence_ids == [evidence.evidence_id]
+        assert not state["draft"].sections[1].evidence_ids
+        payloads = [data for mode, data in stream if mode == "custom"]
         events = [
             AgentEvent(
                 event_id=uuid4(),
@@ -220,18 +238,19 @@ def test_unknown_report_reference_cannot_be_approved_and_events_use_existing_con
                 trace_id=request["trace_id"],
                 payload=payload,
             )
-            for sequence, payload in enumerate(
-                [payload async for payload in graph.astream(request, stream_mode="custom")], 1
-            )
+            for sequence, payload in enumerate(payloads, 1)
         ]
         assert events[0].payload.status == "running"
-        assert events[-1].payload.status == "failed"
+        assert events[-1].payload.status == "completed"
         assert any(event.payload.type == "plan.ready" for event in events)
         assert any(event.payload.type == "tool.finished" for event in events)
         assert any(event.payload.type == "evidence.added" for event in events)
         reviews = [event.payload for event in events if event.payload.type == "report.reviewed"]
-        assert [review.decision for review in reviews] == ["revision_required"]
-        assert not any(event.payload.type == "report.ready" for event in events)
+        assert [review.decision for review in reviews] == ["revision_required", "approved"]
+        [ready] = [event.payload for event in events if event.payload.type == "report.ready"]
+        assert ready.report_id == reviews[-1].report_id
+        assert ready.version == 2
+        assert not any(call.agent_id == "reviewer" for call, _ in model.calls)
 
     asyncio.run(run())
 

@@ -3,7 +3,7 @@ from uuid import UUID
 from travelmind.runtime.execution import InvalidOutput, result_identity, with_budget
 from travelmind.runtime.model import StructuredModel
 from travelmind.schemas.agents import AgentInput, ReportResult, ResearchResult, ReviewResult
-from travelmind.schemas.domain import ReportDraft, Review, ReviewIssue
+from travelmind.schemas.domain import ReportDraft, ReportSection, Review, ReviewIssue
 from travelmind.schemas.research_quality import ExpertResearchResult
 
 WRITER = "writer"
@@ -14,6 +14,43 @@ def usable_evidence(experts: list[ExpertResearchResult]) -> set[UUID]:
     return {
         card.evidence_id for expert in experts for card in expert.quality if card.level != "low"
     }
+
+
+def eligible_evidence(
+    available: set[UUID],
+    experts: list[ExpertResearchResult] | None,
+    verified_map: frozenset[UUID],
+) -> set[UUID]:
+    return available & (usable_evidence(experts) | verified_map) if experts else available
+
+
+def finalize_revision(
+    request: AgentInput,
+    contributor_ids: set[str],
+    *,
+    experts: list[ExpertResearchResult],
+    verified_map: frozenset[UUID],
+) -> ReportDraft:
+    assert request.draft is not None
+    eligible = eligible_evidence(
+        {item.evidence_id for item in request.evidence}, experts, verified_map
+    )
+    sections = [
+        section
+        for section in request.draft.sections
+        if set(section.evidence_ids) <= eligible
+        and set(section.author_agent_ids) <= contributor_ids
+    ]
+    if len(sections) == len(request.draft.sections):
+        return request.draft
+    sections.append(
+        ReportSection(
+            heading="资料待核实",
+            body="部分章节的引用或专家署名未通过校验，相关结论暂不发布。",
+            author_agent_ids=[WRITER],
+        )
+    )
+    return request.draft.model_copy(update={"sections": sections})
 
 
 def editorial_assessments(experts: list[ExpertResearchResult]) -> list[dict]:
@@ -100,7 +137,7 @@ async def review(
 ) -> ReviewResult:
     assert request.draft is not None
     evidence_ids = {item.evidence_id for item in request.evidence}
-    eligible = usable_evidence(experts) | verified_map if experts else evidence_ids
+    eligible = eligible_evidence(evidence_ids, experts, verified_map)
     issues = []
     for section in request.draft.sections:
         if set(section.evidence_ids) - evidence_ids:
