@@ -22,11 +22,11 @@
 
 独立 Reviewer 接收整篇草稿、简报及研究证据，核对关键事实、时效、主题覆盖、旅行建议和分歧。未知或低质量证据引用、无贡献者署名会直接触发返工。语义性判断仍由 Reviewer 完成。返工把审核意见送回 Writer 并重新走报告流程，次数由现有图限制。
 
-## 集成交接
+## Worker 接线
 
-在启用 Phase 4 的工作流中组装一个 `SkillRegistry()`，向现有 `editorial.write` 与 `editorial.review` 传入 `skills=registry`。两者仍返回 `ReportResult` 和 `ReviewResult`。C 线保留当前 Worker、Planner 和公开路由，旧路径省略该参数，已有报告和 Checkpoint 继续按原格式读取。
+默认 Worker 为新问卷任务选择 `durable-v4` 并装配注册表。已通过问卷确认的需求可直接进入 Planner。专业反思阶段选择相应技能，陆知行由独立高德规划器执行。Writer 与 Reviewer 仍产出原 `ReportResult` 和 `ReviewResult`。独立初审要求返修时，Writer 重新走报告流程，随后按现行规则校验引用和署名并发布。历史任务保持原图和报告结构。
 
-Director 可调用 `runtime.skills.research.director_skill` 获取现有 `DirectorDecision`。专家调用 `research_skill` 可接收现有证据及工作流批准的检索器，并返回 `ResearchResult`。文献研究、互联网研究档案及技能可执行，进入正式调度需由集成工作流纳入名册。独立路线与问卷接入沿用各自支线。集成端使用同一固定版本注册表续跑同版工作流。发布新定义时新增版本文件，将版本切换与工作流选择一并管理。
+`GET /api/v1/experts` 提供已登录用户可读取的专家档案、稳定角色 ID、肖像及技能引用。工具调用权由 Worker 执行配置与注册表控制。
 
 ## 验证
 

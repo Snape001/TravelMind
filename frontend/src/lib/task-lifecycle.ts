@@ -1,10 +1,10 @@
 import type { ClarificationAnswers, PendingClarification, TaskRead, TaskStatus } from "./research";
-import type { QuestionnaireSubmission } from "./questionnaire";
+import type { Submission } from "./intake";
 
 export type TaskCommand =
   | { operation: "pause" | "resume" }
   | { operation: "answer"; roundId: string; body: ClarificationAnswers }
-  | { operation: "answer-questionnaire"; roundId: string; body: QuestionnaireSubmission };
+  | { operation: "answer-questionnaire"; roundId: string; body: Submission };
 
 export const isTerminal = (status: TaskStatus) => status === "completed" || status === "failed";
 

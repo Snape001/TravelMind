@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { eventCursor, summarize } from "../src/lib/agent-events";
 import { demoResearch } from "../src/lib/demo";
-import { prepareDestination, visibleQuestions, questionnaireAnswers } from "../src/lib/questionnaire";
+import { prepareDestination, visibleQuestions, buildSubmission } from "../src/lib/intake";
 import { readResearchEvent, projectResearch, publicSourceUrl, usageTotals, toolAction, mergeActivity, type ResearchEvent } from "../src/lib/research-browser";
 import { createDestinationTask, readIntake, readResearchSource, sendCommand, subscribeResearch } from "../src/lib/task-client";
-import type { components } from "../src/lib/phase4.generated";
+import type { components } from "../src/lib/api.generated";
 
 type Questionnaire = components["schemas"]["ResearchQuestionnaire"];
 const fixture = JSON.parse(readFileSync("../fixtures/phase4.json", "utf8")) as {
@@ -20,10 +20,10 @@ const fixture = JSON.parse(readFileSync("../fixtures/phase4.json", "utf8")) as {
 test("destination entry and conditionally visible questionnaire answers follow the Phase 4 contract", () => {
   assert.deepEqual(prepareDestination("  开元寺  "), { destination: "开元寺" });
   assert.throws(() => prepareDestination("馆".repeat(81)));
-  assert.throws(() => questionnaireAnswers(fixture.destination_questionnaire, {}));
+  assert.throws(() => buildSubmission(fixture.destination_questionnaire, {}));
   const poi = fixture.destination_questionnaire.questions[0];
   const option = poi.options![0].option_id;
-  assert.deepEqual(questionnaireAnswers(fixture.destination_questionnaire, { [poi.question_id]: option }).answers,
+  assert.deepEqual(buildSubmission(fixture.destination_questionnaire, { [poi.question_id]: [option] }).answers,
     [{ question_id: poi.question_id, kind: "single_choice", option_ids: [option] }]);
   const research = fixture.research_questionnaire;
   const dependent = research.questions.find(({ visible_if }) => visible_if)!;
@@ -31,11 +31,11 @@ test("destination entry and conditionally visible questionnaire answers follow t
   assert.ok(!visibleQuestions(research, { [dependent.question_id]: "hidden" }).includes(dependent));
   const active = { [parent.question_id]: [parent.includes_option_id] };
   assert.ok(visibleQuestions(research, active).includes(dependent));
-  assert.deepEqual(questionnaireAnswers(research, { [dependent.question_id]: "hidden" }), { answers: [] });
-  assert.deepEqual(questionnaireAnswers(fixture.travel_questionnaire, {}), { answers: [] });
-  assert.deepEqual(questionnaireAnswers(fixture.travel_questionnaire, { budget_cny: "0" }).answers,
+  assert.deepEqual(buildSubmission(research, { [dependent.question_id]: "hidden" }), { answers: [] });
+  assert.deepEqual(buildSubmission(fixture.travel_questionnaire, {}), { answers: [] });
+  assert.deepEqual(buildSubmission(fixture.travel_questionnaire, { budget_cny: "0" }).answers,
     [{ question_id: "budget_cny", kind: "integer", value: 0 }]);
-  assert.throws(() => questionnaireAnswers(fixture.travel_questionnaire, { budget_cny: "-1" }));
+  assert.throws(() => buildSubmission(fixture.travel_questionnaire, { budget_cny: "-1" }));
 });
 
 test("research stream validates frames and has its own task-bound cursor", () => {

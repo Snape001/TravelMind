@@ -106,6 +106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/experts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Experts */
+        get: operations["read_experts_api_v1_experts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks/from-destination": {
         parameters: {
             query?: never;
@@ -251,6 +268,40 @@ export interface paths {
         };
         /** Stream Events */
         get: operations["stream_events_api_v1_tasks__task_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/research-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Research Events */
+        get: operations["stream_research_events_api_v1_tasks__task_id__research_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/research-sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Research Source */
+        get: operations["read_research_source_api_v1_tasks__task_id__research_sources__source_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -432,6 +483,45 @@ export interface components {
             /** Assignment Id */
             assignment_id?: string | null;
         };
+        /**
+         * AgentUsage
+         * @description Provider metrics and a separately authored, safe prompt preview for one call.
+         */
+        AgentUsage: {
+            /**
+             * Call Id
+             * Format: uuid
+             */
+            call_id: string;
+            /** Message Event Id */
+            message_event_id?: string | null;
+            /** Provider */
+            provider: string;
+            /** Model */
+            model: string;
+            /** Prompt Preview */
+            prompt_preview?: string | null;
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Output Tokens */
+            output_tokens: number | null;
+        };
+        /** AgentUsageEvent */
+        AgentUsageEvent: {
+            /** Agent Id */
+            agent_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "agent.usage";
+            usage: components["schemas"]["AgentUsage"];
+        };
         /** Assignment */
         Assignment: {
             /**
@@ -604,6 +694,35 @@ export interface components {
              * Format: uuid
              */
             task_id: string;
+        };
+        /** ExpertProfile */
+        ExpertProfile: {
+            /** Agent Id */
+            agent_id: string;
+            /** Name */
+            name?: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Tier
+             * @enum {string}
+             */
+            tier: "leadership" | "council" | "editorial";
+            /** Description */
+            description: string;
+            /** Portrait */
+            portrait?: string | null;
+            /** Fields */
+            fields?: string[];
+            /** Tools */
+            tools?: string[];
+            /** Skills */
+            skills?: components["schemas"]["SkillRef"][];
+        };
+        /** ExpertProfilesRead */
+        ExpertProfilesRead: {
+            /** Experts */
+            experts: components["schemas"]["ExpertProfile"][];
         };
         /** Gcj02Point */
         Gcj02Point: {
@@ -940,6 +1059,39 @@ export interface components {
              */
             depth: "quick" | "deep" | "academic";
         };
+        /** ResearchBrowserEvent */
+        ResearchBrowserEvent: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /**
+             * Trace Id
+             * Format: uuid
+             */
+            trace_id: string;
+            /** Sequence */
+            sequence: number;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Payload */
+            payload: components["schemas"]["SourceDiscoveredEvent"] | components["schemas"]["SourceFetchEvent"] | components["schemas"]["SourceScoredEvent"] | components["schemas"]["SourceCitedEvent"] | components["schemas"]["AgentUsageEvent"];
+        };
         /** ResearchIntakeRead */
         ResearchIntakeRead: {
             /**
@@ -976,6 +1128,174 @@ export interface components {
             candidates?: {
                 [key: string]: components["schemas"]["Destination"];
             };
+        };
+        /** ResearchSourceRead */
+        ResearchSourceRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "web" | "official" | "academic" | "book" | "social" | "map";
+            /** Title */
+            title: string;
+            /** Publisher */
+            publisher?: string | null;
+            /** Source Url */
+            source_url?: string | null;
+            /** Body Text */
+            body_text?: string | null;
+        };
+        /** SkillRef */
+        SkillRef: {
+            /** Skill Id */
+            skill_id: string;
+            /** Version */
+            version: number;
+        };
+        /** SourceCitedEvent */
+        SourceCitedEvent: {
+            /** Agent Id */
+            agent_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "research.source.cited";
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Report Version */
+            report_version: number;
+            /**
+             * Evidence Id
+             * Format: uuid
+             */
+            evidence_id: string;
+        };
+        /** SourceDiscoveredEvent */
+        SourceDiscoveredEvent: {
+            /** Agent Id */
+            agent_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "research.source.discovered";
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "web" | "official" | "academic" | "book" | "social" | "map";
+            /** Title */
+            title: string;
+            /** Publisher */
+            publisher?: string | null;
+            /** Source Url */
+            source_url?: string | null;
+        };
+        /** SourceFetchEvent */
+        SourceFetchEvent: {
+            /** Agent Id */
+            agent_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "research.source.fetch";
+            /** Attempt */
+            attempt: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "started" | "succeeded" | "failed" | "skipped";
+            /** Error Code */
+            error_code?: string | null;
+        };
+        /** SourceScoredEvent */
+        SourceScoredEvent: {
+            /** Agent Id */
+            agent_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "research.source.scored";
+            /**
+             * Evidence Id
+             * Format: uuid
+             */
+            evidence_id: string;
+            /**
+             * Assignment Id
+             * Format: uuid
+             */
+            assignment_id: string;
+            /**
+             * Policy Version
+             * @default v1
+             * @constant
+             */
+            policy_version: "v1";
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "high" | "medium" | "low";
+            /** Total Score */
+            total_score: number;
         };
         /** TaskRead */
         TaskRead: {
@@ -1426,6 +1746,35 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_experts_api_v1_experts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpertProfilesRead"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2156,6 +2505,145 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": components["schemas"]["AgentEvent"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    stream_research_events_api_v1_tasks__task_id__research_events_get: {
+        parameters: {
+            query?: {
+                after?: number;
+            };
+            header?: {
+                "last-event-id"?: number | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["ResearchBrowserEvent"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_research_source_api_v1_tasks__task_id__research_sources__source_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchSourceRead"];
                 };
             };
             /** @description Unauthorized */

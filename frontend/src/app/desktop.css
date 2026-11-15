@@ -279,15 +279,3 @@ body:has(.workspace) { background: #f6f3eb; }
 .source-scores dd { margin: 0; }
 .source-links { display: flex; flex-wrap: wrap; gap: 5px 12px; font-size: 12px; }
 .source-body { white-space: pre-wrap; line-height: 1.8; }
-
-.questionnaire .questionnaire-fields { gap: 14px; }
-.questionnaire .question-options { gap: 4px; margin-top: 0; }
-.question-options legend, .question-input > span { margin-bottom: 4px; color: var(--ink); font-weight: 600; }
-.question-required { margin-left: 5px; color: var(--bronze); font-size: 11px; }
-.questionnaire .question-choice { display: flex; align-items: start; gap: 7px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: #fcfaf4; }
-.question-choice:has(:checked) { border-color: #7b9d8a; background: var(--mint); }
-.question-choice input { margin: 3px 0 0; accent-color: var(--forest); }
-.question-choice svg { margin-top: 2px; flex: none; color: var(--bronze); }
-.question-choice small { display: block; color: var(--muted); }
-.question-input input { width: min(100%, 230px); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--canvas); }
-.questionnaire-actions { display: flex; gap: 6px; flex-wrap: wrap; }

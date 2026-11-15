@@ -15,7 +15,7 @@ export function prepareDestination(value: string): DestinationTaskCreate {
   return { destination };
 }
 
-function visibleQuestions(round: Questionnaire, answers: Answers): Question[] {
+export function visibleQuestions(round: Questionnaire, answers: Answers): Question[] {
   const visible = new Set<string>();
   return round.questions.filter((question) => {
     const condition = question.visible_if;
@@ -75,24 +75,38 @@ export function buildSubmission(round: Questionnaire, values: Answers): Submissi
     const { question_id, kind } = question;
     const raw = values[question_id];
     if (kind === "single_choice" || kind === "multi_choice") {
-      const options = Array.isArray(raw) ? raw : [];
+      const selected = new Set(Array.isArray(raw) ? raw : []);
+      const options = (question.options ?? [])
+        .map(({ option_id }) => option_id)
+        .filter((option) => selected.has(option));
+      if (selected.size !== options.length || (kind === "single_choice" && selected.size > 1)) {
+        throw new Error(`请检查「${question.text}」的选项。`);
+      }
       if (options.length > 0) answers.push({ question_id, kind, option_ids: options });
-      else if (question.required) throw new Error("请选择一个地点。");
+      else if (question.required) throw new Error(`请选择「${question.text}」的选项。`);
       continue;
     }
     const text = typeof raw === "string" ? raw.trim() : "";
     if (!text) {
-      if (question.required) throw new Error("请填写地点名称。");
+      if (question.required) throw new Error(`请回答「${question.text}」。`);
       continue;
     }
     if (kind === "text") {
       if (round.stage === "destination_search") prepareDestination(text);
+      if ([...text].length > 4000) throw new Error("每题答案最多 4,000 字符。");
       answers.push({ question_id, kind, text });
     } else if (kind === "date") {
+      const date = new Date(text);
+      if (!/^\d{4}-\d{2}-\d{2}$/u.test(text) || !Number.isFinite(date.valueOf()) ||
+        date.toISOString().slice(0, 10) !== text) {
+        throw new Error(`请为「${question.text}」填写有效日期。`);
+      }
       answers.push({ question_id, kind, value: text });
     } else {
       const value = Number(text);
-      if (!Number.isSafeInteger(value) || value < minimum(question)) throw new Error("请检查填写的整数。");
+      if (!/^\d+$/u.test(text) || !Number.isSafeInteger(value) || value < minimum(question)) {
+        throw new Error("请检查填写的整数。");
+      }
       answers.push({ question_id, kind: "integer", value });
     }
   }

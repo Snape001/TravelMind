@@ -2,7 +2,7 @@
 
 首页将目的地提交到 `POST /api/v1/tasks/from-destination`。任务等待补充信息时，从 `intake` 读取当前轮次，按服务端提供的题型、选项和显示条件生成表单。答案使用当前问卷 ID 和幂等键，隐藏题省略。目的地确认必答，研究与出行轮次可以跳过。
 
-现有 FastAPI 支持的任务、报告、证据、暂停、恢复和 AgentEvent v1 由原接口提供。部署只提供 Phase 3 路由时，目的地入口在扩展路由缺失后使用旧建任务接口的默认深度，等待澄清时沿用文本表单。扩展端点返回的业务错误保留原有处理。
+历史任务仍支持原有文本澄清、任务控制、报告、证据和 AgentEvent v1。需要登录时，同一浏览器标签页保存目的地草稿，OIDC 回到首页后可继续提交。
 
 ## 三栏工作区
 
@@ -13,6 +13,6 @@
 
 ## 开发与联调
 
-独立 Phase 4 类型快照来自契约组件导出，集成时可用真实服务 OpenAPI 统一生成类型。前端测试复用共享合成 Fixture。运行时请求走同源 Next.js 代理。 [公共接口及类型导出](phase-4-contract.md) · [合成 Fixture](../fixtures/phase4.json)
+前端使用当前 FastAPI 的 OpenAPI 生成类型。前端测试复用共享合成 Fixture。运行时请求走同源 Next.js 代理。 [公共接口及类型导出](phase-4-contract.md) · [合成 Fixture](../fixtures/phase4.json)
 
 在 `frontend/` 执行 `npm test`、`npm run lint`、`npm run typecheck` 和 `npm run build`。用提供 Phase 4 路由的集成环境验收高德确认、来源正文可读性、扩展 SSE 和真实供应商 Usage。

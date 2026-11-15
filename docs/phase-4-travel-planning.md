@@ -22,7 +22,7 @@
 
 ## Worker 与持久化
 
-默认 Worker 的地点确认和旅游规划共用 `AmapClient`，规划端传入 Worker 级 `AmapResultCache`。完成结构化问卷的新任务启用 `durable-v3`，以已校验的路线选择为准增补或移除 `travel_planning` 分工。该分工调用 `TravelPlanner.invoke`，普通专家继续使用反思流程。旧简报任务和已有 `durable-v1`、`durable-v2` Checkpoint 按原图运行。
+默认 Worker 的地点确认和旅游规划共用 `AmapClient`，规划端传入 Worker 级 `AmapResultCache`。完成结构化问卷的新任务启用 `durable-v4`，以已校验的路线选择为准增补或移除 `travel_planning` 分工。该分工调用 `TravelPlanner.invoke`，普通专家继续使用反思流程。旧简报任务和已有 `durable-v1`、`durable-v2`、`durable-v3` Checkpoint 按原图运行。
 
 地图快照和所引用的地图证据由同一带租约校验的投影事务写入 PostgreSQL。审核通过时，报告发布事务将带 `report_id` 的快照保存到报告版本。重放已提交的 Checkpoint 可重建未投影的地图快照，旧租约写入仍会被拒绝。
 

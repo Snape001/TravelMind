@@ -1,6 +1,6 @@
 # Phase 4 公共接口
 
-本基线定义未来接口和 JSON 结构。现有 FastAPI 路由、OpenAPI、Worker 与浏览器行为在 Step 0 继续使用 Phase 3 实现。[技术架构与分支计划](phase-4-architecture.md)
+本契约描述 Phase 4 已挂载的 HTTP 接口、独立 SSE 和结构化数据。[技术架构与分支计划](phase-4-architecture.md)
 
 ## 目的地与路线
 
@@ -23,8 +23,8 @@
 
 - `kind` 区分 `text`、`single_choice`、`multi_choice`、`date`、`integer`。答案带相同 `kind` 和 `question_id`，使用 `text`、`option_ids` 或 `value`。缺省和跳过以省略该题表示，整轮可跳过时提交 `{"answers":[]}`。
 - 同轮 `visible_if` 精确引用前一题或更早题的真实选项。只有当前可见且已回答的父题可以激活子题。校验拒绝前向引用、未知选项、重复答案和隐藏题答复。
-- 研究轮发布时保留 `interests` 多选、`travel_route` 选项和末尾 `additional_notes` 自由文本。应用确定保留字段和触发规则。LLM 可生成目的地相关选项、标签及同轮追问。校验失败按现有操作预算重试，耗尽后使用确定性问题集合。高德候选、路线数据和工具权限均由应用提供。
-- 高德成功返回零个合格候选时进入目的地细化。超时、限流或配置错误沿用任务错误与重试规则，前端显示真实失败原因。没有已确认的目的地时不进入 Planner。
+- 研究轮发布时保留 `interests` 多选、`travel_route` 选项和末尾 `additional_notes` 自由文本。应用确定保留字段和触发规则。LLM 可生成目的地相关选项、标签及同轮追问。一轮至多两次调用，每次限制为 15 秒和 1600 个输出 Token。校验失败按现有操作预算重试，耗尽后使用确定性问题集合。高德候选、路线数据和工具权限均由应用提供。
+- Worker 先按关键词搜索，缺少精确名称时可查询输入提示，再以 POI 详情核对提示中的 ID。单一候选也需确认。零候选进入目的地细化。超时、限流或配置错误沿用任务错误与重试规则，前端显示真实失败原因。没有已确认的目的地时不进入 Planner。
 - 路线轮按 `TravelPreferences` 的键命名。日期和整数直接映射；交通与强度采用定义的枚举 ID；风格和同行类别采用已发布选项的稳定 ID。应用对组装后的 `TravelPreferences` 进行整体验证。已保存的题目与答复、确认的 POI 及侧写跟随任务和 Checkpoint 恢复，重放不会重新生成同轮。
 - `ResearchIntakeContext` 供 Planner 使用，包含已确认地点、已校验的研究轮问卷与答复、是否请求路线和可空的规划偏好。保留题目和选项标签以解释同轮追问。路线标志须与 `interests` 的答复一致。Planner 继续产出既有 `ResearchPlan`。
 - 同一时刻只有一个可答轮次。发布沿用 `running → needs_clarification`，答复沿用 `needs_clarification → queued → running`。旧 `task.clarification` 事件仍发送题目文本。展示兼容用的 `TaskRead.pending_clarification` 使用同一轮次 UUID，问题 UUID 由 `UUIDv5(questionnaire_id, question_id)` 派生。Phase 4 前端从 Intake 读取结构化轮次，对 typed 轮次调用新答复端点。
@@ -33,12 +33,13 @@
 
 路径均相对同源 `/api/v1`。继续由会话确定身份和归属，跨用户或不存在的任务/资源返回相同 404。写操作遵循现有 CSRF 校验。现有登录、任务查询、SSE、暂停、恢复、文本澄清、报告及证据接口继续沿用。新增错误同用 `ErrorResponse`，`retryable` 遵循 [Phase 2 规则](phase-2-contract.md#错误与幂等)。
 
-| 计划接口 | 请求 | 成功 |
+| 接口 | 请求 | 成功 |
 | --- | --- | --- |
 | `POST /tasks/from-destination` | `DestinationTaskCreate`，可选 `Idempotency-Key` | `201 TaskRead` + `Location`，幂等回读为 200 |
 | `GET /tasks/{task_id}/intake` | 任务所有者 | `200 ResearchIntakeRead`。标准目的地、待答问卷、规划偏好分别可为 `null` |
 | `POST /tasks/{task_id}/questionnaires/{questionnaire_id}/answer` | `QuestionnaireSubmission`，必需 `Idempotency-Key` | `202 TaskRead`，写入续跑指令并进入队列 |
 | `GET /tasks/{task_id}/routes` | 任务所有者 | `200 TravelRoutesRead`，无路线时 `routes: []` |
+| `GET /tasks/{task_id}/reports/{report_id}/map-data` | 所属任务的报告 | `200 MapData`，见[地图查询](phase-4-travel-planning.md#地图查询) |
 | `GET /tasks/{task_id}/research-events` | 任务所有者，支持 `after` 或 `Last-Event-ID` | `200 text/event-stream`，见下节 |
 | `GET /tasks/{task_id}/research-sources/{source_id}` | 任务所有者 | `200 ResearchSourceRead`，已授权取得并可显示的正文提供纯文本，否则为 `null` |
 | `GET /experts` | 已认证用户 | `200 ExpertProfilesRead`，仅提供可公开展示的档案字段 |
@@ -59,7 +60,7 @@
 | `research.source.cited` | 已审核报告发布 | `source_id`、`evidence_id`、`report_id`、`report_version`。前端用当前发布版本展示「已引用」 |
 | `agent.usage` | 统一模型封装收到供应商响应 | `AgentUsage`、`agent_id`、`run_id`。含真实调用 ID、可选旧流消息事件 ID、Prompt 预览、计数与模型 |
 
-同一任务内按标准来源标识去重并复用 `source_id`。首次来源可从标题或书目定位开始；变更规范标识时保留已发布 UUID。评分和引用必须关联同任务已入库的 Evidence，未审核/被拒稿件不产生引用事件。抓取成功后先保存可读正文，再宣布成功或声明正文不可展示。正文、搜索工具原始参数、账号数据不进 SSE。前端只渲染纯文本和通过公开 HTTP(S) 校验的来源链接。
+同一任务内按标准来源标识去重并复用 `source_id`。首次来源可从标题或书目定位开始；变更规范标识时保留已发布 UUID。评分和引用必须关联同任务已入库的 Evidence，未审核/被拒稿件不产生引用事件。深度或学术调研可调用 Firecrawl，抓取成功后保存最多 50,000 字符的正文，再宣布成功。快速调研保留已有检索额度与证据摘录，未抓取来源的正文可为空。正文、搜索工具原始参数、账号数据不进 SSE。前端只渲染纯文本和通过公开 HTTP(S) 校验的来源链接。
 
 中栏优先显示 `agent.message` 与来源事件能确定的研究动作。可展开详情使用既有工具标识、耗时、状态及已发布的来源/评分字段。技术详情同样经过脱敏。
 
@@ -82,7 +83,7 @@
 - 社交证据的 `platform` 枚举增加 `zhihu`。知乎问题与回答使用各自的 `post_id`，引用继续使用 `Evidence`。 [知乎采集范围](phase-4-social-research.md#知乎)
 - [公共 JSON Fixture](../fixtures/phase4.json) 包含同名 POI、动态问题、多轮示例、逐条来源事件、模型用量、路线和社交样本。数据为合成测试样例。
 
-前端可从仓库根目录单独导出待接入的组件类型。接口路径以本文为准，集成时由真实后端 OpenAPI 生成正式类型。
+前端只使用 FastAPI 的 OpenAPI 生成 `api.generated.ts`。开发时在后端启动 API 后，从 `frontend/` 执行 `npm run generate:api`。以下独立导出命令用于评审已冻结的组件与内部技能调用结构。
 
 ```powershell
 Push-Location backend

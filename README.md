@@ -1,6 +1,6 @@
 # TravelMind
 
-面向中国旅游目的地的桌面端 Web 调研平台。LangGraph 编排专家并行检索、证据评分与反思，Research Director 决定定向补查和质询。Writer 撰写报告，Reviewer 独立核验事实与引用。工作台通过 AgentEvent v1 SSE 展示进度，报告可跳转至来源证据。 [产品范围](PRD.md)
+面向中国旅游目的地的桌面端 Web 调研平台。从一个目的地开始，确认高德 POI 后填写动态问卷。LangGraph 编排专家并行检索、证据评分与反思。三栏工作台展示研究动作、来源状态和模型实际用量。选中旅游路线后，陆知行使用高德数据规划行程，报告包含真实点位、通勤方案及证据。 [产品范围](PRD.md)
 
 专家公会 `/guild` 提供九份带本地肖像的专家档案。调研工作台、事件和报告署名使用同一组身份资料。[公会与档案](docs/guild-ui.md)
 
@@ -10,7 +10,7 @@
 
 ## 泉州示例回放
 
-从项目根目录执行以下命令，然后打开 `http://127.0.0.1:3000`，选择首页的泉州示例。示例提供只读工作台、报告版本及来源证据，可独立于后端和身份提供方运行。
+从项目根目录执行以下命令，然后打开 `http://127.0.0.1:3000`，打开调研历史中的泉州示例。示例提供只读工作台、报告版本及来源证据，可独立于后端和身份提供方运行。
 
 ```powershell
 Set-Location frontend
@@ -54,7 +54,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack stop
 
 开发栈使用专用 Compose 项目和数据卷。凭据、证书与私钥位于 Git 忽略的 `.artifacts/local-oidc`。Keycloak 初次启动时导入 Realm，后续启动保留已导入的账号和客户端。外部或生产 OIDC 配置继续使用下文的独立入口。 [Keycloak Realm 导入](https://www.keycloak.org/server/importExport)
 
-要复现浏览器验收，用 `alice` 提交目的地「古城」，说明需要先确认城市。收到澄清后答「福建泉州，仅核对宋元海贸遗产的列入年份和遗产点数量」。任务运行时暂停，等工作台显示已暂停后执行 `restart-worker`，再点恢复。报告获批后检查引用跳转。用另一个浏览器配置文件登录 `bob` 并打开相同链接，网络面板中的任务、报告与 SSE 请求应返回 404。
+要复现浏览器验收，用 `alice` 提交「泉州大开元寺」，核对 POI 和行政区，勾选「旅游路线」并按需填写出行偏好。任务运行时暂停，等工作台显示已暂停后执行 `restart-worker`，再点恢复。查看 Research Browser、专家用量和已审核报告地图。用另一个浏览器配置文件登录 `bob` 并打开相同任务，任务、来源、地图、报告和两条 SSE 请求应返回 404。
 
 ### Windows 故障排查
 
@@ -83,7 +83,7 @@ if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env
 
 启用 Redis 时运行 `docker compose up -d --wait redis`，并在 `backend/.env` 配置 `REDIS_URL=redis://127.0.0.1:16379/0`。仅使用 PostgreSQL 时可删除模板中的 `REDIS_URL` 行。
 
-在 `backend/.env` 填入 `DEEPSEEK_API_KEY`、`BOCHA_API_KEY` 和 `FIRECRAWL_API_KEY`。Worker 启动需要 DeepSeek 密钥，默认使用官方 API `https://api.deepseek.com` 和 `deepseek-flash`。
+在 `backend/.env` 填入 `DEEPSEEK_API_KEY`、`BOCHA_API_KEY` 和 `FIRECRAWL_API_KEY`。Worker 启动需要 DeepSeek 密钥，默认使用官方 API `https://api.deepseek.com` 和 `deepseek-flash`。问卷、研究、评分和报告共用 `DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL` 及同一模型封装。覆盖变量后重启 Worker。
 
 真实调研通过 OIDC 登录。在后端进程环境或被 Git 忽略的 `backend/.env.oidc` 中设置以下值，使用提供方签发的客户端配置和实际 HTTPS 入口。
 
@@ -195,7 +195,7 @@ docker compose @travelCompose up -d --no-deps --force-recreate api worker
 
 证据评分、专家反思和离线评测的共享 Schema 与接入约定见 [Phase 3 公共接口](docs/phase-3-contract.md)。
 
-Phase 4 已定义目的地确认、动态问卷、路线规划、专家 Skills、Research Browser 和社交资料接入的开发契约。 [产品范围](PRD.md#phase-4) · [公共接口](docs/phase-4-contract.md) · [架构与验收](docs/phase-4-architecture.md)
+Phase 4 新问卷任务使用带 Skills 的 `durable-v4`。迁移 `0004` 至 `0006` 持久化问卷、报告地图、来源和扩展事件。已有任务按原 Checkpoint 版本恢复。 [产品范围](PRD.md#phase-4) · [公共接口](docs/phase-4-contract.md) · [架构与验收](docs/phase-4-architecture.md) · [桌面工作台](docs/phase-4-desktop-ui.md)
 
 苏听雨可从本机授权缓存读取知乎回答、小红书笔记和 B 站评论，报告会保留可引用的来源和样本统计。Docker OIDC 开发栈使用 `stack.ps1 start -SocialCachePath <授权缓存路径>` 启用。在调研问卷中选择「游客体验与口碑」即可安排苏听雨。 [启用步骤与样本范围](docs/phase-4-social-research.md#worker-配置与样本)
 

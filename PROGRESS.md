@@ -1,5 +1,15 @@
 # TravelMind 开发进度
 
+## Phase 4 · v0.4.0 发布验收（2026-11-15）
+
+- 基线 `03d56a1`。问卷 `b7d64a8` 并入 `5ea0bd1`，旅游规划 `8d46b77` / `e080bf2` 并入 `306e49e`，Skills `d1fa9de` 并入 `76d46fb`，桌面工作台 `fa1bf09` 随地图 UI `8a1bcc4` 并入 `d69f9fd`，社交资料 `8bbcc47` 并入 `339e6ac`。地图与社交分支在原基线上已吸收 `1b394f2`。全部原始提交保留。
+- 集成提交 `7c3104f` 装配 `durable-v4`、按需 Skills、专家档案和独立 Research Browser SSE。迁移 `0006` 保存来源与扩展事件。AgentEvent v1、历史报告和 `durable-v1` 至 `durable-v3` Checkpoint 沿用原接口和图版本。旧 epoch 封锁与预算耗尽后的只投影恢复通过回归。
+- 独立 PostgreSQL 17 上后端 325 项和前端 45 项通过，无跳过。Ruff、ESLint、TypeScript、Alembic 新库升级与一致性、锁文件和依赖树、Next.js 生产构建、基础与 OIDC Compose（含社交覆盖配置）通过。npm 审计零项漏洞。uv 审计后端 76 个包、Sidecar 14 个包，未报告已知漏洞。依赖清单保留。
+- Chrome 登录本地 Keycloak 后从泉州大开元寺真实 POI 进入动态问卷，选路线、暂停、重启独立 Worker、恢复并发布报告。陆知行完成分工。报告 MapData 返回 2 天、7 个地点、17 个路线方案及 `partial` 状态，高德 JS SDK 成功初始化。缺 CSRF 返回 403，另一账户访问任务、报告、路线、地图、来源和两条 SSE 共七项均返回 404。应用登出关闭两条已连接 SSE。
+- 同一真实问卷任务的扩展流记录 7 条发现、12 条评分、5 条已发布引用、19 次 DeepSeek 调用。真实用量累计 58,432 输入、10,473 输出 Token，Writer 四个阶段各完成一次，Reviewer 独立初审。Chrome 核对脱敏预览与用量。另用原有深度接口验证 Firecrawl 的真实抓取成功和失败，正文页显示其中一条 1,042 字符的文本。
+- 社交侧通过五平台 JSONL 回归。本轮沿用功能分支的真实记录，小红书、B 站、知乎曾完成在线详情入库，知乎官方搜索曾通过。抖音及微博真实采集仍未通过验收。MediaCrawler 的原始 LICENSE 与版权保存在独立固定版本 checkout。 [逐平台证据与限制](docs/phase-4-social-research.md#验收记录2026-11-15)
+- 清理重复问卷组件和校验模块、旧前端组件类型快照及重复问卷文档。正式测试、迁移历史、评测样本和有效文档保留。统一由实际 FastAPI OpenAPI 生成前端类型。清理及发布记录以 `v0.4.0` 定位。
+
 ## Phase 4 · 报告返修一次后自动通过（2026-11-15）
 
 - 初审通过即发布。需要修改时，Writer 按初审意见返修一次，Runtime 校验引用及署名并自动发布新版。校验失败的章节以「资料待核实」提示代替。自动通过沿用 AgentEvent v1，并在工作台事件中说明发布规则。 [运行说明](docs/agent-runtime.md#调研流程)
@@ -117,7 +127,7 @@
 
 ## Phase 4 · 动态需求问卷与目的地确认
 
-- 首页只提交目的地。高德关键词搜索与输入提示用于形成可确认的 POI 候选，同名候选显示行政区和地址，零候选可细化关键词。地点确认后生成研究方向、条件追问和个性化补充，路线需求进入三步可选出行问卷。标准目的地、问卷、答复和规划偏好已接入 Planner。 [配置与实现](docs/dynamic-research-questionnaire.md)
+- 首页只提交目的地。高德关键词搜索与输入提示用于形成可确认的 POI 候选，同名候选显示行政区和地址，零候选可细化关键词。地点确认后生成研究方向、条件追问和个性化补充，路线需求进入三步可选出行问卷。标准目的地、问卷、答复和规划偏好已接入 Planner。 [动态问卷契约](docs/phase-4-contract.md#动态问卷)
 - 问卷、答复、任务状态和幂等结果使用 PostgreSQL，沿用现有 Worker 租约、AgentEvent v1 和核心研究图。三个 intake 路由按冻结 Schema 实现，前端类型从当前 FastAPI OpenAPI 生成，再次生成结果一致。
 - PostgreSQL 17 上 217 项后端测试、31 项前端测试全部通过。Ruff、ESLint、TypeScript、Next.js 生产构建和 Alembic 一致性通过。另验证了迁移回退时 typed 任务发布终止事件，旧任务保留原状态。
 - 桌面浏览器通过生产 Next.js、实际 FastAPI、PostgreSQL 和供应商 Fixture 完成同名确认、刷新待答轮次、条件追问、路线偏好、Planner 交接和报告入口。真实 DeepSeek 使用合成地点，一次调用发布六题。当前环境缺少高德 Web 服务 Key，真实 POI 和输入提示仍待配置后联调。

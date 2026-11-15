@@ -1,6 +1,6 @@
 import { readEnvelope, record } from "./agent-events";
 import { canonicalAgentId } from "./experts";
-import type { components } from "./phase4.generated";
+import type { components } from "./api.generated";
 import { uuidPattern, type AgentEvent, type EvidenceRead } from "./research";
 
 export type ResearchEvent = components["schemas"]["ResearchBrowserEvent"];
