@@ -1,0 +1,80 @@
+[
+  {
+    "case_key": "dunhuang-heritage",
+    "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+    "run_sha256": "a997075f10f815f0fbcedf309054b83801290c6b865a7c4da74ebfaa77821481",
+    "case_sha256": "570377857cb2349a47b068ce95f19fc92a7ef0684e37e0ec6b5c750edd2615eb",
+    "judge_id": "codex-gpt-6-offline-2026-11-15",
+    "judge_type": "model",
+    "inventory_complete": true,
+    "claims": [
+      {
+        "section": 0,
+        "quote": "莫高窟于1987年列入世界遗产名录。",
+        "verdict": "supported",
+        "supporting_evidence_ids": ["bac407ff-38f3-56e9-aacf-bb8ab6a35446"],
+        "reason": "该章引用的莫高窟档案摘录明确给出列入年份。"
+      },
+      {
+        "section": 0,
+        "quote": "莫高窟洞窟全年开放至午夜。",
+        "verdict": "unsupported",
+        "reason": "该章唯一的引用仅说明遗产列入年份，无法支撑开放时间。"
+      }
+    ],
+    "coverage": [
+      {"reference": 0, "verdict": "covered", "claim": 0, "reason": "报告明确写出 1987 年列入名录。"}
+    ]
+  },
+  {
+    "case_key": "quanzhou-heritage",
+    "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+    "run_sha256": "3d96a583f1979d42db3a45241a9202051362078e46eeb0d1100ca7ab261aea92",
+    "case_sha256": "037aceddd09222ee02d8f694b53e2d6e339b6447f18d105ed7efba669f812f93",
+    "judge_id": "codex-gpt-6-offline-2026-11-15",
+    "judge_type": "model",
+    "inventory_complete": true,
+    "claims": [
+      {
+        "section": 0,
+        "quote": "泉州的宋元海洋商贸系列遗产于2021年列入世界遗产名录。",
+        "verdict": "supported",
+        "supporting_evidence_ids": ["aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"],
+        "reason": "该章引用的档案明确给出该系列遗产的列名年份。"
+      },
+      {
+        "section": 0,
+        "quote": "该系列由22处遗产点组成。",
+        "verdict": "supported",
+        "supporting_evidence_ids": ["aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"],
+        "reason": "同一引用同时写明 22 处遗产点。"
+      }
+    ],
+    "coverage": [
+      {"reference": 0, "verdict": "covered", "claim": 0, "reason": "报告明确回答列入年份。"},
+      {"reference": 1, "verdict": "covered", "claim": 1, "reason": "报告明确回答组成点数。"}
+    ]
+  },
+  {
+    "case_key": "quanzhou-heritage",
+    "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+    "run_sha256": "d2edfc1b9d74eca2f3c3b96fea0b3eb4eed1f0ed5b5298c98e52acc8bd387a65",
+    "case_sha256": "037aceddd09222ee02d8f694b53e2d6e339b6447f18d105ed7efba669f812f93",
+    "judge_id": "codex-gpt-6-offline-2026-11-15",
+    "judge_type": "model",
+    "inventory_complete": true,
+    "claims": [
+      {
+        "section": 1,
+        "quote": "可从宋元时期的海上贸易切入，结合 UNESCO 遗产档案了解泉州的遗产点。",
+        "verdict": "supported",
+        "supporting_evidence_ids": ["856d05aa-7d53-4fe7-aefa-00000000000f"],
+        "reason": "UNESCO 摘录支持宋元海贸与遗产点的联系。其他正文是演示说明、行程建议和待核清单，未断言具体开放或交通事实。"
+      }
+    ],
+    "coverage": [
+      {"reference": 0, "verdict": "missing", "reason": "示例说明宋元海贸背景，正文未给出列入年份。"},
+      {"reference": 1, "verdict": "missing", "reason": "正文提及遗产点，未给出点数。"}
+    ]
+  }
+]

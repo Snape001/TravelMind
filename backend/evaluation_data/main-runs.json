@@ -1,0 +1,2627 @@
+{
+  "schema_version": "v1",
+  "target_commit": "aedb2b7e2598e2a4e444600e2f7d62f6141d3013",
+  "runs": [
+    {
+      "case_key": "dunhuang-heritage",
+      "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+      "origin": "fixture_replay",
+      "source": "main LangGraph 固定模型与检索响应，按工具返回顺序保存排名",
+      "status": "completed",
+      "evidence": [
+        {
+          "evidence_id": "61d6da41-a721-575d-82bc-4c128a70ed77",
+          "source_type": "official",
+          "source_title": "敦煌世界地质公园",
+          "source_url": "https://www.unesco.org/en/iggp/dunhuang-unesco-global-geopark",
+          "retrieved_at": "2026-11-15T00:00:00+08:00",
+          "excerpt": "敦煌地质公园展示雅丹和鸣沙山地貌。"
+        },
+        {
+          "evidence_id": "bac407ff-38f3-56e9-aacf-bb8ab6a35446",
+          "source_type": "official",
+          "source_title": "莫高窟世界遗产档案",
+          "source_url": "https://whc.unesco.org/en/list/440/",
+          "retrieved_at": "2026-11-15T00:00:00+08:00",
+          "excerpt": "莫高窟于1987年列入世界遗产名录。"
+        }
+      ],
+      "ranked_evidence_ids": [
+        "61d6da41-a721-575d-82bc-4c128a70ed77",
+        "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+      ],
+      "research": [
+        {
+          "run_id": "1d5ea5e8-0b88-4485-bd07-58af80762d7d",
+          "agent_id": "history_culture",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "莫高窟于1987年列入世界遗产名录。",
+              "evidence_ids": [
+                "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": [
+            {
+              "evidence_id": "61d6da41-a721-575d-82bc-4c128a70ed77",
+              "source_type": "official",
+              "source_title": "敦煌世界地质公园",
+              "source_url": "https://www.unesco.org/en/iggp/dunhuang-unesco-global-geopark",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "敦煌地质公园展示雅丹和鸣沙山地貌。"
+            },
+            {
+              "evidence_id": "bac407ff-38f3-56e9-aacf-bb8ab6a35446",
+              "source_type": "official",
+              "source_title": "莫高窟世界遗产档案",
+              "source_url": "https://whc.unesco.org/en/list/440/",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "莫高窟于1987年列入世界遗产名录。"
+            }
+          ]
+        },
+        {
+          "run_id": "82fd4ac7-c33e-4cc0-a872-c56f118674eb",
+          "agent_id": "tourism_resources",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "莫高窟于1987年列入世界遗产名录。",
+              "evidence_ids": [
+                "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": [
+            {
+              "evidence_id": "61d6da41-a721-575d-82bc-4c128a70ed77",
+              "source_type": "official",
+              "source_title": "敦煌世界地质公园",
+              "source_url": "https://www.unesco.org/en/iggp/dunhuang-unesco-global-geopark",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "敦煌地质公园展示雅丹和鸣沙山地貌。"
+            },
+            {
+              "evidence_id": "bac407ff-38f3-56e9-aacf-bb8ab6a35446",
+              "source_type": "official",
+              "source_title": "莫高窟世界遗产档案",
+              "source_url": "https://whc.unesco.org/en/list/440/",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "莫高窟于1987年列入世界遗产名录。"
+            }
+          ]
+        },
+        {
+          "run_id": "011c5e79-0842-463a-8b61-c18711aa1078",
+          "agent_id": "travel_planning",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "莫高窟于1987年列入世界遗产名录。",
+              "evidence_ids": [
+                "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": [
+            {
+              "evidence_id": "61d6da41-a721-575d-82bc-4c128a70ed77",
+              "source_type": "official",
+              "source_title": "敦煌世界地质公园",
+              "source_url": "https://www.unesco.org/en/iggp/dunhuang-unesco-global-geopark",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "敦煌地质公园展示雅丹和鸣沙山地貌。"
+            },
+            {
+              "evidence_id": "bac407ff-38f3-56e9-aacf-bb8ab6a35446",
+              "source_type": "official",
+              "source_title": "莫高窟世界遗产档案",
+              "source_url": "https://whc.unesco.org/en/list/440/",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "莫高窟于1987年列入世界遗产名录。"
+            }
+          ]
+        },
+        {
+          "run_id": "d03dc9d9-793c-47ed-8afb-e8394ab5867a",
+          "agent_id": "tourism_resources",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "莫高窟于1987年列入世界遗产名录。",
+              "evidence_ids": [
+                "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": []
+        },
+        {
+          "run_id": "4a059eb3-54fb-4d9f-b91d-8636af39b40d",
+          "agent_id": "travel_planning",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "莫高窟于1987年列入世界遗产名录。",
+              "evidence_ids": [
+                "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": []
+        },
+        {
+          "run_id": "fc26c858-4df7-45ab-9132-de6a6c830ebe",
+          "agent_id": "history_culture",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "莫高窟于1987年列入世界遗产名录。",
+              "evidence_ids": [
+                "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": []
+        }
+      ],
+      "report": {
+        "title": "敦煌调研",
+        "sections": [
+          {
+            "heading": "遗产事实",
+            "body": "莫高窟于1987年列入世界遗产名录。莫高窟洞窟全年开放至午夜。",
+            "author_agent_ids": [
+              "history_culture"
+            ],
+            "evidence_ids": [
+              "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+            ]
+          }
+        ]
+      },
+      "report_id": "c9d73911-7612-4467-8a7e-d3c37f8cd68f",
+      "events": [
+        {
+          "version": 1,
+          "event_id": "b9df9976-19b4-4e49-81b9-07e5288c24de",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 1,
+          "occurred_at": "2026-11-15T02:59:00.379019Z",
+          "payload": {
+            "type": "task.status",
+            "status": "running"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "47dba15b-d77b-4a56-aecd-a6737f605392",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 2,
+          "occurred_at": "2026-11-15T02:59:00.379019Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "98080728-c63d-4759-84c1-d5c0bde30300",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "8be3b18d-6de7-410a-8cb9-aeb9de88f21c",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 3,
+          "occurred_at": "2026-11-15T02:59:00.379019Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "98080728-c63d-4759-84c1-d5c0bde30300",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "21ea03e1-f3ce-484f-8cb3-500d10354e01",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 4,
+          "occurred_at": "2026-11-15T02:59:00.381048Z",
+          "payload": {
+            "agent_id": "planner",
+            "run_id": "7f291650-afc6-4c30-960a-e7fa18f6b5c0",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "1e8b7e74-e1c2-420e-8618-816265b3a196",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 5,
+          "occurred_at": "2026-11-15T02:59:00.381048Z",
+          "payload": {
+            "agent_id": "planner",
+            "run_id": "7f291650-afc6-4c30-960a-e7fa18f6b5c0",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "0b6afd04-8776-4a8b-a04f-b934f960b820",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 6,
+          "occurred_at": "2026-11-15T02:59:00.381048Z",
+          "payload": {
+            "type": "plan.ready",
+            "plan": {
+              "objective": "遗产档案",
+              "assignments": [
+                {
+                  "assignment_id": "78f02b83-12ed-5360-8beb-2794972b7751",
+                  "agent_id": "history_culture",
+                  "objective": "核对遗产档案",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "cdd2aa14-09dc-585c-abe5-2a48146ea51f",
+                  "agent_id": "tourism_resources",
+                  "objective": "核对遗产档案",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "6381b322-d250-513b-9965-b76de2714b42",
+                  "agent_id": "travel_planning",
+                  "objective": "核对遗产档案",
+                  "depends_on": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "fafe012c-7cf3-426e-b173-d8c9020c024f",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 7,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "1d5ea5e8-0b88-4485-bd07-58af80762d7d",
+            "type": "agent.started",
+            "assignment_id": "78f02b83-12ed-5360-8beb-2794972b7751"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "b12fccbf-6340-498a-9ce6-5765e45b55b1",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 8,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "1d5ea5e8-0b88-4485-bd07-58af80762d7d",
+            "type": "tool.started",
+            "tool_call_id": "b506ba26-c76d-443a-bb89-d441f15a3904",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "03e46cbb-b97a-4fa2-b097-35b5ae7729ec",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 9,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "1d5ea5e8-0b88-4485-bd07-58af80762d7d",
+            "type": "tool.finished",
+            "tool_call_id": "b506ba26-c76d-443a-bb89-d441f15a3904",
+            "duration_ms": 0,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "74d0648f-0370-47b7-99b1-a57d7e2a74e8",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 10,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "1d5ea5e8-0b88-4485-bd07-58af80762d7d",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "634cec1e-9960-457d-bbd2-98f2f6d09a13",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 11,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "82fd4ac7-c33e-4cc0-a872-c56f118674eb",
+            "type": "agent.started",
+            "assignment_id": "cdd2aa14-09dc-585c-abe5-2a48146ea51f"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "f673a182-1c4b-4aa5-b221-c888fa7fd564",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 12,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "82fd4ac7-c33e-4cc0-a872-c56f118674eb",
+            "type": "tool.started",
+            "tool_call_id": "ff9d58a6-08f3-4685-bb62-0584ff6b7d30",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "218206dd-c47b-436d-a6bc-e5c8dbe3e9e9",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 13,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "82fd4ac7-c33e-4cc0-a872-c56f118674eb",
+            "type": "tool.finished",
+            "tool_call_id": "ff9d58a6-08f3-4685-bb62-0584ff6b7d30",
+            "duration_ms": 0,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "40b6535d-9a24-4cce-846b-19b321c566e5",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 14,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "82fd4ac7-c33e-4cc0-a872-c56f118674eb",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "81ce1240-89d1-448a-9958-516a2ba8ebb3",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 15,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "011c5e79-0842-463a-8b61-c18711aa1078",
+            "type": "agent.started",
+            "assignment_id": "6381b322-d250-513b-9965-b76de2714b42"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "aa4158e6-823a-4098-a21b-99c5522f490c",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 16,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "011c5e79-0842-463a-8b61-c18711aa1078",
+            "type": "tool.started",
+            "tool_call_id": "774c52fc-0aa7-4e26-a8fb-bf47221c31a8",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "0bd7d91f-fa98-4c59-a4f3-fe95c5b7f49c",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 17,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "011c5e79-0842-463a-8b61-c18711aa1078",
+            "type": "tool.finished",
+            "tool_call_id": "774c52fc-0aa7-4e26-a8fb-bf47221c31a8",
+            "duration_ms": 0,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "734409a8-d040-404c-abcc-d34c2ea20c3b",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 18,
+          "occurred_at": "2026-11-15T02:59:00.383018Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "011c5e79-0842-463a-8b61-c18711aa1078",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "ef8229b9-a891-4159-a505-25af9025f64f",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 19,
+          "occurred_at": "2026-11-15T02:59:00.384020Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "1d5ea5e8-0b88-4485-bd07-58af80762d7d",
+            "type": "evidence.added",
+            "evidence_ids": [
+              "61d6da41-a721-575d-82bc-4c128a70ed77",
+              "bac407ff-38f3-56e9-aacf-bb8ab6a35446"
+            ]
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "f2df2ff7-91eb-446c-9979-b9981bd9ab0a",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 20,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "d66fb694-ca3b-4f01-b8fb-edc9f2ce1369",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "2e2ac911-d894-4aea-bbae-526f68d28403",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 21,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "d66fb694-ca3b-4f01-b8fb-edc9f2ce1369",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "ce46a88e-a36f-4271-8881-950337496de0",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 22,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "d66fb694-ca3b-4f01-b8fb-edc9f2ce1369",
+            "type": "agent.message",
+            "message": "向 tourism_resources 质询：这一判断采用什么资料口径？"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "214ed1fb-7698-4090-b8c6-048e1e2780d4",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 23,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "d03dc9d9-793c-47ed-8afb-e8394ab5867a",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "4ce9b254-ce1a-45f2-a4cf-d8a59230b4d2",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 24,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "d03dc9d9-793c-47ed-8afb-e8394ab5867a",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "0ca73f70-a2a6-4a7e-8d41-aa121405e6a4",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 25,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "3e49149c-dede-4fc5-afe0-92fa50820718",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "c329fcee-861c-4452-ac4f-7646587599b7",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 26,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "3e49149c-dede-4fc5-afe0-92fa50820718",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "27c1f916-ad6e-40f5-91e5-34e83387cccf",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 27,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "3e49149c-dede-4fc5-afe0-92fa50820718",
+            "type": "agent.message",
+            "message": "向 travel_planning 质询：这一判断采用什么资料口径？"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "f9f78df1-c0d8-4364-805e-19b40cdce06a",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 28,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "4a059eb3-54fb-4d9f-b91d-8636af39b40d",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "02491818-122f-48ad-8aa5-ee59b4167e3e",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 29,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "4a059eb3-54fb-4d9f-b91d-8636af39b40d",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "f812b630-17d1-484c-a9ee-213a7f002347",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 30,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "66de6882-c589-45cd-8ce3-cc97cfcbd413",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "98c1da83-04b4-425e-8a8c-d32743b63683",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 31,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "66de6882-c589-45cd-8ce3-cc97cfcbd413",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "f99d3f31-22e6-4f4c-a237-6b6f491f36b6",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 32,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "66de6882-c589-45cd-8ce3-cc97cfcbd413",
+            "type": "agent.message",
+            "message": "向 history_culture 质询：这一判断采用什么资料口径？"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "ef5e1511-f3ab-4da0-b05d-3fb2bcde8d6e",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 33,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "fc26c858-4df7-45ab-9132-de6a6c830ebe",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "69026741-abbc-4d65-9b15-95c0f3c36799",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 34,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "fc26c858-4df7-45ab-9132-de6a6c830ebe",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "140757b6-82f5-4d90-8d7e-8df22c5f26a6",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 35,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "writer",
+            "run_id": "459f556b-2f86-4db6-bc92-9c719abad7d8",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "888656ca-b4de-402c-adc4-3ac9fca3a20c",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 36,
+          "occurred_at": "2026-11-15T02:59:00.385858Z",
+          "payload": {
+            "agent_id": "writer",
+            "run_id": "459f556b-2f86-4db6-bc92-9c719abad7d8",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "05440f97-bc5f-424b-b162-bb237517724f",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 37,
+          "occurred_at": "2026-11-15T02:59:00.386861Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "a8b3bffd-48e2-41a2-82e1-01ef5a1f0973",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "d03a0a4d-529f-409b-87a1-e240a5a19474",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 38,
+          "occurred_at": "2026-11-15T02:59:00.386861Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "a8b3bffd-48e2-41a2-82e1-01ef5a1f0973",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "80a10f9f-3342-4280-b973-0aaadaa44127",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 39,
+          "occurred_at": "2026-11-15T02:59:00.386861Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "a8b3bffd-48e2-41a2-82e1-01ef5a1f0973",
+            "type": "report.reviewed",
+            "report_id": "c9d73911-7612-4467-8a7e-d3c37f8cd68f",
+            "decision": "approved"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "c41952c4-7ec7-46f5-84d3-0fb9faef9bec",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 40,
+          "occurred_at": "2026-11-15T02:59:00.386861Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "a8b3bffd-48e2-41a2-82e1-01ef5a1f0973",
+            "type": "report.ready",
+            "report_id": "c9d73911-7612-4467-8a7e-d3c37f8cd68f",
+            "version": 1
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "052079ab-49d1-4b5f-b6ca-447ab4ff48f1",
+          "task_id": "ed89b87b-a513-4baa-b722-62a1bff3bc49",
+          "trace_id": "7076e453-9e0d-4888-a289-f19405f67c03",
+          "sequence": 41,
+          "occurred_at": "2026-11-15T02:59:00.386861Z",
+          "payload": {
+            "type": "task.status",
+            "status": "completed"
+          }
+        }
+      ],
+      "usage": {
+        "model_calls": 13,
+        "duration_ms": 12
+      }
+    },
+    {
+      "case_key": "quanzhou-heritage",
+      "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+      "origin": "fixture_replay",
+      "source": "main LangGraph 固定模型与检索响应，按工具返回顺序保存排名",
+      "status": "completed",
+      "evidence": [
+        {
+          "evidence_id": "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127",
+          "source_type": "official",
+          "source_title": "泉州世界遗产档案",
+          "source_url": "https://whc.unesco.org/en/list/1561/",
+          "retrieved_at": "2026-11-15T00:00:00+08:00",
+          "excerpt": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。"
+        }
+      ],
+      "ranked_evidence_ids": [
+        "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+      ],
+      "research": [
+        {
+          "run_id": "85ced54f-d9a8-4e50-9a75-a7b0390f5da5",
+          "agent_id": "history_culture",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。",
+              "evidence_ids": [
+                "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": [
+            {
+              "evidence_id": "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127",
+              "source_type": "official",
+              "source_title": "泉州世界遗产档案",
+              "source_url": "https://whc.unesco.org/en/list/1561/",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。"
+            }
+          ]
+        },
+        {
+          "run_id": "714bfa14-b840-48cc-b3e2-b1f8f37c1877",
+          "agent_id": "tourism_resources",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。",
+              "evidence_ids": [
+                "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": [
+            {
+              "evidence_id": "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127",
+              "source_type": "official",
+              "source_title": "泉州世界遗产档案",
+              "source_url": "https://whc.unesco.org/en/list/1561/",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。"
+            }
+          ]
+        },
+        {
+          "run_id": "f2739861-5ab6-4aee-b445-0930c301049f",
+          "agent_id": "travel_planning",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。",
+              "evidence_ids": [
+                "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": [
+            {
+              "evidence_id": "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127",
+              "source_type": "official",
+              "source_title": "泉州世界遗产档案",
+              "source_url": "https://whc.unesco.org/en/list/1561/",
+              "retrieved_at": "2026-11-15T00:00:00+08:00",
+              "excerpt": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。"
+            }
+          ]
+        },
+        {
+          "run_id": "c4ecccfc-c28b-4dc8-b142-fe60626e1988",
+          "agent_id": "tourism_resources",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。",
+              "evidence_ids": [
+                "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": []
+        },
+        {
+          "run_id": "0582de8c-2dc6-48f9-a006-9d0ae3285462",
+          "agent_id": "travel_planning",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。",
+              "evidence_ids": [
+                "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": []
+        },
+        {
+          "run_id": "199d5768-7f03-4726-a8d2-eb58ff014501",
+          "agent_id": "history_culture",
+          "kind": "research",
+          "findings": [
+            {
+              "statement": "泉州的宋元海洋商贸系列遗产于2021年列名，由22处遗产点组成。",
+              "evidence_ids": [
+                "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+              ],
+              "support": "supported"
+            }
+          ],
+          "evidence": []
+        }
+      ],
+      "report": {
+        "title": "泉州调研",
+        "sections": [
+          {
+            "heading": "遗产事实",
+            "body": "泉州的宋元海洋商贸系列遗产于2021年列入世界遗产名录。该系列由22处遗产点组成。",
+            "author_agent_ids": [
+              "history_culture"
+            ],
+            "evidence_ids": [
+              "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+            ]
+          }
+        ]
+      },
+      "report_id": "b59a5ec5-d940-4a37-add0-d2c1df9bf863",
+      "events": [
+        {
+          "version": 1,
+          "event_id": "6f4c1a53-497e-4b8b-9761-c3b3c3dee4e0",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 1,
+          "occurred_at": "2026-11-15T02:59:00.392861Z",
+          "payload": {
+            "type": "task.status",
+            "status": "running"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "4d72d821-823c-4a87-b0d1-f617d20a5ef0",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 2,
+          "occurred_at": "2026-11-15T02:59:00.392861Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "9e62dcc7-af2d-4f1c-96d2-994d79371435",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "97584f70-bd0c-41bb-a4a1-31607d00f9b3",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 3,
+          "occurred_at": "2026-11-15T02:59:00.392861Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "9e62dcc7-af2d-4f1c-96d2-994d79371435",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "27a56e5a-6db0-4c97-8944-7968a5d3e721",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 4,
+          "occurred_at": "2026-11-15T02:59:00.392861Z",
+          "payload": {
+            "agent_id": "planner",
+            "run_id": "5199f45a-4a52-4328-8807-fc3c821a0159",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "4db7edd6-8a38-4d44-bab1-bb3250f39711",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 5,
+          "occurred_at": "2026-11-15T02:59:00.392861Z",
+          "payload": {
+            "agent_id": "planner",
+            "run_id": "5199f45a-4a52-4328-8807-fc3c821a0159",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "ee1070ca-cb2e-4cb7-addd-e3e5041d7719",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 6,
+          "occurred_at": "2026-11-15T02:59:00.392861Z",
+          "payload": {
+            "type": "plan.ready",
+            "plan": {
+              "objective": "遗产档案",
+              "assignments": [
+                {
+                  "assignment_id": "b8b54242-a9a7-592b-8354-7b6d9a149553",
+                  "agent_id": "history_culture",
+                  "objective": "核对遗产档案",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "d82abaa0-3f10-55bb-8c80-db1fb833c5aa",
+                  "agent_id": "tourism_resources",
+                  "objective": "核对遗产档案",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "8ede6837-3029-5d4e-bf2e-4ac358a3dbbd",
+                  "agent_id": "travel_planning",
+                  "objective": "核对遗产档案",
+                  "depends_on": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "9cb41144-010e-4620-95d1-1e77f5eb3135",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 7,
+          "occurred_at": "2026-11-15T02:59:00.394874Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "85ced54f-d9a8-4e50-9a75-a7b0390f5da5",
+            "type": "agent.started",
+            "assignment_id": "b8b54242-a9a7-592b-8354-7b6d9a149553"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "09bde087-6e3a-4225-a7c1-fabb2ff6a778",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 8,
+          "occurred_at": "2026-11-15T02:59:00.394874Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "85ced54f-d9a8-4e50-9a75-a7b0390f5da5",
+            "type": "tool.started",
+            "tool_call_id": "d0f9a061-b60b-4846-bf09-22ca7f16b249",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "525e57d5-0065-4b5b-b458-42457a7b5d48",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 9,
+          "occurred_at": "2026-11-15T02:59:00.394874Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "85ced54f-d9a8-4e50-9a75-a7b0390f5da5",
+            "type": "tool.finished",
+            "tool_call_id": "d0f9a061-b60b-4846-bf09-22ca7f16b249",
+            "duration_ms": 0,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "2218c2e4-3df1-446b-afd2-0ddde43a9697",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 10,
+          "occurred_at": "2026-11-15T02:59:00.394874Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "85ced54f-d9a8-4e50-9a75-a7b0390f5da5",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "c5693c5a-19e5-4b82-88c9-11cb1f1100f6",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 11,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "714bfa14-b840-48cc-b3e2-b1f8f37c1877",
+            "type": "agent.started",
+            "assignment_id": "d82abaa0-3f10-55bb-8c80-db1fb833c5aa"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "2a29f8c0-87d2-4c13-a725-0eb3825c4ef6",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 12,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "714bfa14-b840-48cc-b3e2-b1f8f37c1877",
+            "type": "tool.started",
+            "tool_call_id": "a18979f5-0fea-47b5-96fb-b3d30eb32b08",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "6d744888-0d3c-46a0-a4a5-0a3e22e8e3f8",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 13,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "714bfa14-b840-48cc-b3e2-b1f8f37c1877",
+            "type": "tool.finished",
+            "tool_call_id": "a18979f5-0fea-47b5-96fb-b3d30eb32b08",
+            "duration_ms": 0,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "df64785e-a45c-47d3-b7bc-c683f814b113",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 14,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "714bfa14-b840-48cc-b3e2-b1f8f37c1877",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "d679ec01-6eb1-43d5-b993-8f9da7cc0cea",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 15,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "f2739861-5ab6-4aee-b445-0930c301049f",
+            "type": "agent.started",
+            "assignment_id": "8ede6837-3029-5d4e-bf2e-4ac358a3dbbd"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "53f22c38-864e-4b1f-be79-6ff45678750a",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 16,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "f2739861-5ab6-4aee-b445-0930c301049f",
+            "type": "tool.started",
+            "tool_call_id": "e98af9c4-b38c-4b9f-8f07-d2a3fcc6afbe",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "be7e2e2d-e6ac-48ed-aba1-6a3f73edc1cb",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 17,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "f2739861-5ab6-4aee-b445-0930c301049f",
+            "type": "tool.finished",
+            "tool_call_id": "e98af9c4-b38c-4b9f-8f07-d2a3fcc6afbe",
+            "duration_ms": 0,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "d4e25dfd-84b3-4df9-9fc9-db69a0947ee2",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 18,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "f2739861-5ab6-4aee-b445-0930c301049f",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "0bc21043-ad8d-45ad-9abf-a09e45a8898c",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 19,
+          "occurred_at": "2026-11-15T02:59:00.395879Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "85ced54f-d9a8-4e50-9a75-a7b0390f5da5",
+            "type": "evidence.added",
+            "evidence_ids": [
+              "aabd23dc-5f4a-5fa9-b6f5-54a1b1f08127"
+            ]
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "0219efd6-d3f0-4215-b8b9-f9a162cc4efb",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 20,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "12aa805a-a4a3-451e-a1ca-cb577909a3cd",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "c22c574c-c9f2-4398-a68b-ca45e0fe4c36",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 21,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "12aa805a-a4a3-451e-a1ca-cb577909a3cd",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "275877f6-ff41-4a06-bc5d-20f4655f5103",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 22,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "12aa805a-a4a3-451e-a1ca-cb577909a3cd",
+            "type": "agent.message",
+            "message": "向 tourism_resources 质询：这一判断采用什么资料口径？"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "42ed0433-7501-4844-80e8-1f6aad639731",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 23,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "c4ecccfc-c28b-4dc8-b142-fe60626e1988",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "25b2876e-7a96-488b-a98b-6257eb73cea8",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 24,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "c4ecccfc-c28b-4dc8-b142-fe60626e1988",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "390c1053-562a-4f13-aa62-2ebad22a75a3",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 25,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "8f4fbd3c-c501-4b66-b078-cbce88d75cba",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "90745eb4-5173-4e09-bc28-fb82a08a01a2",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 26,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "8f4fbd3c-c501-4b66-b078-cbce88d75cba",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "723137c8-d0c7-47af-bc1a-392be7368b58",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 27,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "8f4fbd3c-c501-4b66-b078-cbce88d75cba",
+            "type": "agent.message",
+            "message": "向 travel_planning 质询：这一判断采用什么资料口径？"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "cab5e72f-d2f6-43ec-afa7-8e80343326f9",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 28,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "0582de8c-2dc6-48f9-a006-9d0ae3285462",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "e33e40b9-5303-47ed-8552-38df911f3b98",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 29,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "0582de8c-2dc6-48f9-a006-9d0ae3285462",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "89bf584d-29a5-4676-a7e6-213c00665137",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 30,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "57ab2b0e-5bfd-42a7-bc46-473993f1e9e5",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "c070aa44-ef0f-4653-b0fc-0017bbbb21e9",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 31,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "57ab2b0e-5bfd-42a7-bc46-473993f1e9e5",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "1d4ac9f5-9946-45c3-b7f4-5655768a223b",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 32,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "57ab2b0e-5bfd-42a7-bc46-473993f1e9e5",
+            "type": "agent.message",
+            "message": "向 history_culture 质询：这一判断采用什么资料口径？"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "ba91d4e1-dd49-44bc-a35b-eb77f2b85211",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 33,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "199d5768-7f03-4726-a8d2-eb58ff014501",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "3ad829da-7caf-470c-9745-212c112869bf",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 34,
+          "occurred_at": "2026-11-15T02:59:00.396879Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "199d5768-7f03-4726-a8d2-eb58ff014501",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "6a52159a-4ca7-417f-b8fa-a476d9052fb6",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 35,
+          "occurred_at": "2026-11-15T02:59:00.397894Z",
+          "payload": {
+            "agent_id": "writer",
+            "run_id": "3a42998e-5e47-4545-a016-dc167bc7d570",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "8954aacb-5074-475c-a4dc-24c1a3bc048d",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 36,
+          "occurred_at": "2026-11-15T02:59:00.397894Z",
+          "payload": {
+            "agent_id": "writer",
+            "run_id": "3a42998e-5e47-4545-a016-dc167bc7d570",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "1c8e79c4-c01b-4f1d-a028-f8f6cc8d127c",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 37,
+          "occurred_at": "2026-11-15T02:59:00.398879Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "b66d0136-70e2-4bce-94a4-3084c918aa36",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "40abb86a-c80f-4e02-ae1e-78d5a77da57f",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 38,
+          "occurred_at": "2026-11-15T02:59:00.398879Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "b66d0136-70e2-4bce-94a4-3084c918aa36",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "0715b3ae-db33-4471-ac2e-a90add75b8c9",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 39,
+          "occurred_at": "2026-11-15T02:59:00.398879Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "b66d0136-70e2-4bce-94a4-3084c918aa36",
+            "type": "report.reviewed",
+            "report_id": "46d83e74-787b-4848-907f-035dada78cb3",
+            "decision": "revision_required"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "6550c5a2-bddc-4412-834f-0be8468171dd",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 40,
+          "occurred_at": "2026-11-15T02:59:00.398879Z",
+          "payload": {
+            "agent_id": "writer",
+            "run_id": "418f5c3a-820c-4de3-929a-f728493391bd",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "605e3d09-40ac-4265-a1d6-bdd38ed643b2",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 41,
+          "occurred_at": "2026-11-15T02:59:00.398879Z",
+          "payload": {
+            "agent_id": "writer",
+            "run_id": "418f5c3a-820c-4de3-929a-f728493391bd",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "907e9ff6-eaed-43ef-bc91-21e47df04191",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 42,
+          "occurred_at": "2026-11-15T02:59:00.399878Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "c2f71a8a-84bd-462a-ac01-c4f9b4424ab7",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "ee962a20-3d19-41cf-b3bd-ce4bc6601f91",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 43,
+          "occurred_at": "2026-11-15T02:59:00.399878Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "c2f71a8a-84bd-462a-ac01-c4f9b4424ab7",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "af84d0c1-86f8-4d71-b846-c42704480d25",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 44,
+          "occurred_at": "2026-11-15T02:59:00.399878Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "c2f71a8a-84bd-462a-ac01-c4f9b4424ab7",
+            "type": "report.reviewed",
+            "report_id": "b59a5ec5-d940-4a37-add0-d2c1df9bf863",
+            "decision": "approved"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "3c4d1e47-c937-4393-bb0d-bd2130e0ec16",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 45,
+          "occurred_at": "2026-11-15T02:59:00.399878Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "c2f71a8a-84bd-462a-ac01-c4f9b4424ab7",
+            "type": "report.ready",
+            "report_id": "b59a5ec5-d940-4a37-add0-d2c1df9bf863",
+            "version": 2
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "031b37b6-6d3e-4e62-9ba8-4587ed592191",
+          "task_id": "6dc7c7ba-e3e2-40d3-a570-be4f3f3306a8",
+          "trace_id": "8e9ac4f3-efb5-4b4e-bb9c-ff55f04efc36",
+          "sequence": 46,
+          "occurred_at": "2026-11-15T02:59:00.399878Z",
+          "payload": {
+            "type": "task.status",
+            "status": "completed"
+          }
+        }
+      ],
+      "usage": {
+        "model_calls": 15,
+        "duration_ms": 9
+      }
+    },
+    {
+      "case_key": "dunhuang-photo",
+      "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+      "origin": "fixture_replay",
+      "source": "main LangGraph 固定模型与检索响应，按工具返回顺序保存排名",
+      "status": "failed",
+      "failure_code": "NO_RESEARCH_RESULTS",
+      "evidence": [],
+      "research": [],
+      "events": [
+        {
+          "version": 1,
+          "event_id": "607cb6db-2a55-4d4d-8679-d87fc91ebca4",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 1,
+          "occurred_at": "2026-11-15T02:59:00.405635Z",
+          "payload": {
+            "type": "task.status",
+            "status": "running"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "c444864c-406b-4269-9c45-dc0e98fe17f3",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 2,
+          "occurred_at": "2026-11-15T02:59:00.405635Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "d94ea9fe-6e02-4324-8def-950d1b07f49a",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "96614ede-2ebc-4a7c-ace6-8beff65e3913",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 3,
+          "occurred_at": "2026-11-15T02:59:00.405635Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "d94ea9fe-6e02-4324-8def-950d1b07f49a",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "9e689619-9ac3-435b-ad6f-3cd34117acbf",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 4,
+          "occurred_at": "2026-11-15T02:59:00.406661Z",
+          "payload": {
+            "agent_id": "planner",
+            "run_id": "bf4ad73c-ec0c-4adb-a06f-2acdb36d4956",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "99ed38ba-8f4b-48bf-9bce-1f7f399721fe",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 5,
+          "occurred_at": "2026-11-15T02:59:00.406661Z",
+          "payload": {
+            "agent_id": "planner",
+            "run_id": "bf4ad73c-ec0c-4adb-a06f-2acdb36d4956",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "febbd599-5a0a-464b-8265-bb64adbe1881",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 6,
+          "occurred_at": "2026-11-15T02:59:00.406661Z",
+          "payload": {
+            "type": "plan.ready",
+            "plan": {
+              "objective": "文物保护",
+              "assignments": [
+                {
+                  "assignment_id": "844dcf59-40f1-5671-8aa9-318b4ef38115",
+                  "agent_id": "history_culture",
+                  "objective": "核对文物保护",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "aecd5aa1-59f1-5fd8-bfd7-70e3dc54e6eb",
+                  "agent_id": "tourism_resources",
+                  "objective": "核对文物保护",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "6573aa65-2e5d-5ec5-bb3c-7bafecac65d9",
+                  "agent_id": "travel_planning",
+                  "objective": "核对文物保护",
+                  "depends_on": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "9b1c7b5c-8872-43b4-8ff3-6412175a9620",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 7,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "d2bed49c-dcaf-4aae-8558-9ad4dd3316e0",
+            "type": "agent.started",
+            "assignment_id": "844dcf59-40f1-5671-8aa9-318b4ef38115"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "d76e74c0-6dfe-40a0-ba50-bb63a407022a",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 8,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "d2bed49c-dcaf-4aae-8558-9ad4dd3316e0",
+            "type": "tool.started",
+            "tool_call_id": "7295595e-a07d-4f76-a292-40002087cef8",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "d8366219-9465-415d-8e90-1aa554c23cd7",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 9,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "d2bed49c-dcaf-4aae-8558-9ad4dd3316e0",
+            "type": "tool.finished",
+            "tool_call_id": "7295595e-a07d-4f76-a292-40002087cef8",
+            "duration_ms": 0,
+            "status": "failed",
+            "error": {
+              "code": "PROVIDER_TIMEOUT",
+              "message": "外部服务调用超时",
+              "retryable": true
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "a1752f98-63bc-448f-9b19-38094d0f59d9",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 10,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "d2bed49c-dcaf-4aae-8558-9ad4dd3316e0",
+            "type": "agent.finished",
+            "status": "failed",
+            "error": {
+              "code": "PROVIDER_TIMEOUT",
+              "message": "外部服务调用超时",
+              "retryable": true
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "30ebb029-f6d5-4544-8ffd-72ac25819344",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 11,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "d5ebcef5-23b1-40f2-862d-728de035bb69",
+            "type": "agent.started",
+            "assignment_id": "aecd5aa1-59f1-5fd8-bfd7-70e3dc54e6eb"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "5fa8ce97-6a32-49f5-955f-d6e3abc14294",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 12,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "d5ebcef5-23b1-40f2-862d-728de035bb69",
+            "type": "tool.started",
+            "tool_call_id": "0354a33b-45b6-4764-9cc0-f1c295a7c891",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "6f360b86-e86e-4857-95d5-e2f3af47183e",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 13,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "d5ebcef5-23b1-40f2-862d-728de035bb69",
+            "type": "tool.finished",
+            "tool_call_id": "0354a33b-45b6-4764-9cc0-f1c295a7c891",
+            "duration_ms": 0,
+            "status": "failed",
+            "error": {
+              "code": "PROVIDER_TIMEOUT",
+              "message": "外部服务调用超时",
+              "retryable": true
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "2844f97a-fce3-4d47-b07b-71654a8c8f0d",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 14,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "tourism_resources",
+            "run_id": "d5ebcef5-23b1-40f2-862d-728de035bb69",
+            "type": "agent.finished",
+            "status": "failed",
+            "error": {
+              "code": "PROVIDER_TIMEOUT",
+              "message": "外部服务调用超时",
+              "retryable": true
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "e037029d-4ccd-4209-ab98-d608f9396908",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 15,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "e788bd51-5dba-4f52-88fe-4cb19cd76bb0",
+            "type": "agent.started",
+            "assignment_id": "6573aa65-2e5d-5ec5-bb3c-7bafecac65d9"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "0841ce07-b4ab-4c96-9519-a4e259125a2b",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 16,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "e788bd51-5dba-4f52-88fe-4cb19cd76bb0",
+            "type": "tool.started",
+            "tool_call_id": "a3c3c58c-b7f9-4dc3-ac34-690835026d68",
+            "tool_name": "retrieve_evidence"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "34186e11-e799-4e0a-82db-60481edf39a1",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 17,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "e788bd51-5dba-4f52-88fe-4cb19cd76bb0",
+            "type": "tool.finished",
+            "tool_call_id": "a3c3c58c-b7f9-4dc3-ac34-690835026d68",
+            "duration_ms": 0,
+            "status": "failed",
+            "error": {
+              "code": "PROVIDER_TIMEOUT",
+              "message": "外部服务调用超时",
+              "retryable": true
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "7c0f10fd-e292-4ed6-b9be-644e6abb492a",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 18,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "e788bd51-5dba-4f52-88fe-4cb19cd76bb0",
+            "type": "agent.finished",
+            "status": "failed",
+            "error": {
+              "code": "PROVIDER_TIMEOUT",
+              "message": "外部服务调用超时",
+              "retryable": true
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "b4dbc952-7665-4898-8220-aefe28654de6",
+          "task_id": "122f05d8-c8c5-4ec6-8370-eabd2d23b348",
+          "trace_id": "17a5208e-fc7d-4d56-aa65-6b65b50d2717",
+          "sequence": 19,
+          "occurred_at": "2026-11-15T02:59:00.408639Z",
+          "payload": {
+            "type": "task.status",
+            "status": "failed",
+            "error": {
+              "code": "NO_RESEARCH_RESULTS",
+              "message": "没有可用的专家研究结果",
+              "retryable": true
+            }
+          }
+        }
+      ],
+      "usage": {
+        "model_calls": 2,
+        "duration_ms": 5
+      }
+    },
+    {
+      "case_key": "quanzhou-heritage",
+      "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+      "origin": "demo",
+      "source": "仓库只读示例 frontend/src/lib/demo-data.ts，把遗产问题作为事后覆盖检查",
+      "status": "completed",
+      "evidence": [
+        {
+          "evidence_id": "856d05aa-7d53-4fe7-aefa-00000000000f",
+          "source_type": "official",
+          "source_title": "联合国教科文组织 · 泉州世界遗产档案",
+          "source_url": "https://whc.unesco.org/en/list/1561/",
+          "source_locator": "UNESCO World Heritage List, no. 1561",
+          "retrieved_at": "2026-11-14T02:00:04Z",
+          "excerpt": "遗产档案介绍了宋元时期泉州海洋贸易相关的遗产点。"
+        },
+        {
+          "evidence_id": "856d05aa-7d53-4fe7-aefa-000000000010",
+          "source_type": "web",
+          "source_title": "泉州 · 旅游规划专家资料样例",
+          "source_locator": "模拟资料样例 2",
+          "retrieved_at": "2026-11-14T02:00:04Z",
+          "excerpt": "演示摘录。真实调研时需补充泉州的原始资料、发布时间及适用条件。"
+        },
+        {
+          "evidence_id": "856d05aa-7d53-4fe7-aefa-000000000011",
+          "source_type": "web",
+          "source_title": "泉州 · 互联网研究专家资料样例",
+          "source_locator": "模拟资料样例 3",
+          "retrieved_at": "2026-11-14T02:00:04Z",
+          "excerpt": "演示摘录。真实调研时需补充泉州的原始资料、发布时间及适用条件。"
+        }
+      ],
+      "report": {
+        "title": "泉州古城文化与周末出行调研",
+        "sections": [
+          {
+            "heading": "调研概览",
+            "body": "本次围绕泉州的古城文化、公共交通展开模拟调研。出行需求为「周末两天，以步行和公共交通为主。」。\n\n报告展示专家分工、结论组织和证据追溯的完整流程。",
+            "author_agent_ids": [
+              "research_director"
+            ],
+            "evidence_ids": []
+          },
+          {
+            "heading": "古城文化与遗产线索",
+            "body": "可从宋元时期的海上贸易切入，结合 UNESCO 遗产档案了解泉州的遗产点。周末行程可以按主题选取少量地点，为步行和现场参观预留时间。",
+            "author_agent_ids": [
+              "history_culture",
+              "travel_planning"
+            ],
+            "evidence_ids": [
+              "856d05aa-7d53-4fe7-aefa-00000000000f",
+              "856d05aa-7d53-4fe7-aefa-000000000010"
+            ]
+          },
+          {
+            "heading": "行程安排与待核事项",
+            "body": "先选定主要游览区域，再按步行与公共交通的可达性安排备选地点。当前示例中的实时开放、交通与预约信息仍待核实。\n\n审核修订补充了出发前检查项：开放时间、预约规则和末班交通。",
+            "author_agent_ids": [
+              "report_writer",
+              "internet_research"
+            ],
+            "evidence_ids": [
+              "856d05aa-7d53-4fe7-aefa-000000000011"
+            ]
+          }
+        ]
+      },
+      "report_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c004",
+      "events": [
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000013",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 1,
+          "occurred_at": "2026-11-14T02:00:00Z",
+          "payload": {
+            "type": "task.status",
+            "status": "queued"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000014",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 2,
+          "occurred_at": "2026-11-14T02:00:00.450000Z",
+          "payload": {
+            "type": "task.status",
+            "status": "running"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000015",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 3,
+          "occurred_at": "2026-11-14T02:00:00.650000Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000012",
+            "type": "agent.started"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000016",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 4,
+          "occurred_at": "2026-11-14T02:00:01.100000Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000012",
+            "type": "agent.message",
+            "message": "已收到关于泉州的调研需求，将按「古城文化、公共交通」组织专家分工。"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000017",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 5,
+          "occurred_at": "2026-11-14T02:00:01.800000Z",
+          "payload": {
+            "type": "plan.ready",
+            "plan": {
+              "objective": "围绕古城文化、公共交通形成泉州的可追溯调研报告。",
+              "assignments": [
+                {
+                  "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000a",
+                  "agent_id": "history_culture",
+                  "objective": "从历史文化角度梳理泉州的相关资料与待核信息。",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000b",
+                  "agent_id": "travel_planning",
+                  "objective": "从旅游规划角度梳理泉州的相关资料与待核信息。",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000c",
+                  "agent_id": "internet_research",
+                  "objective": "从互联网研究角度梳理泉州的相关资料与待核信息。",
+                  "depends_on": []
+                },
+                {
+                  "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000d",
+                  "agent_id": "report_writer",
+                  "objective": "整合研究成果并生成报告。",
+                  "depends_on": [
+                    "856d05aa-7d53-4fe7-aefa-00000000000a",
+                    "856d05aa-7d53-4fe7-aefa-00000000000b",
+                    "856d05aa-7d53-4fe7-aefa-00000000000c"
+                  ]
+                },
+                {
+                  "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000e",
+                  "agent_id": "reviewer",
+                  "objective": "核对引用与适用条件。",
+                  "depends_on": [
+                    "856d05aa-7d53-4fe7-aefa-00000000000d"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000018",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 6,
+          "occurred_at": "2026-11-14T02:00:02Z",
+          "payload": {
+            "agent_id": "research_director",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000012",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000001f",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 7,
+          "occurred_at": "2026-11-14T02:00:02.400000Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000019",
+            "type": "agent.started",
+            "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000a"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000020",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 8,
+          "occurred_at": "2026-11-14T02:00:02.520000Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001a",
+            "type": "agent.started",
+            "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000b"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000021",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 9,
+          "occurred_at": "2026-11-14T02:00:02.640000Z",
+          "payload": {
+            "agent_id": "internet_research",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001b",
+            "type": "agent.started",
+            "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000c"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000022",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 10,
+          "occurred_at": "2026-11-14T02:00:03.250000Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000019",
+            "type": "tool.started",
+            "tool_call_id": "856d05aa-7d53-4fe7-aefa-00000000001c",
+            "tool_name": "网页资料检索"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000023",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 11,
+          "occurred_at": "2026-11-14T02:00:03.420000Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001a",
+            "type": "tool.started",
+            "tool_call_id": "856d05aa-7d53-4fe7-aefa-00000000001d",
+            "tool_name": "交通资料检索"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000024",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 12,
+          "occurred_at": "2026-11-14T02:00:03.590000Z",
+          "payload": {
+            "agent_id": "internet_research",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001b",
+            "type": "tool.started",
+            "tool_call_id": "856d05aa-7d53-4fe7-aefa-00000000001e",
+            "tool_name": "网页资料检索"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000025",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 13,
+          "occurred_at": "2026-11-14T02:00:04.500000Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000019",
+            "type": "tool.finished",
+            "tool_call_id": "856d05aa-7d53-4fe7-aefa-00000000001c",
+            "duration_ms": 1250,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000026",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 14,
+          "occurred_at": "2026-11-14T02:00:04.620000Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000019",
+            "type": "evidence.added",
+            "evidence_ids": [
+              "856d05aa-7d53-4fe7-aefa-00000000000f"
+            ]
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000027",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 15,
+          "occurred_at": "2026-11-14T02:00:04.780000Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000019",
+            "type": "agent.message",
+            "message": "我整理了泉州的第一组资料。请其他专家核对这些线索的适用季节与出行条件。"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000028",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 16,
+          "occurred_at": "2026-11-14T02:00:04.930000Z",
+          "payload": {
+            "agent_id": "history_culture",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000019",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000029",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 17,
+          "occurred_at": "2026-11-14T02:00:05.090000Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001a",
+            "type": "tool.finished",
+            "tool_call_id": "856d05aa-7d53-4fe7-aefa-00000000001d",
+            "duration_ms": 1670,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000002a",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 18,
+          "occurred_at": "2026-11-14T02:00:05.210000Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001a",
+            "type": "evidence.added",
+            "evidence_ids": [
+              "856d05aa-7d53-4fe7-aefa-000000000010"
+            ]
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000002b",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 19,
+          "occurred_at": "2026-11-14T02:00:05.370000Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001a",
+            "type": "agent.message",
+            "message": "收到。会在结论中标明资料适用范围，并把实时开放和预约信息列为待核事项。"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000002c",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 20,
+          "occurred_at": "2026-11-14T02:00:05.520000Z",
+          "payload": {
+            "agent_id": "travel_planning",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001a",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000002d",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 21,
+          "occurred_at": "2026-11-14T02:00:05.680000Z",
+          "payload": {
+            "agent_id": "internet_research",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001b",
+            "type": "tool.finished",
+            "tool_call_id": "856d05aa-7d53-4fe7-aefa-00000000001e",
+            "duration_ms": 2090,
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000002e",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 22,
+          "occurred_at": "2026-11-14T02:00:05.800000Z",
+          "payload": {
+            "agent_id": "internet_research",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001b",
+            "type": "evidence.added",
+            "evidence_ids": [
+              "856d05aa-7d53-4fe7-aefa-000000000011"
+            ]
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000002f",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 23,
+          "occurred_at": "2026-11-14T02:00:05.960000Z",
+          "payload": {
+            "agent_id": "internet_research",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001b",
+            "type": "agent.message",
+            "message": "收到。会在结论中标明资料适用范围，并把实时开放和预约信息列为待核事项。"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000030",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 24,
+          "occurred_at": "2026-11-14T02:00:06.110000Z",
+          "payload": {
+            "agent_id": "internet_research",
+            "run_id": "856d05aa-7d53-4fe7-aefa-00000000001b",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000035",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 25,
+          "occurred_at": "2026-11-14T02:00:07.700000Z",
+          "payload": {
+            "agent_id": "report_writer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000031",
+            "type": "agent.started",
+            "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000d"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000036",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 26,
+          "occurred_at": "2026-11-14T02:00:08.800000Z",
+          "payload": {
+            "agent_id": "report_writer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000031",
+            "type": "agent.message",
+            "message": "正在合并专家结论，为每个章节附上署名和引用。"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000037",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 27,
+          "occurred_at": "2026-11-14T02:00:09.900000Z",
+          "payload": {
+            "agent_id": "report_writer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000031",
+            "type": "report.ready",
+            "report_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c003",
+            "version": 1
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000038",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 28,
+          "occurred_at": "2026-11-14T02:00:10.100000Z",
+          "payload": {
+            "agent_id": "report_writer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000031",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000039",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 29,
+          "occurred_at": "2026-11-14T02:00:10.400000Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000032",
+            "type": "agent.started",
+            "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000e"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000003a",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 30,
+          "occurred_at": "2026-11-14T02:00:11.100000Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000032",
+            "type": "agent.message",
+            "message": "请补充出发前应核实的开放时间、预约规则和交通条件。"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000003b",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 31,
+          "occurred_at": "2026-11-14T02:00:11.400000Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000032",
+            "type": "report.reviewed",
+            "report_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c003",
+            "decision": "revision_required"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000003c",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 32,
+          "occurred_at": "2026-11-14T02:00:11.600000Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000032",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000003d",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 33,
+          "occurred_at": "2026-11-14T02:00:12.200000Z",
+          "payload": {
+            "agent_id": "report_writer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000033",
+            "type": "agent.started",
+            "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000d"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000003e",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 34,
+          "occurred_at": "2026-11-14T02:00:13.900000Z",
+          "payload": {
+            "agent_id": "report_writer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000033",
+            "type": "report.ready",
+            "report_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c004",
+            "version": 2
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-00000000003f",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 35,
+          "occurred_at": "2026-11-14T02:00:14.100000Z",
+          "payload": {
+            "agent_id": "report_writer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000033",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000040",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 36,
+          "occurred_at": "2026-11-14T02:00:14.500000Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000034",
+            "type": "agent.started",
+            "assignment_id": "856d05aa-7d53-4fe7-aefa-00000000000e"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000041",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 37,
+          "occurred_at": "2026-11-14T02:00:15.200000Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000034",
+            "type": "report.reviewed",
+            "report_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c004",
+            "decision": "approved"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000042",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 38,
+          "occurred_at": "2026-11-14T02:00:15.400000Z",
+          "payload": {
+            "agent_id": "reviewer",
+            "run_id": "856d05aa-7d53-4fe7-aefa-000000000034",
+            "type": "agent.finished",
+            "status": "completed"
+          }
+        },
+        {
+          "version": 1,
+          "event_id": "856d05aa-7d53-4fe7-aefa-000000000043",
+          "task_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c001",
+          "trace_id": "856d05aa-7d53-4fe7-aefa-d17e6a84c002",
+          "sequence": 39,
+          "occurred_at": "2026-11-14T02:00:15.700000Z",
+          "payload": {
+            "type": "task.status",
+            "status": "completed"
+          }
+        }
+      ],
+      "usage": {}
+    }
+  ]
+}
