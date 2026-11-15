@@ -1,5 +1,14 @@
 # TravelMind 开发进度
 
+## 质量清理与分支集成（2026-11-15）
+
+- 将最后一个未合并分支 `codex/attraction-amap` 的 `80ef603` 通过 `de120ab` 合入 `main`。保留林景川的高德景点检索、资料入库和引用路径，以及账号认证、QQ SMTP 和 Docker 启动修复。所有本地功能分支的分支尖端均可从 `main` 到达。 [高德景点资料](docs/research-engine.md#高德景点资料)
+- 清理了废弃的前端旧建单封装、闲置样式和内部字段，统一任务答复请求构造与 SSE 状态类型。后端拆分授权码交换与会话签发，复用认证响应头和高德日志脱敏。FastAPI OpenAPI 重新生成后与已提交类型一致，AgentEvent v1 保持兼容。Python 和 npm 直接依赖均有用途，锁文件保持原样。
+- 删除一个已过时的本机登录验证脚本、三份旧生成快照和三处旧的前端测试编译目录。正式用例、共享 Fixture、迁移、评测基线及验收报告均保留。新测试编译和报告统一写入 `.artifacts/tests/`。 [测试约定](DEVELOPMENT_GUIDELINES.md#3-测试先行test-driven-development)
+- 合并后的隔离 PostgreSQL 17 回归 **293 项**、前端 **35 项**、Windows PowerShell **3 项**均通过，零跳过。Ruff、ESLint、TypeScript、Next.js 生产构建、Alembic 升级与一致性、Compose 配置通过。Python 76 个包和 npm 437 个包名与版本组合无匹配安全公告。扫描待推送历史未命中本机凭据、真实环境文件或私钥。
+- 高德分支已有真实入库和引用记录，原有两次端到端运行均未发布正式报告，见下方分支验收。公网自助注册仍需处理 Keycloak 重复邮箱提示的差异。 [账户验收](docs/account-auth-qa.md#最终集成实测--2026-11-15)
+- **交付提交**　`59eebe3` 清理、`de120ab` 合并、`docs: record integrated release verification` 验收记录。
+
 ## 本地 Docker · Windows PowerShell 邮件配置修复（2026-11-15）
 
 - 复现 Windows PowerShell 5.1 把 Keycloak Admin CLI 写入 stderr 的普通登录提示提升为 `NativeCommandError`，导致 SMTP 设置尚未保存就退出。Admin CLI 现按原生命令退出码判断结果，并在 Keycloak 尚未就绪时重试。
