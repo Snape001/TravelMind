@@ -14,11 +14,9 @@ type ExpertRole = {
 };
 
 export type ExpertProfile = ExpertRole & {
-  name: string;
-  portrait: `/images/experts/${string}.webp`;
+  name?: string;
+  portrait?: `/images/experts/${string}.webp`;
 };
-
-type ExpertIdentity = ExpertRole & Partial<Pick<ExpertProfile, "name" | "portrait">>;
 
 // Stable profile IDs for routes, portraits and reports.
 const profiles = {
@@ -41,10 +39,16 @@ const profiles = {
     tools: ["地图与地理资料", "气象公告", "生态保护资料"],
   },
   tourism_resources: {
-    name: "陆知行", title: "旅游资源专家", tier: "council",
+    title: "旅游资源专家", tier: "council",
     description: "梳理景区与公共文化空间，核对开放、预约及可达条件，帮助读者比较游览选择。",
     fields: ["景点分析", "游览体验", "服务设施"],
     tools: ["景区与场馆公告", "公共服务网页检索"],
+  },
+  travel_planning: {
+    name: "陆知行", title: "旅游规划专家", tier: "council",
+    description: "结合行程天数、交通方式与预算，比较可执行的游览安排。",
+    fields: ["交通", "住宿", "行程与消费"],
+    tools: ["地图资料", "交通公告"],
   },
   social_sentiment: {
     name: "苏听雨", title: "社交舆情专家", tier: "council",
@@ -79,16 +83,9 @@ const profiles = {
 } satisfies Record<string, Omit<ExpertProfile, "id" | "portrait">>;
 
 export const guildExperts: ExpertProfile[] = Object.entries(profiles).map(([id, profile]) => ({
-  ...profile, id, portrait: `/images/experts/${id}.webp`,
+  ...profile, id, portrait: id === "tourism_resources" ? undefined :
+    `/images/experts/${id === "travel_planning" ? "tourism_resources" : id}.webp`,
 }));
-
-// This runtime role remains addressable by existing tasks and bookmarks.
-const travelPlanning: ExpertRole = {
-  id: "travel_planning", title: "旅游规划专家", tier: "council",
-  description: "结合行程天数、交通方式与预算，比较可执行的游览安排。",
-  fields: ["交通", "住宿", "行程与消费"],
-  tools: ["地图资料", "交通公告"],
-};
 
 const planner: ExpertRole = {
   id: "planner", title: "研究规划", tier: "leadership",
@@ -97,10 +94,11 @@ const planner: ExpertRole = {
   tools: ["专家调度计划"],
 };
 
-export const experts: readonly ExpertIdentity[] = [...guildExperts, travelPlanning, planner];
+export const experts: readonly ExpertProfile[] = [...guildExperts, planner];
 const byId = new Map(experts.map((expert) => [expert.id, expert]));
 
-export const findExpert = (id: string) => byId.get(id === "writer" ? "report_writer" : id);
+export const canonicalAgentId = (id: string) => id === "writer" ? "report_writer" : id;
+export const findExpert = (id: string) => byId.get(canonicalAgentId(id));
 export function expertName(id: string) {
   const expert = findExpert(id);
   return expert?.name ?? expert?.title ?? id;

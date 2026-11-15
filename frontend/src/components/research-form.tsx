@@ -2,34 +2,31 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronDown, MapPin, Search, Zap, Layers, BookOpen } from "lucide-react";
-import { createTask } from "@/lib/task-client";
+import { ArrowRight, MapPin } from "lucide-react";
+import { createDestinationTask, createTask, loginHref, missingEndpoint } from "@/lib/task-client";
 import { rememberTask } from "@/lib/task-history";
-import { depthOptions, prepareBrief, type CurrentUser, type ResearchBrief } from "@/lib/research";
-import { SessionPrompt, useSession } from "./session";
-
-const presets = [
-  { destination: "泉州", topics: "古城文化、公共交通", label: "泉州古城" },
-  { destination: "成都", topics: "博物馆、美食", label: "成都人文" },
-  { destination: "丽江", topics: "自然风光、徒步", label: "丽江山水" },
-];
-const depthIcons = { quick: Zap, deep: Layers, academic: BookOpen };
+import { prepareBrief, workbenchHref, type CurrentUser } from "@/lib/research";
+import { prepareDestination } from "@/lib/questionnaire";
+import { useSession } from "./session";
 
 export function ResearchForm() {
-  const { session, handleError } = useSession();
-  return <ResearchFormFields key={session.user?.user_id ?? "guest"} user={session.user} handleError={handleError} />;
+  const { session, refresh, handleError } = useSession();
+  return <ResearchFormFields key={session.user?.user_id ?? "guest"} user={session.user}
+    status={session.status} refresh={refresh} handleError={handleError} />;
 }
 
-function ResearchFormFields({ user, handleError }: { user?: CurrentUser; handleError: (error: unknown) => void }) {
+function ResearchFormFields({ user, status, refresh, handleError }: {
+  user?: CurrentUser;
+  status: ReturnType<typeof useSession>["session"]["status"];
+  refresh: () => void;
+  handleError: (error: unknown) => void;
+}) {
   const router = useRouter();
   const [destination, setDestination] = useState("");
-  const [topics, setTopics] = useState("");
-  const [requirements, setRequirements] = useState("");
-  const [depth, setDepth] = useState<ResearchBrief["depth"]>("deep");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const pending = useRef<AbortController | null>(null);
-  const lastRequest = useRef<{ body: string; key: string } | null>(null);
+  const lastRequest = useRef<{ destination: string; key: string } | null>(null);
 
   useEffect(() => () => pending.current?.abort(), []);
 
@@ -40,14 +37,19 @@ function ResearchFormFields({ user, handleError }: { user?: CurrentUser; handleE
     const controller = new AbortController();
     pending.current = controller;
     try {
-      const brief = prepareBrief(destination, topics, requirements, depth);
-      const body = JSON.stringify(brief);
-      if (lastRequest.current?.body !== body) lastRequest.current = { body, key: crypto.randomUUID() };
+      const body = prepareDestination(destination);
+      if (lastRequest.current?.destination !== body.destination) {
+        lastRequest.current = { destination: body.destination, key: crypto.randomUUID() };
+      }
       setSending(true);
-      const task = await createTask(brief, lastRequest.current.key, user.csrf_token, controller.signal);
+      const { key } = lastRequest.current;
+      const task = await createDestinationTask(body, key, user.csrf_token, controller.signal).catch((problem) => {
+        if (!missingEndpoint(problem)) throw problem;
+        return createTask(prepareBrief(body.destination, "", "", "deep"), key, user.csrf_token, controller.signal);
+      });
       if (controller.signal.aborted) return;
       rememberTask(user.user_id, task.task_id);
-      router.push(`/workbench/${task.task_id}`);
+      router.push(workbenchHref(task.task_id));
     } catch (problem) {
       if (controller.signal.aborted) return;
       handleError(problem);
@@ -57,47 +59,19 @@ function ResearchFormFields({ user, handleError }: { user?: CurrentUser; handleE
     }
   }
 
-  return (
-    <form className="panel research-form" onSubmit={submit} aria-labelledby="research-title">
-      <div className="form-heading">
-        <div className="icon-tile"><Search size={20} aria-hidden /></div>
-        <div><h2 id="research-title">新建调研</h2><p>填写目的地与调研重点，组建你的专家团队。</p></div>
-      </div>
-      <div className="form-grid">
-        <label><span>调研目的地 <span className="required">*</span></span>
-          <span className="input-wrap"><MapPin size={18} aria-hidden /><input name="destination" placeholder="例如：泉州" value={destination} onChange={(event) => setDestination(event.target.value)} required /></span>
-        </label>
-        <label><span>调研主题 <span className="optional">选填</span></span>
-          <input name="topics" placeholder="例如：古城文化、公共交通（用顿号分隔）" value={topics} onChange={(event) => setTopics(event.target.value)} />
-        </label>
-      </div>
-      <details className="requirements">
-        <summary><ChevronDown size={15} aria-hidden /> 补充个性化需求</summary>
-        <textarea name="requirements" aria-label="个性化需求" placeholder="例如：周末两天，主要乘坐公共交通。" rows={3} value={requirements} onChange={(event) => setRequirements(event.target.value)} />
-      </details>
-      <fieldset className="depth-picker">
-        <legend>调研深度</legend>
-        <div className="depth-grid">
-          {depthOptions.map(({ value, label, description }) => {
-            const Icon = depthIcons[value];
-            return <label className="depth-option" key={value}>
-              <input type="radio" name="depth" value={value} checked={value === depth} onChange={() => setDepth(value)} />
-              <Icon size={17} aria-hidden />
-              <span><strong>{label}</strong><small>{description}</small></span>
-            </label>;
-          })}
-        </div>
-      </fieldset>
-      <div className="form-foot">
-        <div className="presets"><span>试试</span>
-          {presets.map((preset) => <button className="chip" key={preset.destination} type="button" onClick={() => {
-            setDestination(preset.destination); setTopics(preset.topics); setError("");
-          }}>{preset.label}</button>)}
-        </div>
-        {user && <button className="button primary" disabled={sending} type="submit">{sending ? "正在创建…" : "开始调研"} <ArrowRight size={17} aria-hidden /></button>}
-      </div>
-      {!user && <SessionPrompt />}
-      {error && <p className="error-text" role="alert">{error}</p>}
-    </form>
-  );
+  return <form className="destination-form" onSubmit={submit} aria-label="新建调研">
+    <div className="destination-entry">
+      <label>
+        <MapPin size={22} aria-hidden />
+        <input name="destination" aria-label="调研目的地" placeholder="输入目的地，如泉州开元寺" value={destination}
+          onChange={(event) => setDestination(event.target.value)} disabled={sending} required />
+      </label>
+      {status === "anonymous" ? <a className="button primary" href={loginHref}>登录后开始 <ArrowRight size={18} aria-hidden /></a> :
+        status === "unavailable" ? <button type="button" className="button primary" onClick={refresh}>重试登录检查</button> :
+          <button className="button primary" disabled={sending || !user} type="submit">
+            {sending ? "正在创建…" : "开始调研"} <ArrowRight size={18} aria-hidden />
+          </button>}
+    </div>
+    {error && <p className="destination-error" role="alert">{error}</p>}
+  </form>;
 }

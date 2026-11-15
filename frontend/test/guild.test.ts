@@ -10,7 +10,8 @@ const roster = {
   research_director: ["程策远", "首席研究总监", "leadership"],
   history_culture: ["沈观澜", "历史文化专家", "council"],
   natural_geography: ["顾山河", "自然地理专家", "council"],
-  tourism_resources: ["陆知行", "旅游资源专家", "council"],
+  tourism_resources: [undefined, "旅游资源专家", "council"],
+  travel_planning: ["陆知行", "旅游规划专家", "council"],
   social_sentiment: ["苏听雨", "社交舆情专家", "council"],
   literature_research: ["温文渊", "文献研究专家", "council"],
   internet_research: ["谢行舟", "互联网研究专家", "council"],
@@ -18,18 +19,22 @@ const roster = {
   reviewer: ["柳怀真", "监察审议官", "editorial"],
 };
 
-test("guild publishes nine complete profiles in the three designated tiers", () => {
+test("guild publishes the roles in three tiers and assigns Lu's portrait to travel planning", () => {
   assert.deepEqual(guildExperts.map(({ id }) => id).sort(), Object.keys(roster).sort());
-  assert.deepEqual(tiers.map(({ id }) => guildExperts.filter(({ tier }) => tier === id).length), [1, 6, 2]);
+  assert.deepEqual(tiers.map(({ id }) => guildExperts.filter(({ tier }) => tier === id).length), [1, 7, 2]);
 
   for (const [id, [name, title, tier]] of Object.entries(roster)) {
     const expert = findExpert(id);
     assert.ok(expert);
     assert.deepEqual([expert.name, expert.title, expert.tier], [name, title, tier]);
-    assert.equal(expertName(id), name);
-    assert.equal(expertTitle(id), title);
+    assert.equal(expertName(id), name ?? title);
+    assert.equal(expertTitle(id), name ? title : undefined);
     assert.ok(expert.description && expert.fields.length && expert.tools.length);
-    assert.equal(expert.portrait, `/images/experts/${id}.webp`);
+    if (id === "tourism_resources") {
+      assert.equal(expert.portrait, undefined);
+      continue;
+    }
+    assert.equal(expert.portrait, `/images/experts/${id === "travel_planning" ? "tourism_resources" : id}.webp`);
     const image = readFileSync(`public${expert.portrait}`);
     assert.equal(image.toString("ascii", 8, 12), "WEBP");
   }
@@ -38,8 +43,7 @@ test("guild publishes nine complete profiles in the three designated tiers", () 
 test("existing and unrecognized agent IDs retain their live identities and statuses", () => {
   const view = summarize(demoResearch.task, demoResearch.events);
   assert.ok(view.assignments.some(({ agent_id, status }) => agent_id === "travel_planning" && status === "completed"));
-  assert.equal(findExpert("travel_planning")?.portrait, undefined);
-  assert.equal(expertName("travel_planning"), "旅游规划专家");
+  assert.equal(expertName("travel_planning"), "陆知行");
   assert.equal(expertName("new_expert"), "new_expert");
   assert.equal(findExpert("__proto__"), undefined);
   assert.equal(expertTitle("new_expert"), undefined);
