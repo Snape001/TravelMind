@@ -392,6 +392,43 @@ def summarize(rows: list[dict]) -> dict:
     }
 
 
+def compare(before: dict, after: dict) -> dict:
+    """Compare evaluated results for the same case and acquisition mode."""
+    if any(before[key] != after[key] for key in ("dataset_sha256", "scorer_version", "k")):
+        raise ValueError("incompatible dataset, scorer version, or retrieval cutoffs")
+
+    def by_case(report: dict) -> dict:
+        groups = defaultdict(list)
+        for row in report["results"]:
+            groups[row["case_key"], row["origin"]].append(row)
+        return groups
+
+    def identity(key: tuple[str, str]) -> dict:
+        return {"case_key": key[0], "origin": key[1]}
+
+    old, new = by_case(before), by_case(after)
+    matched = []
+    for key in sorted(old.keys() & new.keys()):
+        previous, current = summarize(old[key]), summarize(new[key])
+        deltas = {}
+        for name, item in previous["metrics"].items():
+            a, b = item["macro_average"], current["metrics"][name]["macro_average"]
+            deltas[name] = b - a if a is not None and b is not None else None
+        matched.append(
+            identity(key) | {"before": previous, "after": current, "metric_deltas": deltas}
+        )
+    return {
+        "before_commit": before["target_commit"],
+        "after_commit": after["target_commit"],
+        "dataset_sha256": before["dataset_sha256"],
+        "scorer_version": before["scorer_version"],
+        "k": before["k"],
+        "matched": matched,
+        "before_only": [identity(key) for key in sorted(old.keys() - new.keys())],
+        "after_only": [identity(key) for key in sorted(new.keys() - old.keys())],
+    }
+
+
 def evaluate(
     dataset: Dataset, batch: RunBatch, ks: list[int], judgments: Iterable[Judgment] = ()
 ) -> dict:

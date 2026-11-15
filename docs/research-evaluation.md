@@ -46,6 +46,16 @@ uv run --locked python -X utf8 -m travelmind.evaluation judge-input \
 
 同一候选提交下的多个导出可以合并进一个 `runs` 数组。每项需有唯一任务 ID。独立判读可以由人完成，也可由调用方将评审包提交给独立模型。评审包自带工作说明、输入与输出 Schema。汇总为 `Judgment[]` 后传给 `score --judgments`，可参照 [已签入的判读文件](../backend/evaluation_data/main-judgments.json)。未获得判读时仍可生成确定性检查和运行统计。语义判读中的 `judge_type=human` 只记录候选判读的来源，数据集的 Gold 状态由 `human_review` 管理。
 
+## 比较增强前后
+
+用同一份数据集和相同的 `--k` 分别执行 `score`，再比较两个 JSON 报告。
+
+```bash
+uv run --locked python -X utf8 -m travelmind.evaluation compare --before before.json --after after.json --json comparison.json
+```
+
+`compare` 按用例和采集方式匹配。输出双方样本数、质量和运行指标，以及双方均有分数时的指标差值。单边覆盖的用例单独列出。用相同输入、深度、供应商配置和判断口径采集重复运行，才能评价真实质量变化。
+
 ## 指标口径
 
 | 指标 | 计算方式 |

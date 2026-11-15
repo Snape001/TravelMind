@@ -15,7 +15,7 @@ from travelmind.evaluation.contracts import (
     RunBatch,
     fingerprint,
 )
-from travelmind.evaluation.scoring import evaluate, score_run
+from travelmind.evaluation.scoring import compare, evaluate, score_run
 from travelmind.schemas.domain import Evidence
 
 DATA = Path(__file__).resolve().parents[1] / "evaluation_data"
@@ -231,6 +231,22 @@ def test_main_baseline_scores_real_graph_events_and_detects_missing_final_review
     violations = score_run(dataset, case, changed, [1])["workflow"]["trace"]["violations"]
     assert "event sequence is incomplete or out of order" in violations
     assert "completed task has no approved final draft" in violations
+
+
+def test_compares_only_matched_case_and_run_origin(dataset, candidate):
+    before = evaluate(dataset, RunBatch(target_commit="a" * 40, runs=[candidate]), [1])
+    updated = candidate.model_copy(update={"task_id": uuid4(), "ranked_evidence_ids": []})
+    demo = candidate.model_copy(update={"task_id": uuid4(), "origin": "demo"})
+    after = evaluate(dataset, RunBatch(target_commit="b" * 40, runs=[updated, demo]), [1])
+    comparison = compare(before, after)
+    [match] = comparison["matched"]
+    assert (match["case_key"], match["origin"]) == (candidate.case_key, "recorded")
+    assert match["metric_deltas"]["recall@1"] == -1
+    assert match["metric_deltas"]["faithfulness"] is None
+    assert match["before"]["runs"] == match["after"]["runs"] == 1
+    assert comparison["after_only"] == [{"case_key": candidate.case_key, "origin": "demo"}]
+    with pytest.raises(ValueError, match="incompatible"):
+        compare(before, after | {"dataset_sha256": "other"})
 
 
 def test_cli_reproduces_the_checked_in_baseline():
