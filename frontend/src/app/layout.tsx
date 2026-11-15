@@ -7,6 +7,7 @@ import "./guild-ui.css";
 import "./desktop.css";
 import "./intake.css";
 import "./report-map.css";
+import "./account.css";
 
 export const metadata: Metadata = {
   title: "TravelMind",

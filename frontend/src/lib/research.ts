@@ -1,10 +1,11 @@
 import type { components, paths } from "./api.generated";
+import type { AccountUser } from "./account";
 
 type Schemas = components["schemas"];
 export type ResearchBrief = paths["/api/v1/tasks"]["post"]["requestBody"]["content"]["application/json"];
 export type TaskRead = Schemas["TaskRead"];
 export type TaskStatus = TaskRead["status"];
-export type CurrentUser = Schemas["CurrentUser"];
+export type CurrentUser = AccountUser;
 export type PendingClarification = Schemas["PendingClarification"];
 export type ClarificationAnswers = Schemas["ClarificationAnswers"];
 export type AgentEvent = paths["/api/v1/tasks/{task_id}/events"]["get"]["responses"][200]["content"]["text/event-stream"];

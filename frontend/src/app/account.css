@@ -1,0 +1,63 @@
+.header-entry { display: flex; align-items: center; gap: 8px; }
+.header-entry .button { min-height: 36px; padding: 5px 12px; color: #1b3837; }
+.header-entry .header-login:hover { background: #e9eeea; }
+.header-entry .header-register { border: 1px solid #d4c4a3; background: #faf6eb; }
+.header-entry .header-register:hover { border-color: #af925f; background: #f1ead9; }
+.account-label {
+  max-width: 116px;
+  overflow: hidden;
+  color: #1b3837;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-notice {
+  padding: 8px 32px;
+  border-bottom: 1px solid #d4c4a3;
+  background: #faf6eb;
+  color: #513e25;
+  text-align: center;
+}
+
+.account-page {
+  --forest: #214b49;
+  --forest-dark: #173536;
+  --surface: #fffdf8;
+  --line: #e1dacb;
+  --mint: #e9eeea;
+  --muted: #53625d;
+  color: #1b3837;
+}
+.account-page .page-heading { margin-bottom: 24px; }
+.account-sections, .report-archive { display: grid; gap: 24px; }
+.account-card, .archive-status {
+  padding: 22px 26px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.account-card-heading, .account-security, .account-security h2, .account-verified,
+.archive-pages { display: flex; align-items: center; gap: 12px; }
+.account-card-heading .account-avatar { width: 53px; height: 53px; font-size: 24px; }
+.account-card h2, .report-archive h2 { font-family: var(--heading-font); font-size: 23px; }
+.account-fields { margin-block: 16px 0; }
+.account-fields > div {
+  display: grid;
+  grid-template-columns: 75px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.account-fields dt { color: var(--muted); }
+.account-fields dd { margin: 0; overflow-wrap: anywhere; }
+.account-verified { gap: 5px; color: #24543f; }
+.account-security { justify-content: space-between; }
+.account-security h2 { gap: 7px; }
+.account-security p { margin-top: 5px; }
+.account-exit[aria-disabled="true"] { cursor: wait; opacity: .65; }
+
+.report-archive h2 { margin-bottom: 11px; }
+.archive-status .text-link { margin-top: 7px; }
+.archive-pages { justify-content: flex-end; margin-top: 14px; color: var(--muted); }
+.archive-pages .button { min-height: 36px; padding: 5px 12px; }

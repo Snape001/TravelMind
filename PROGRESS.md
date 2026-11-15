@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## 登录注册与个人账户前端（2026-11-15）
+
+- 首页提供独立登录和注册入口。登录后右上角显示昵称及首字头像，菜单可打开个人资料、我的报告或退出。个人资料读取会话中的昵称、邮箱和验证状态，账户功能启用时使用 Keycloak 原生资料编辑和 OIDC 退出。
+- 「我的报告」从 `GET /api/v1/account/reports` 按服务端游标分页，按报告版本打开详情。原有公开示例和报告链接继续可用。登录回跳限制为同源站内页面，客户端在会话过期、跨标签页切换或退出时清除私有页面状态。
+- 35 项前端测试、ESLint、TypeScript 和 Next.js 生产构建通过。Chrome 使用冻结 [账户 Fixture](fixtures/account-auth.json) 验证回跳、报告分页与详情、昵称更新、邮箱未验证、会话过期和退出。隔离 Keycloak 26.8.2 配合测试 SMTP 验证了注册协议确认、邮箱验证与重发入口、验证后的密码确认表单、密码重置成功反馈和新密码登录。
+- 本次交付使用冻结契约的前端类型补充。联调时采用最终后端 OpenAPI 类型，部署时在目标 Realm 安装主题并配置正式用户协议和邮件服务。真实 PostgreSQL 历史列表需在后端账户接口交付后联调。 [主题接入](frontend/keycloak-theme/README.md) · [冻结契约](docs/account-auth-contract.md)
+- **交付提交**　`feat: upgrade TravelMind account experience`。
+
 ## 账户认证 · 专项审查与契约（2026-11-15）
 
 - 以 main `123c237` 核对 Keycloak、OIDC 与前端账户链路。运行中的本地登录页只提供登录，注册及密码重置关闭。应用注销已支持本地会话和 SSE 吊销。个人资料和跨设备报告列表待实现。 [设计、接口与验收清单](docs/account-auth-contract.md)

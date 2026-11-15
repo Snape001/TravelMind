@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
-import { ChevronDown, Compass, FileText, FlaskConical, House, LogIn, LogOut, UserRound, UsersRound } from "lucide-react";
+import { useRef } from "react";
+import { ChevronDown, Compass, FileText, FlaskConical, House, LogIn, UserRound, UsersRound } from "lucide-react";
+import { AccountAvatar } from "./account-avatar";
+import { AccountSignOut } from "./account-sign-out";
 import { LoginLink, useSession } from "./session";
 
 const links = [
@@ -15,8 +17,8 @@ const links = [
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { session, signOut } = useSession();
-  return (
+  const { session, notice } = useSession();
+  return <>
     <header className="site-header">
       <div className="shell header-grid">
         <Link className="wordmark" href="/">
@@ -32,33 +34,26 @@ export function SiteHeader() {
           })}
         </nav>
         <div className="header-session">
-          {session.user ? <AccountMenu key={session.user.user_id} displayName={session.user.display_name} signOut={signOut} /> :
+          {session.user ? <AccountMenu key={session.user.user_id} displayName={session.user.display_name} /> :
             session.status === "loading" ? <span className="header-session-loading" role="status">正在检查登录状态…</span> :
-              <LoginLink className="button secondary header-login"><LogIn size={15} aria-hidden />登录 / 注册</LoginLink>}
+              <div className="header-entry">
+                <LoginLink className="button header-login"><LogIn size={15} aria-hidden />登录</LoginLink>
+                <LoginLink className="button header-register" register>注册</LoginLink>
+              </div>}
         </div>
       </div>
     </header>
-  );
+    {notice && <p className="session-notice" role="status">{notice}</p>}
+  </>;
 }
 
-function AccountMenu({ displayName, signOut }: { displayName?: string | null; signOut: () => Promise<void> }) {
+function AccountMenu({ displayName }: { displayName?: string | null }) {
   const menu = useRef<HTMLDetailsElement>(null);
   const trigger = useRef<HTMLElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const name = displayName?.trim();
+  const name = displayName?.trim() ?? "";
 
   function close() {
     if (menu.current) menu.current.open = false;
-  }
-
-  async function leave() {
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    try { await signOut(); }
-    catch (problem) { setError(problem instanceof Error ? problem.message : "退出登录失败，请重试。"); }
-    finally { setBusy(false); }
   }
 
   return <details ref={menu} className="account-menu"
@@ -69,17 +64,15 @@ function AccountMenu({ displayName, signOut }: { displayName?: string | null; si
         trigger.current?.focus();
       }
     }}>
-    <summary ref={trigger} className="account-trigger" aria-label="账户菜单" title={name}>
-      <span className="account-avatar" aria-hidden>{name ? Array.from(name)[0] : <UserRound size={17} />}</span>
+    <summary ref={trigger} className="account-trigger" aria-label={name ? `${name}的账户菜单` : "账户菜单"} title={name}>
+      <AccountAvatar name={name} />
+      <span className="account-label">{name || "我的账户"}</span>
       <ChevronDown size={15} aria-hidden />
     </summary>
     <div className="account-panel">
-      <p className="account-name">{name || "已登录"}</p>
+      <Link href="/account" onClick={close}><UserRound size={16} aria-hidden />个人资料</Link>
       <Link href="/reports" onClick={close}><FileText size={16} aria-hidden />我的报告</Link>
-      <button type="button" onClick={leave} aria-disabled={busy}>
-        <LogOut size={16} aria-hidden />{busy ? "正在退出…" : "退出登录"}
-      </button>
-      {error && <p className="error-text account-error" role="alert">{error}</p>}
+      <AccountSignOut />
     </div>
   </details>;
 }

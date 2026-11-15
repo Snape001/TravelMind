@@ -1,0 +1,49 @@
+{
+  "session": {
+    "user_id": "17460fd0-f17d-4c73-bf56-0aba87ead792",
+    "display_name": "林青",
+    "csrf_token": "fixture-csrf",
+    "email": "lin@example.test",
+    "email_verified": true,
+    "account_management_enabled": true
+  },
+  "legacySession": {
+    "user_id": "17460fd0-f17d-4c73-bf56-0aba87ead792",
+    "display_name": "林青",
+    "csrf_token": "fixture-csrf"
+  },
+  "reports": {
+    "items": [{
+      "task_id": "a9e73695-ced8-4f35-888f-3fa42888798c",
+      "report_id": "551ca4da-8e5c-4c1b-88d6-4465c9e81828",
+      "version": 2,
+      "title": "泉州古城与海丝遗迹",
+      "published_at": "2026-11-15T06:00:00Z"
+    }],
+    "next_cursor": "opaque+/=cursor&1"
+  },
+  "lastReports": {
+    "items": [{
+      "task_id": "710bc15f-6486-43d0-a7b2-9cff01681ea7",
+      "report_id": "3c21befe-24fb-46d6-8fe7-9a76965e42db",
+      "version": 1,
+      "title": "天台山古道调研",
+      "published_at": "2026-11-13T04:15:00Z"
+    }],
+    "next_cursor": null
+  },
+  "edit": {
+    "authorization_url": "https://id.example.test/realms/travelmind/protocol/openid-connect/auth?kc_action=UPDATE_PROFILE&state=fixture"
+  },
+  "logout": {
+    "provider_logout_url": "https://id.example.test/realms/travelmind/protocol/openid-connect/logout?client_id=travelmind"
+  },
+  "partialLogout": { "provider_logout_url": null },
+  "errors": {
+    "expired": { "detail": { "code": "UNAUTHENTICATED", "message": "请重新登录", "retryable": false } },
+    "unverified": { "detail": { "code": "AUTH_EMAIL_UNVERIFIED", "message": "邮箱尚未验证", "retryable": false } },
+    "disabled": { "detail": { "code": "ACCOUNT_FEATURE_DISABLED", "message": "账户功能未启用", "retryable": false } },
+    "unavailable": { "detail": { "code": "AUTH_PROVIDER_UNAVAILABLE", "message": "身份服务暂不可用", "retryable": true } },
+    "invalidCursor": { "detail": { "code": "VALIDATION_ERROR", "message": "分页游标无效", "retryable": false } }
+  }
+}

@@ -3,16 +3,6 @@
 .site-nav a[aria-current="page"] { color: #1c4543; background: #e9eeea; }
 .header-session { justify-self: end; }
 .header-session-loading { color: var(--muted); font-size: 12px; }
-.header-session .header-login {
-  min-height: 36px;
-  padding: 5px 12px;
-  gap: 7px;
-  border-color: #d4c4a3;
-  color: #1b3837;
-  background: #faf6eb;
-  white-space: nowrap;
-}
-.header-session .header-login:hover { background: #f1ead9; border-color: #af925f; }
 .account-menu { position: relative; }
 .account-trigger {
   display: flex;
@@ -31,6 +21,7 @@
   place-items: center;
   width: 32px;
   height: 32px;
+  flex: 0 0 auto;
   border-radius: 50%;
   background: #1b3837;
   color: #f1d7a3;
@@ -48,7 +39,6 @@
   background: #fffdf8;
   box-shadow: 0 10px 28px #182b2424;
 }
-.account-name { padding: 7px 9px; margin-bottom: 3px; border-bottom: 1px solid #e9e2d4; color: var(--muted); overflow-wrap: anywhere; }
 .account-panel :is(a, button) {
   display: flex;
   width: 100%;

@@ -5,12 +5,15 @@ import { isTerminal } from "./task-lifecycle";
 import { readResearchEvent, type ResearchEvent, type ResearchSource } from "./research-browser";
 import type { DestinationTaskCreate, Intake, Submission } from "./intake";
 import type { components as LiveComponents } from "./api.generated";
+import type { ReportPage } from "./account";
 
 const collection = "/api/v1/tasks";
 const taskUrl = (taskId: string) => `${collection}/${encodeURIComponent(taskId)}`;
 const reportUrl = (taskId: string, reportId: string) => `${taskUrl(taskId)}/reports/${encodeURIComponent(reportId)}`;
 const auth = "/api/v1/auth";
 export const loginHref = `${auth}/login`;
+export const registerHref = `${auth}/register`;
+const accountRequest: RequestInit = { mode: "same-origin", credentials: "same-origin", redirect: "error" };
 
 export class ApiError extends Error {
   constructor(readonly status: number, readonly code: string | undefined, message: string, readonly retryable: boolean) {
@@ -44,8 +47,23 @@ function write(csrf: string, key?: string, body?: object, signal?: AbortSignal):
   return { method: "POST", headers, body: body && JSON.stringify(body), signal };
 }
 
-export const readSession = (signal?: AbortSignal) => json<CurrentUser>(`${auth}/me`, { signal });
-export const logout = (csrf: string) => request(`${auth}/logout`, write(csrf));
+export const readSession = (signal?: AbortSignal) => json<CurrentUser>(`${auth}/me`, { ...accountRequest, signal });
+export const editProfile = (csrf: string, signal?: AbortSignal) =>
+  json<{ authorization_url: string }>(`${auth}/profile/edit`, { ...accountRequest, ...write(csrf), signal });
+export async function logoutAccount(user: CurrentUser): Promise<string | null> {
+  const options = { ...accountRequest, ...write(user.csrf_token) };
+  if (user.account_management_enabled === true) {
+    const result = await json<{ provider_logout_url: string | null }>(`${auth}/logout/oidc`, options);
+    return result.provider_logout_url;
+  }
+  await request(`${auth}/logout`, options);
+  return null;
+}
+export const readAccountReports = (cursor: string | null, signal?: AbortSignal) => {
+  const query = new URLSearchParams({ limit: "20" });
+  if (cursor !== null) query.set("cursor", cursor);
+  return json<ReportPage>(`/api/v1/account/reports?${query}`, { ...accountRequest, signal });
+};
 export const createTask = (brief: ResearchBrief, key: string, csrf: string, signal?: AbortSignal) =>
   json<TaskRead>(collection, write(csrf, key, brief, signal));
 export const createDestinationTask = (body: DestinationTaskCreate, key: string, csrf: string, signal?: AbortSignal) =>

@@ -1,0 +1,85 @@
+:root {
+  --tm-ink: #193b3a;
+  --tm-indigo: #233d49;
+  --tm-paper: #fffdf7;
+  --tm-bronze: #d2b57c;
+  --keycloak-card-top-color: #a9854e;
+}
+
+.login-pf body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 24% 10%, #355357 0%, transparent 60%),
+    linear-gradient(135deg, #142c2b, #183130 52%, #233d49);
+  color: var(--tm-ink);
+  font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+}
+
+body .pf-v5-c-login__container {
+  grid-template-columns: min(100%, 30rem);
+  padding-block: 4vh;
+}
+
+#kc-header-wrapper {
+  display: grid;
+  gap: 4px;
+  width: auto;
+  height: auto;
+  background: none;
+  color: var(--tm-paper);
+  font-family: Georgia, "Songti SC", SimSun, serif;
+  font-size: 43px;
+  line-height: 1.25;
+  text-align: center;
+}
+
+#kc-header-wrapper small {
+  color: var(--tm-bronze);
+  font-size: 15px;
+  letter-spacing: .16em;
+}
+
+body .pf-v5-c-login__main {
+  overflow: hidden;
+  border-radius: 13px;
+  box-shadow: 0 22px 60px #101d2480;
+}
+
+body :is(.pf-v5-c-login__main-header, .pf-v5-c-login__main-body, .pf-v5-c-login__main-footer) {
+  background-color: var(--tm-paper);
+}
+
+#kc-page-title {
+  color: var(--tm-ink);
+  font-family: Georgia, "Songti SC", SimSun, serif;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.pf-v5-c-login :is(a, .pf-v5-c-button.pf-m-link) {
+  color: #25565a;
+  text-underline-offset: .2em;
+}
+
+#kc-registration-terms-text {
+  margin-block-start: 6px;
+  padding: 10px 14px;
+  border: 1px solid #e1dacb;
+  border-radius: 6px;
+  background: #f7f2e7;
+}
+
+.pf-v5-c-login .pf-v5-c-form-control { border-radius: 6px; }
+.pf-v5-c-login .pf-v5-c-form-control::before { border-color: #c7c9bd; border-radius: inherit; }
+.pf-v5-c-login .pf-v5-c-form-control.pf-m-error::before { border-color: #ad443f; }
+.pf-v5-c-login .pf-v5-c-button { border-radius: 6px; }
+.pf-v5-c-login .pf-v5-c-button.pf-m-primary {
+  --pf-v5-c-button--m-primary--BackgroundColor: var(--tm-ink);
+  --pf-v5-c-button--m-primary--hover--BackgroundColor: var(--tm-indigo);
+  --pf-v5-c-button--m-primary--focus--BackgroundColor: var(--tm-indigo);
+}
+
+.pf-v5-c-login :focus-visible {
+  outline: 2px solid #336b69;
+  outline-offset: 3px;
+}

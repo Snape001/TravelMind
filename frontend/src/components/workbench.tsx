@@ -10,7 +10,6 @@ import { summarize } from "@/lib/agent-events";
 import { demo, demoResearch } from "@/lib/demo";
 import { expertName } from "@/lib/experts";
 import { readReport } from "@/lib/task-client";
-import { rememberReport } from "@/lib/report-history";
 import { rememberTask } from "@/lib/task-history";
 import { depthOptions, formatDate, reportHref, taskStatusLabels, type CurrentUser, type ReportRead } from "@/lib/research";
 import { projectResearch, type ResearchEvent } from "@/lib/research-browser";
@@ -69,13 +68,9 @@ function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: Curr
     if (!publishedId || !userId || example) return;
     const controller = new AbortController();
     readReport(taskId, publishedId, controller.signal).then((report) => {
-      if (controller.signal.aborted) return;
-      setReportSnapshot(report);
-      rememberReport(userId, {
-        taskId, reportId: report.report_id, title: report.content.title, date: report.created_at,
-      });
+      if (!controller.signal.aborted) setReportSnapshot(report);
     }).catch(() => {
-      // A transient archive error does not interrupt the stream or report link.
+      // A transient report read error does not interrupt the stream or report link.
     });
     return () => controller.abort();
   }, [taskId, publishedId, userId, example]);
