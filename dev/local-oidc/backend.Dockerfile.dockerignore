@@ -1,0 +1,10 @@
+**
+!backend/
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/alembic.ini
+!backend/alembic/
+!backend/alembic/**
+!backend/travelmind/
+!backend/travelmind/**
+**/__pycache__/

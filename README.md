@@ -18,6 +18,58 @@ npm ci
 npm run dev -- --hostname 127.0.0.1
 ```
 
+## Windows 本地 OIDC 与 HTTPS
+
+开发栈包含 Keycloak、Caddy、Next.js、FastAPI、PostgreSQL、Redis 和独立 Worker。使用 Docker Desktop 的 Linux 容器、Compose 2.24+、Windows PowerShell 5.1 或 PowerShell 7，以及 mkcert。可从官方发布页下载对应 Windows 架构的 mkcert，放入 PATH 或 `.artifacts/local-oidc/tools/mkcert.exe`，也可给脚本传入 `-MkcertPath`。 [mkcert 发布页](https://github.com/FiloSottile/mkcert/releases/tag/v1.4.4)
+
+启动 Docker Desktop 后，从项目根目录运行。首次允许 mkcert 将此工作区的开发 CA 加入 Windows 信任存储。实际调研使用 `backend/.env` 中的 DeepSeek、博查和 Firecrawl 密钥，已有文件会保留。
+
+```powershell
+if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
+notepad backend/.env
+$stack = '.\dev\local-oidc\stack.ps1'
+
+# 仅生成开发凭据和证书。start 也会执行这一步。
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack init
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack start
+
+# 显示本机随机生成的两个测试密码
+Get-Content .artifacts/local-oidc/.env | Select-String '^TM_LOCAL_(ALICE|BOB)_PASSWORD='
+Start-Process 'https://travelmind.localhost:18443'
+```
+
+使用 `alice` 或 `bob` 登录。要同时验证两人权限，请分别使用两个浏览器配置文件。TravelMind 的退出会吊销应用会话并关闭已建立的 SSE。Keycloak 的单点登录会话独立保存，同一浏览器配置文件再次登录可能自动选回原账号。
+
+```powershell
+$stack = '.\dev\local-oidc\stack.ps1'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack check
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack status
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack restart-worker
+
+# 停止本地容器并保留账号、任务、报告和 Checkpoint
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack stop
+```
+
+开发 Realm 为 `travelmind-dev`，客户端为 `travelmind-local`。Issuer 是 `https://id.travelmind.localhost:18443/realms/travelmind-dev`，回调是 `https://travelmind.localhost:18443/api/v1/auth/callback`。FastAPI 和浏览器使用同一套 HTTPS Discovery、Token 和 JWKS 地址。Caddy 在应用域名直连 FastAPI 的 `/api/v1/*`，SSE 与前端同源。Caddy 只发布回环端口 `127.0.0.1:18443`，身份域名只代理开发 Realm 和登录资源。 [Keycloak 反向代理](https://www.keycloak.org/server/reverseproxy.html) · [Caddy SSE](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#streaming)
+
+开发栈使用专用 Compose 项目和数据卷。凭据、证书与私钥位于 Git 忽略的 `.artifacts/local-oidc`。Keycloak 初次启动时导入 Realm，后续启动保留已导入的账号和客户端。外部或生产 OIDC 配置继续使用下文的独立入口。 [Keycloak Realm 导入](https://www.keycloak.org/server/importExport)
+
+要复现浏览器验收，用 `alice` 提交目的地「古城」，说明需要先确认城市。收到澄清后答「福建泉州，仅核对宋元海贸遗产的列入年份和遗产点数量」。任务运行时暂停，等工作台显示已暂停后执行 `restart-worker`，再点恢复。报告获批后检查引用跳转。用另一个浏览器配置文件登录 `bob` 并打开相同链接，网络面板中的任务、报告与 SSE 请求应返回 404。
+
+### Windows 故障排查
+
+| 现象 | 检查方式 |
+| --- | --- |
+| Docker 不可用或不能拉取镜像 | 启动 Docker Desktop 并切换到 Linux 容器，运行 `docker info`，再执行 `start`。首次构建需访问镜像、PyPI 和 npm 仓库。 |
+| 找不到 mkcert，或浏览器提示证书不可信 | 用 `-MkcertPath` 传入可执行文件路径，运行 `init`，重启浏览器并用上述域名访问。证书过期时，停止开发栈，移走 `pki/site.pem` 与 `pki/site-key.pem`，再运行 `start`。 |
+| HTTPS 端口被占用 | 运行 `Get-NetTCPConnection -LocalPort 18443 -State Listen` 定位当前监听者。 |
+| 登录提示回调无效或身份服务暂不可用 | 运行 `check` 检查本机信任、Discovery、JWKS 和授权跳转。用下面的日志命令定位 Caddy、Keycloak 或 FastAPI 错误。避免手工替换本地密码文件中的客户端密钥。 |
+| 登录后任务长期排队 | 在 `status` 确认 Worker 运行和迁移任务正常退出，查看 Worker 日志及 `backend/.env`。修改供应商配置后重新运行 `start`。 |
+
+```powershell
+docker compose -p travelmind-local-oidc --env-file .artifacts/local-oidc/.env -f dev/local-oidc/compose.yaml logs --tail 80 caddy keycloak api migrate worker
+```
+
 ## 本地启动
 
 需要 Node.js 20.9–20.x 或 22+、Python 3.11+、uv 和 PostgreSQL。Redis 可选，用于提前唤醒 Worker。

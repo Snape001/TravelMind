@@ -1,0 +1,52 @@
+{
+  "realm": "travelmind-dev",
+  "displayName": "TravelMind Local Development",
+  "enabled": true,
+  "sslRequired": "all",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "clients": [
+    {
+      "clientId": "travelmind-local",
+      "name": "TravelMind Local Client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${TM_LOCAL_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["https://travelmind.localhost:18443/api/v1/auth/callback"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "id.token.signed.response.alg": "RS256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "firstName": "Alice",
+      "lastName": "Local",
+      "email": "alice@travelmind.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {"type": "password", "value": "${TM_LOCAL_ALICE_PASSWORD}", "temporary": false}
+      ]
+    },
+    {
+      "username": "bob",
+      "firstName": "Bob",
+      "lastName": "Local",
+      "email": "bob@travelmind.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {"type": "password", "value": "${TM_LOCAL_BOB_PASSWORD}", "temporary": false}
+      ]
+    }
+  ]
+}

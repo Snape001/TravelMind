@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## 本地 OIDC 与 HTTPS 验收（2026-11-15）
+
+- 加入独立的 Keycloak 与 Caddy 开发栈。mkcert 使用工作区专属 CA，Caddy 只监听回环 HTTPS。在 `travelmind-dev` 导入两位开发用户和要求 PKCE S256 的授权码客户端。浏览器与 FastAPI 共用 HTTPS Issuer，开发凭据和证书保存在 Git 忽略目录。 [Windows 启停与排查](README.md#windows-本地-oidc-与-https)
+- 两个独立 Chrome 会话完成真实 Keycloak 登录，校验应用 Cookie 的 Secure、HttpOnly、SameSite=Lax 和主机范围。Alice 未提交 CSRF 令牌的写入返回 403。已连接的独立 SSE 在 Alice 退出后由服务器关闭，旧会话凭据返回 401。Bob 读取 Alice 的任务、报告和 SSE 均返回 404。
+- 浏览器提交真实调研，回答 Director 对「古城」的追问，暂停后重启 Worker 并继续。最多三位专家并行，共收到 61 条 SSE 事件。报告获批，证据跳转成功。Windows PowerShell 完整执行停启后，测试凭据和任务仍在。
+- 容器生产构建、Caddy 配置、Discovery/JWKS、后端 181 项、前端 27 项、Ruff、Alembic、ESLint 和 TypeScript 检查通过。当前验收涵盖本地提供方，生产域名及外部 OIDC 独立配置。
+- **交付提交**　`feat: add local Keycloak HTTPS development stack`。
+
 ## Phase 3 · 最终集成（2026-11-15）
 
 | 顺序 | 实际来源 | 原始提交 | 合并提交 |
