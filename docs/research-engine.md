@@ -34,3 +34,12 @@ async def collect_evidence(task_id, sessions):
 Phase 3 Worker 使用保存后的证据和分工上下文执行 Evidence Quality。确定性筛选决定语义评分的处理顺序，冻结评分卡供专家反思和独立审核。保存的原始证据仍通过既有访问接口追溯。 [Evidence Quality](evidence-quality.md)
 
 供应商接口参见 [博查 Web Search](https://github.com/Bocha-Labs/bocha-skills/blob/main/bocha-web-search/SKILL.md)、[Firecrawl Scrape](https://docs.firecrawl.dev/api-reference/endpoint/scrape) 和 [OpenAlex Works](https://help.openalex.org/data/works/)。
+
+## 游记与地方志
+
+在 `backend/.env` 设置 `CNKGRAPH_ENABLED=true` 后重启 Worker。古籍文献知识图谱网（CNKGraph）向非商业学习与研究开放古籍接口，实测可匿名调用。官方开放资源页未公布固定价格、额度或服务承诺。默认关闭，阅读范围取决于收录的古籍及数字底本。 [开放资源与使用范围](https://api.cnkgraph.com/Home/OpenResources) · [官方接口示例](https://open.cnkgraph.com/Api/postman.zip)
+
+- 沈观澜在深度和学术调研中使用目的地与简报中的具体主题检索。每次 Worker 执行租约最多查一次首屏，最多读取两卷，同一租约的补查复用结果。单次请求超时最多 3 秒，整个古籍查询最多 8 秒并受专家预算约束。
+- 通过 `POST /Api/Book/Find` 检索正文，再用 `GET /api/book/volume/{volumeId}` 读取选中的卷。优先引用与命中词对应的原页。卷页匹配失败时保留 API 返回的上下文并标为「检索摘录」。空结果和接口故障时仍可用原有渠道检索。
+- 入库使用现有 `book` 类型，保存书名、卷页、可核对的底本标识、正文摘录、卷链接及采集时间。卷链接指向提供方 JSON。每卷保留一条摘录，最多 1,200 字符。历史记述适用于当时的背景，古今地名对应和景区现状须另行核验。
+- 从 `backend` 目录可用 `await research.search("泉州府 城池", sources=("cnkgraph",), limit=2)` 验证适配器。历史文化专家也会通过现有 Evidence Center 持久化结果，报告用 Evidence ID 引用。

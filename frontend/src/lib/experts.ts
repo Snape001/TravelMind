@@ -32,7 +32,7 @@ const profiles = {
     name: "沈观澜", title: "历史文化专家", tier: "council",
     description: "从地方史、文化遗产和民俗切入，辨析历史叙述的依据，梳理遗产与当代城市生活的关系。",
     fields: ["地方史", "文化遗产", "民俗"],
-    tools: ["官方遗产档案", "地方志检索", "历史资料交叉核验"],
+    tools: ["官方遗产档案", "游记与地方志原文检索（可选）", "历史资料交叉核验"],
   },
   natural_geography: {
     name: "顾山河", title: "自然地理专家", tier: "council",

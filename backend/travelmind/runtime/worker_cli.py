@@ -116,7 +116,13 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
             store,
             model,
             lambda lease: FencedPostgresSaver(pool, store, lease),
-            retrieve=lambda lease: ResearchRetriever(research, sessions, store=store, lease=lease),
+            retrieve=lambda lease: ResearchRetriever(
+                research,
+                sessions,
+                store=store,
+                lease=lease,
+                library_enabled=research.library_enabled,
+            ),
             reflection=reflection_for(model, settings.deepseek_model),
             intake=IntakeWorker(store, AmapPoi(amap), model),
             travel_planner=TravelPlanner(

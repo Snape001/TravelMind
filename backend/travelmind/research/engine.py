@@ -7,11 +7,12 @@ from pydantic import Field, HttpUrl
 
 from travelmind.config import Settings
 from travelmind.research.adapters import BochaSearch, FirecrawlScrape, OpenAlexSearch
-from travelmind.research.http import ProviderClient, ProviderError, ProviderFailure
+from travelmind.research.cnkgraph import CnkgraphBooks
+from travelmind.research.http import ProviderClient, ProviderError, ProviderFailure, failure
 from travelmind.research.sources import is_public_target, unique_sources
 from travelmind.schemas.domain import Contract, Evidence, Text
 
-SearchProvider = Literal["bocha", "openalex"]
+SearchProvider = Literal["bocha", "openalex", "cnkgraph"]
 
 
 class SearchRequest(Contract):
@@ -42,12 +43,17 @@ class ResearchEngine:
 
     def __init__(self, client: httpx.AsyncClient, settings: Settings):
         timeout = settings.research_timeout_seconds
+        self.library_enabled = settings.cnkgraph_enabled
         self.search_adapters: dict[SearchProvider, SearchAdapter] = {
             "bocha": BochaSearch(ProviderClient(client, "bocha", settings.bocha_api_key, timeout)),
             "openalex": OpenAlexSearch(
                 ProviderClient(client, "openalex", settings.openalex_api_key, timeout)
             ),
         }
+        if self.library_enabled:
+            self.search_adapters["cnkgraph"] = CnkgraphBooks(
+                ProviderClient(client, "cnkgraph", None, min(timeout, 3))
+            )
         self.scraper = FirecrawlScrape(
             ProviderClient(client, "firecrawl", settings.firecrawl_api_key, timeout)
         )
@@ -63,7 +69,7 @@ class ResearchEngine:
         request = SearchRequest(query=query, sources=sources, limit=limit)
         batches = await asyncio.gather(
             *(
-                _collect(self.search_adapters[source].search(request.query, request.limit))
+                _collect(self._search(source, request.query, request.limit))
                 for source in dict.fromkeys(request.sources)
             )
         )
@@ -75,6 +81,12 @@ class ResearchEngine:
             ),
             errors=[error for batch in batches for error in batch.errors],
         )
+
+    async def _search(self, source: SearchProvider, query: str, limit: int) -> list[Evidence]:
+        adapter = self.search_adapters.get(source)
+        if adapter is None:
+            raise failure(source, "NOT_CONFIGURED", "古籍检索尚未启用")
+        return await adapter.search(query, limit)
 
     async def scrape(self, url: str | HttpUrl) -> ToolResult:
         target = HttpUrl(url)

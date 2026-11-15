@@ -138,6 +138,10 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 
 入库证据先经规则筛选，再由专家结合评分和任务目标判断是否补查。 [Evidence Quality](docs/evidence-quality.md) · [专家反思与预算](docs/agent-runtime.md#专家反思)
 
+### 游记与地方志
+
+非商业学习与研究可在 `backend/.env` 设置 `CNKGRAPH_ENABLED=true`。本机运行时重启 Worker，使用 Docker OIDC 开发栈时重新执行 `stack.ps1 start` 以载入配置。沈观澜在深度或学术调研中查询古籍文献知识图谱网，优先查游记、方志和历史地理文献，并引用可定位的正文摘录。无需账号或 API Key。可用「游天台山日记」或「泉州府 城池」验证。 [来源与使用范围](https://api.cnkgraph.com/Home/OpenResources) · [接口与证据细节](docs/research-engine.md#游记与地方志)
+
 ## 高德地图配置
 
 在[高德开放平台控制台](https://console.amap.com/)创建应用并分别申请两种 Key。添加 Key 时选择「Web 服务」，供后端的 POI、输入提示、地理编码及路径规划使用。另添加「Web 端（JS API）」Key，取得配套安全密钥，并把本地和生产站点域名加入该 Key 的白名单。使用 Windows OIDC 开发栈时，本地站点为 `travelmind.localhost`。 [申请 Web 服务 Key](https://lbs.amap.com/api/webservice/create-project-and-key) · [JS API 安全密钥](https://lbs.amap.com/api/javascript-api-v2/guide/abc/jscode)

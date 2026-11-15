@@ -1,5 +1,11 @@
 # TravelMind 开发进度
 
+## 沈观澜 · 游记与地方志检索（2026-11-15）
+
+- 接入国内古籍文献知识图谱网（CNKGraph）的公开正文检索和读卷接口。提供方允许非商业学习与研究，实测查询无需账号或密钥。默认关闭，设置 `CNKGRAPH_ENABLED=true` 后，沈观澜在深度和学术调研中可检索首屏并读取最多两卷，按租约复用结果。沿用 `book` 证据、Evidence Quality 和报告引用协议。 [启用与验证](docs/research-engine.md#游记与地方志) · [官方开放资源](https://api.cnkgraph.com/Home/OpenResources)
+- 实际查询「游天台山日记」和「泉州府 城池」取得 3 条原文，分别来自《徐霞客游记》卷一上及《大清一统志》卷一百五十五、一百五十六。3 条均存入隔离 PostgreSQL，经 Evidence Center 接口返回 HTTP 200。真实 DeepSeek 在沈观澜分工链路生成 9 条结构化结论，共引用这 3 条证据。方志分析首次探针受 650 输出 Token 截断，按 Worker 的 2048 Token 预算复测通过。另实测无匹配查询返回 0 条且未产生错误。
+- PostgreSQL 17 后端全量 261 项通过，含 13 项新增测试。前端 27 项测试、TypeScript、ESLint、Ruff 和 Alembic 迁移核对通过。检索覆盖提供方收录的古籍，广泛关键词的命中范围受首屏预算限制。现有出版物与目的地现状继续由其他来源补核。**交付提交**　`feat: add historical book research for the culture expert`。
+
 ## Phase 4 · 默认 Worker 旅游规划与报告地图（2026-11-15）
 
 - 复用问卷后端 `b7d64a8` 和高德适配器 `e080bf2`。结构化问卷的新任务使用 `durable-v3`。Planner 按实际选择调度陆知行，默认 Worker 使用高德 POI 搜索、详情和路线工具。旧简报任务及已有 `durable-v1`、`durable-v2` Checkpoint 沿用原图。

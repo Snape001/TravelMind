@@ -83,6 +83,13 @@ async def find(
     context: dict | None = None,
 ) -> Findings:
     allowed = {item.evidence_id for item in request.evidence}
+    if request.agent_id == "history_culture" and any(
+        item.source_type == "book" for item in request.evidence
+    ):
+        instructions += (
+            "\n引用游记、地方志时核对卷页和底本，注明记述时代，区分亲历、转述与后人注释。"
+            "涉及古今地名对应、遗址现状或开放信息时，用当代资料单独核实。"
+        )
 
     async def make_findings() -> Findings:
         findings = await model(
