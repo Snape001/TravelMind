@@ -65,11 +65,9 @@ Reviewer 在 Writer 产出完整草稿后独立审核。Reviewer 权限和预算
 
 ### MediaCrawler 与替代接入
 
-上游 `main` 的 README 将小红书、抖音、B 站及微博列为支持平台，记录了搜索、指定帖子与评论等能力。实际可用范围、授权要求、数据使用条款和限额由 E 对固定版本逐平台验证。本次仅查阅文档。上游 LICENSE 为 Non-Commercial Learning License 1.1，限定非商业学习与研究用途，限制规模化采集，商业使用依赖权利方书面同意。产品集成须有书面许可和平台授权依据。正式默认路径保留官方 API 或合规供应商接口。 [上游 README](https://github.com/NanmiCoder/MediaCrawler#readme) · [上游 LICENSE](https://github.com/NanmiCoder/MediaCrawler/blob/main/LICENSE)
+E 固定 MediaCrawler 上游提交并在独立虚拟环境安装。上游 LICENSE 为 Non-Commercial Learning License 1.1，限定非商业学习与研究，商业使用依赖权利方书面同意。在线采集须按平台确认允许的访问方式、授权和使用范围。账号会话、Cookie 和浏览器资料留在本机私有目录。
 
-E 在独立工作区记录上游提交、许可证、平台授权方式和允许的请求范围。用户按平台提供合法访问授权或经批准的数据导出。账号授权由 PoC 自有配置管理，个人浏览器资料、会话及 Cookie 不进入 TravelMind、Git、CI 或共享 Fixture。到达平台访问限制时停止该平台测试，记录缺口。
-
-TravelMind 为接入预留 `SOCIAL_RESEARCH_PROVIDER`，默认 `disabled`。获准的正式适配器另在服务端配置其供应商凭据，PoC 交接可用 `SOCIAL_RESEARCH_SAMPLE_PATH` 指向本地脱敏且允许使用的 JSON 输入。该路径和账号数据不对前端公开。输入只保留平台、原帖标识、出处、样本限度及允许引用的摘录。按 `(platform, post_id)` 做基础去重，按主题聚类后再交模型。 `SocialEvidence` 是 MediaCrawler、官方 API 和合规供应商的共同交接格式。
+TravelMind 的 `SOCIAL_RESEARCH_PROVIDER` 默认 `disabled`。启用 `mediacrawler_export` 后，宿主机 Worker 从独立 Sidecar 读取已授权的本地 JSONL 导出。Sidecar 负责四个平台的映射、批次状态、分页和缓存。Research Engine 通过冻结的 `SocialEvidence` 转出既有 `Evidence`，苏听雨在原有预算内处理评论样本，报告沿用引用与审核。 [配置与逐平台验收](phase-4-social-research.md)
 
 ## 五条分支的修改边界
 
@@ -81,7 +79,7 @@ TravelMind 为接入预留 `SOCIAL_RESEARCH_PROVIDER`，默认 `disabled`。获�
 | B `feat/travel-planning-agent` | 后端 `runtime/travel/`、`research/amap_routes.py`，路线专属测试 | 输入 `Destination`、`TravelPreferences` 及存量专家上下文，产出 `TravelRoute` 和现有 `Evidence`。A 提供基础客户端及 POI 接口；D 用合成路线展示地图 |
 | C `feat/expert-skills-report` | 后端 `runtime/skills/`、`runtime/editorial.py`、`expert_profiles/`，技能配置和专项测试 | 技能配置及四个 Writer 技能。沿用 Writer/Reviewer 输入输出，档案和技能引用按冻结结构提供给集成 |
 | D `feat/research-browser-ui` | `frontend/` 内首页、工作台、档案、报告详情、样式、地图代理和前端测试 | 只改前端。以共享 Fixture 和离线组件类型完成独立开发。实现首页单字段、可选问卷、地图、三栏工作台和 Hover。真实 OpenAPI 类型集成时统一生成 |
-| E `feat/social-research-adapter` | 后端 `research/social/`、社交适配测试和 `docs/phase-4-social-poc.md`，上游 PoC 环境在独立非产品工作区 | 交付映射、样本治理和各平台能力验收。苏听雨消费既有 Evidence，下游可用同一来源扩展流展示 |
+| E `feat/social-research-adapter` | 后端 `research/social/`、`dev/social-research/`、社交适配测试和说明，以及 Research Engine、苏听雨及报告的接线 | 交付本地导入任务、四平台映射、样本治理和阶段验收。苏听雨消费既有 Evidence |
 
 统一集成持有 `main.py`、`config.py`、`.env.example`、Compose、`api/tasks.py`、`db/models.py`、`db/control.py`、`db/worker.py`、`runtime/planning.py`、`state.py`、`workflow.py`、`model.py`、`journal.py`、`projection.py`、`retrieval.py`、公共 Schema、依赖锁和正式生成的前端类型。该阶段接线、挂载新路由、管理 ORM/迁移顺序、选择新旧图、将 A 的结构化需求注入 Planner，并落地路线、来源与 Usage 侧流。A 的迁移接在现有业务 head 后，集成负责后续 route/telemetry 迁移。分支如发现共享文件需改，先在契约或专属服务处明确接口并由主会话接入。
 

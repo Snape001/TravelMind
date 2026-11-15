@@ -92,7 +92,10 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
         sessions = async_sessionmaker(engine, expire_on_commit=False)
         store = PostgresWorkerStore(sessions)
         client = await resources.enter_async_context(httpx.AsyncClient())
-        research = ResearchEngine(client, settings)
+        social_client = None
+        if settings.social_research_provider != "disabled":
+            social_client = await resources.enter_async_context(httpx.AsyncClient(trust_env=False))
+        research = ResearchEngine(client, settings, social_client=social_client)
         pool = await resources.enter_async_context(
             AsyncConnectionPool(
                 checkpoint_dsn(settings),
@@ -107,7 +110,10 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
             store,
             model,
             lambda lease: FencedPostgresSaver(pool, store, lease),
-            retrieve=lambda lease: ResearchRetriever(research, sessions, store=store, lease=lease),
+            retrieve=lambda lease: ResearchRetriever(
+                research, sessions, store=store, lease=lease,
+                social_search=research.search_social if research.social is not None else None,
+            ),
             reflection=reflection_for(model, settings.deepseek_model),
             lease_seconds=lease_seconds,
             poll_seconds=poll_seconds,

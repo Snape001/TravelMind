@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## Phase 4 · Social Research Adapter（2026-11-15）
+
+- 独立安装固定版 MediaCrawler `306ab4ca26c0e44fb87ede0e40e98748752815a6`、其依赖锁和 Playwright Chromium，保留原始许可证。Windows 本机 Sidecar 支持四平台的已授权导出导入、取消、状态、分页、去重、缓存及 JSONL 导出。应用内默认关闭，可按平台启用。
+- 苏听雨按目的地与调研主题查询本机样本。证据经过评论清洗、样本限额、现有 Evidence Center 与 EvidenceQuality，形成五项结构化分析。引用社交样本的报告章节附平台、实际评论和原帖数量及采集时间。公共 `SocialEvidence`、AgentEvent v1、LangGraph Checkpoint 和任务 API 的结构继续兼容。
+- PostgreSQL 17 上 218 项后端测试通过（新增 10 项），覆盖四平台映射、序列化、任务取消、超时降级、真实 PostgreSQL 写入、五项技能结构和报告样本说明。Ruff、Alembic 一致性检查通过。Windows 启动独立进程，以合成样本逐平台验证各 1 篇原帖、1 条评论的导入、状态读取和 JSONL 导出。
+- 四个平台均为 0 条真实采集。平台授权、允许的访问方式及可用于分析的真实导出待确认，尚未进行在线搜索、详情、评论和真实样本的模型验收。 [Windows 配置、许可证及逐平台结果](docs/phase-4-social-research.md)
+- **交付提交**　`feat: integrate local social research exports`，分支 `feat/social-research-adapter`。
+
 ## Phase 4 · Step 0 公共契约
 
 - 冻结目的地、动态问卷、路线偏好、专家档案与 Skills、Research Browser 事件、模型用量和社交证据。交付 Pydantic Schema、共享合成 Fixture 和独立类型导出。现有路由、AgentEvent v1、六态任务机及 Worker 仍走 Phase 3。 [公共接口](docs/phase-4-contract.md)

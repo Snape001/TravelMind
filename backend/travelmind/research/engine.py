@@ -8,6 +8,8 @@ from pydantic import Field, HttpUrl
 from travelmind.config import Settings
 from travelmind.research.adapters import BochaSearch, FirecrawlScrape, OpenAlexSearch
 from travelmind.research.http import ProviderClient, ProviderError, ProviderFailure
+from travelmind.research.social.adapter import SocialResearchAdapter
+from travelmind.research.social.schemas import Platform
 from travelmind.research.sources import is_public_target, unique_sources
 from travelmind.schemas.domain import Contract, Evidence, Text
 
@@ -40,7 +42,10 @@ async def _collect(operation: Awaitable[list[Evidence] | Evidence]) -> ToolResul
 class ResearchEngine:
     """Async tools using a caller-owned HTTP client and the shared Evidence contract."""
 
-    def __init__(self, client: httpx.AsyncClient, settings: Settings):
+    def __init__(
+        self, client: httpx.AsyncClient, settings: Settings,
+        *, social_client: httpx.AsyncClient | None = None,
+    ):
         timeout = settings.research_timeout_seconds
         self.search_adapters: dict[SearchProvider, SearchAdapter] = {
             "bocha": BochaSearch(ProviderClient(client, "bocha", settings.bocha_api_key, timeout)),
@@ -51,6 +56,25 @@ class ResearchEngine:
         self.scraper = FirecrawlScrape(
             ProviderClient(client, "firecrawl", settings.firecrawl_api_key, timeout)
         )
+        self.social = None
+        self.social_platforms = settings.social_research_platforms
+        token = settings.social_research_token
+        if settings.social_research_provider == "mediacrawler_export" and token:
+            self.social = SocialResearchAdapter(
+                social_client or client, str(settings.social_research_url),
+                token.get_secret_value(), settings.social_research_timeout_seconds,
+            )
+
+    async def search_social(
+        self, keywords: list[str], *,
+        platforms: tuple[Platform, ...] | None = None, timeout: float | None = None,
+    ) -> ToolResult:
+        if self.social is None:
+            return ToolResult()
+        items, errors = await self.social.search(
+            keywords, self.social_platforms if platforms is None else platforms, timeout=timeout,
+        )
+        return ToolResult(evidence=items, errors=errors)
 
     async def search(
         self,

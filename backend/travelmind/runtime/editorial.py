@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from travelmind.research.social.skills import SOCIAL_SCOPE, with_social_sample_notes
 from travelmind.runtime.execution import InvalidOutput, result_identity, with_budget
 from travelmind.runtime.model import StructuredModel
 from travelmind.schemas.agents import AgentInput, ReportResult, ResearchResult, ReviewResult
@@ -83,9 +84,12 @@ async def write(
             "只能引用 input.evidence 中的 ID。证据不足可直接交代缺口，不能将其写成断言。"
         )
         data["expert_assessments"] = editorial_assessments(experts)
+    if any(item.source_type == "social" for item in request.evidence):
+        instructions += SOCIAL_SCOPE
     report = await with_budget(
         lambda: model(request, instructions, ReportDraft, context=data), request.budget
     )
+    report = with_social_sample_notes(report, request.evidence)
     return ReportResult(**result_identity(request), kind="report", report=report)
 
 
@@ -134,6 +138,8 @@ async def review(
             "否则返回 revision_required 和针对具体章节、可执行的 issues。"
             "issues 只引用输入的证据 ID。"
         )
+        if any(item.source_type == "social" for item in request.evidence):
+            instructions += SOCIAL_SCOPE
         data = None
         if experts:
             data = {"expert_assessments": editorial_assessments(experts)}

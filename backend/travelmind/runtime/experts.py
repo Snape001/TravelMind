@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from pydantic import Field
 
+from travelmind.research.social.skills import SOCIAL_SCOPE, SOCIAL_SKILLS, SocialSkillsResult
 from travelmind.runtime.execution import InvalidOutput, RunError, emit, result_identity, with_budget
 from travelmind.runtime.model import StructuredModel
 from travelmind.runtime.planning import EXPERTS
@@ -66,6 +67,7 @@ async def research(
         f"{EXPERTS[request.agent_id]} 根据 assignment 处理本次研究任务。"
         "区分资料可支持的结论、存在争议的结论和资料缺口。"
         "如果没有证据，输出待核实的问题，使用 insufficient。",
+        social_analysis=request.agent_id == "social_sentiment",
     )
     return ResearchResult(
         **result_identity(request),
@@ -81,17 +83,25 @@ async def find(
     instructions: str,
     *,
     context: dict | None = None,
+    social_analysis: bool = False,
 ) -> Findings:
     allowed = {item.evidence_id for item in request.evidence}
+    has_social = social_analysis and any(item.source_type == "social" for item in request.evidence)
+    prompt = (
+        f"{instructions}\n只使用输入 evidence 中的 ID，且所引原文须支持结论。"
+        "每条结论明确标记 supported、disputed 或 insufficient。"
+    )
+    if social_analysis:
+        prompt += SOCIAL_SCOPE
 
     async def make_findings() -> Findings:
-        findings = await model(
-            request,
-            f"{instructions}\n只使用输入 evidence 中的 ID，且所引原文须支持结论。"
-            "每条结论明确标记 supported、disputed 或 insufficient。",
-            Findings,
-            context=context,
-        )
+        if has_social:
+            results = await model(
+                request, prompt + SOCIAL_SKILLS, SocialSkillsResult, context=context
+            )
+            findings = Findings(findings=results.findings())
+        else:
+            findings = await model(request, prompt, Findings, context=context)
         if any(set(finding.evidence_ids) - allowed for finding in findings.findings):
             raise InvalidOutput("finding cites unknown evidence")
         return findings
