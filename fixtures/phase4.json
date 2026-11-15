@@ -1,0 +1,640 @@
+{
+  "create": {
+    "destination": "开元寺"
+  },
+  "destination": {
+    "provider": "amap",
+    "poi_id": "EXAMPLE-QUANZHOU-001",
+    "name": "泉州开元寺",
+    "administrative": {
+      "province": "福建省",
+      "city": "泉州市",
+      "district": "鲤城区",
+      "adcode": "350502"
+    },
+    "coordinates": {
+      "crs": "gcj02",
+      "longitude": 118.578,
+      "latitude": 24.914
+    },
+    "address": "示例地址"
+  },
+  "destination_questionnaire": {
+    "questionnaire_id": "c8d4e17a-5b90-4f07-a6de-000000000008",
+    "stage": "destination_confirmation",
+    "questions": [
+      {
+        "question_id": "destination",
+        "text": "您要调研哪一处开元寺？",
+        "kind": "single_choice",
+        "required": true,
+        "options": [
+          {
+            "option_id": "quanzhou",
+            "label": "福建泉州开元寺"
+          },
+          {
+            "option_id": "chaozhou",
+            "label": "广东潮州开元寺"
+          }
+        ]
+      }
+    ],
+    "candidates": {
+      "quanzhou": {
+        "provider": "amap",
+        "poi_id": "EXAMPLE-QUANZHOU-001",
+        "name": "泉州开元寺",
+        "administrative": {
+          "province": "福建省",
+          "city": "泉州市",
+          "district": "鲤城区",
+          "adcode": "350502"
+        },
+        "coordinates": {
+          "crs": "gcj02",
+          "longitude": 118.578,
+          "latitude": 24.914
+        },
+        "address": "示例地址"
+      },
+      "chaozhou": {
+        "provider": "amap",
+        "poi_id": "EXAMPLE-CHAOZHOU-001",
+        "name": "潮州开元寺",
+        "administrative": {
+          "province": "广东省",
+          "city": "潮州市",
+          "district": "湘桥区",
+          "adcode": "445102"
+        },
+        "coordinates": {
+          "crs": "gcj02",
+          "longitude": 116.648,
+          "latitude": 23.663
+        },
+        "address": "示例地址"
+      }
+    }
+  },
+  "research_questionnaire": {
+    "questionnaire_id": "c8d4e17a-5b90-4f07-a6de-000000000009",
+    "stage": "research",
+    "questions": [
+      {
+        "question_id": "interests",
+        "text": "您想了解哪些方面？",
+        "kind": "multi_choice",
+        "options": [
+          {
+            "option_id": "history",
+            "label": "历史与建筑"
+          },
+          {
+            "option_id": "travel_route",
+            "label": "旅游路线"
+          }
+        ]
+      },
+      {
+        "question_id": "travel_focus",
+        "text": "线路需要优先考虑什么？",
+        "kind": "single_choice",
+        "options": [
+          {
+            "option_id": "access",
+            "label": "交通便利"
+          },
+          {
+            "option_id": "heritage",
+            "label": "走访遗产点"
+          }
+        ],
+        "visible_if": {
+          "question_id": "interests",
+          "includes_option_id": "travel_route"
+        }
+      },
+      {
+        "question_id": "additional_notes",
+        "text": "还有什么想了解的？",
+        "kind": "text"
+      }
+    ]
+  },
+  "travel_questionnaire": {
+    "questionnaire_id": "c8d4e17a-5b90-4f07-a6de-000000000010",
+    "stage": "travel",
+    "questions": [
+      {
+        "question_id": "start_date",
+        "text": "计划哪天出发？",
+        "kind": "date"
+      },
+      {
+        "question_id": "end_date",
+        "text": "计划哪天返程？",
+        "kind": "date"
+      },
+      {
+        "question_id": "stay_days",
+        "text": "计划停留几天？",
+        "kind": "integer"
+      },
+      {
+        "question_id": "transport_modes",
+        "text": "偏好的交通方式？",
+        "kind": "multi_choice",
+        "options": [
+          {
+            "option_id": "transit",
+            "label": "公交"
+          },
+          {
+            "option_id": "walking",
+            "label": "步行"
+          },
+          {
+            "option_id": "driving",
+            "label": "驾车"
+          },
+          {
+            "option_id": "cycling",
+            "label": "骑行"
+          }
+        ]
+      },
+      {
+        "question_id": "styles",
+        "text": "偏好的旅行风格？",
+        "kind": "multi_choice",
+        "options": [
+          {
+            "option_id": "heritage",
+            "label": "文化遗产"
+          },
+          {
+            "option_id": "leisure",
+            "label": "休闲"
+          }
+        ]
+      },
+      {
+        "question_id": "intensity",
+        "text": "能够接受的行程强度？",
+        "kind": "single_choice",
+        "options": [
+          {
+            "option_id": "relaxed",
+            "label": "轻松"
+          },
+          {
+            "option_id": "balanced",
+            "label": "适中"
+          },
+          {
+            "option_id": "intensive",
+            "label": "紧凑"
+          }
+        ]
+      },
+      {
+        "question_id": "budget_cny",
+        "text": "全团预算多少元？",
+        "kind": "integer"
+      },
+      {
+        "question_id": "party_size",
+        "text": "一共有几位同行者（含您）？",
+        "kind": "integer"
+      },
+      {
+        "question_id": "companions",
+        "text": "同行者有哪些？",
+        "kind": "multi_choice",
+        "options": [
+          {
+            "option_id": "adult",
+            "label": "成人"
+          },
+          {
+            "option_id": "child",
+            "label": "儿童"
+          },
+          {
+            "option_id": "older_adult",
+            "label": "长者"
+          }
+        ]
+      }
+    ]
+  },
+  "research_answers": {
+    "answers": [
+      {
+        "question_id": "interests",
+        "kind": "multi_choice",
+        "option_ids": [
+          "travel_route",
+          "history"
+        ]
+      },
+      {
+        "question_id": "travel_focus",
+        "kind": "single_choice",
+        "option_ids": [
+          "heritage"
+        ]
+      }
+    ]
+  },
+  "travel_preferences": {
+    "stay_days": 2,
+    "transport_modes": [
+      "transit",
+      "walking"
+    ],
+    "styles": [
+      "heritage"
+    ],
+    "intensity": "balanced",
+    "party_size": 2
+  },
+  "intake": {
+    "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+    "destination": {
+      "provider": "amap",
+      "poi_id": "EXAMPLE-QUANZHOU-001",
+      "name": "泉州开元寺",
+      "administrative": {
+        "province": "福建省",
+        "city": "泉州市",
+        "district": "鲤城区",
+        "adcode": "350502"
+      },
+      "coordinates": {
+        "crs": "gcj02",
+        "longitude": 118.578,
+        "latitude": 24.914
+      },
+      "address": "示例地址"
+    },
+    "questionnaire": {
+      "questionnaire_id": "c8d4e17a-5b90-4f07-a6de-000000000010",
+      "stage": "travel",
+      "questions": [
+        {
+          "question_id": "start_date",
+          "text": "计划哪天出发？",
+          "kind": "date"
+        },
+        {
+          "question_id": "end_date",
+          "text": "计划哪天返程？",
+          "kind": "date"
+        },
+        {
+          "question_id": "stay_days",
+          "text": "计划停留几天？",
+          "kind": "integer"
+        },
+        {
+          "question_id": "transport_modes",
+          "text": "偏好的交通方式？",
+          "kind": "multi_choice",
+          "options": [
+            {
+              "option_id": "transit",
+              "label": "公交"
+            },
+            {
+              "option_id": "walking",
+              "label": "步行"
+            },
+            {
+              "option_id": "driving",
+              "label": "驾车"
+            },
+            {
+              "option_id": "cycling",
+              "label": "骑行"
+            }
+          ]
+        },
+        {
+          "question_id": "styles",
+          "text": "偏好的旅行风格？",
+          "kind": "multi_choice",
+          "options": [
+            {
+              "option_id": "heritage",
+              "label": "文化遗产"
+            },
+            {
+              "option_id": "leisure",
+              "label": "休闲"
+            }
+          ]
+        },
+        {
+          "question_id": "intensity",
+          "text": "能够接受的行程强度？",
+          "kind": "single_choice",
+          "options": [
+            {
+              "option_id": "relaxed",
+              "label": "轻松"
+            },
+            {
+              "option_id": "balanced",
+              "label": "适中"
+            },
+            {
+              "option_id": "intensive",
+              "label": "紧凑"
+            }
+          ]
+        },
+        {
+          "question_id": "budget_cny",
+          "text": "全团预算多少元？",
+          "kind": "integer"
+        },
+        {
+          "question_id": "party_size",
+          "text": "一共有几位同行者（含您）？",
+          "kind": "integer"
+        },
+        {
+          "question_id": "companions",
+          "text": "同行者有哪些？",
+          "kind": "multi_choice",
+          "options": [
+            {
+              "option_id": "adult",
+              "label": "成人"
+            },
+            {
+              "option_id": "child",
+              "label": "儿童"
+            },
+            {
+              "option_id": "older_adult",
+              "label": "长者"
+            }
+          ]
+        }
+      ]
+    },
+    "travel_preferences": null
+  },
+  "expert_profile": {
+    "agent_id": "report_writer",
+    "name": "叶知秋",
+    "title": "首席执笔官",
+    "tier": "editorial",
+    "description": "统一报告结构并保留证据出处。",
+    "portrait": "/images/experts/report_writer.webp",
+    "fields": [
+      "报告写作"
+    ],
+    "skills": [
+      {
+        "skill_id": "report_architecture",
+        "version": 1
+      }
+    ]
+  },
+  "skill": {
+    "skill_id": "report_architecture",
+    "version": 1,
+    "title": "Report Architecture",
+    "agent_ids": [
+      "report_writer"
+    ],
+    "stage": "outline",
+    "use_when": [
+      "开始撰写旅游调研报告"
+    ],
+    "input_schema": "report_outline_input",
+    "output_schema": "report_outline",
+    "allowed_tools": [],
+    "steps": [
+      "制定全篇大纲",
+      "将专家发现分配到章节"
+    ],
+    "quality_requirements": [
+      "重要结论可回溯到证据"
+    ],
+    "budget": {
+      "model": {
+        "timeout_seconds": 60,
+        "max_attempts": 2,
+        "max_output_tokens": 2048
+      },
+      "tool_calls": 0
+    }
+  },
+  "skill_invocation": {
+    "invocation_id": "c8d4e17a-5b90-4f07-a6de-000000000014",
+    "skill": {
+      "skill_id": "report_architecture",
+      "version": 1
+    },
+    "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+    "trace_id": "c8d4e17a-5b90-4f07-a6de-000000000002",
+    "run_id": "c8d4e17a-5b90-4f07-a6de-000000000011",
+    "agent_id": "report_writer",
+    "input": {
+      "destination": "泉州开元寺",
+      "approved_topics": [
+        "历史文化"
+      ]
+    }
+  },
+  "skill_result": {
+    "invocation_id": "c8d4e17a-5b90-4f07-a6de-000000000014",
+    "status": "completed",
+    "output": {
+      "headings": [
+        "历史文化",
+        "游览与交通建议"
+      ]
+    }
+  },
+  "source": {
+    "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+    "source_id": "c8d4e17a-5b90-4f07-a6de-000000000004",
+    "source_type": "official",
+    "title": "开元寺开放信息（示例）",
+    "publisher": "示例公共服务网站",
+    "source_url": "https://example.org/heritage/temple",
+    "body_text": "开放说明请以主管部门最新公告为准。"
+  },
+  "research_events": [
+    {
+      "version": 1,
+      "event_id": "c8d4e17a-5b90-4f07-a6de-000000000030",
+      "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+      "trace_id": "c8d4e17a-5b90-4f07-a6de-000000000002",
+      "sequence": 1,
+      "occurred_at": "2026-11-15T08:30:00Z",
+      "payload": {
+        "type": "research.source.discovered",
+        "agent_id": "history_culture",
+        "run_id": "c8d4e17a-5b90-4f07-a6de-000000000003",
+        "source_id": "c8d4e17a-5b90-4f07-a6de-000000000004",
+        "source_type": "official",
+        "title": "开元寺开放信息（示例）",
+        "publisher": "示例公共服务网站",
+        "source_url": "https://example.org/heritage/temple"
+      }
+    },
+    {
+      "version": 1,
+      "event_id": "c8d4e17a-5b90-4f07-a6de-000000000031",
+      "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+      "trace_id": "c8d4e17a-5b90-4f07-a6de-000000000002",
+      "sequence": 2,
+      "occurred_at": "2026-11-15T08:30:00Z",
+      "payload": {
+        "type": "research.source.fetch",
+        "agent_id": "history_culture",
+        "run_id": "c8d4e17a-5b90-4f07-a6de-000000000003",
+        "source_id": "c8d4e17a-5b90-4f07-a6de-000000000004",
+        "attempt": 1,
+        "status": "started"
+      }
+    },
+    {
+      "version": 1,
+      "event_id": "c8d4e17a-5b90-4f07-a6de-000000000032",
+      "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+      "trace_id": "c8d4e17a-5b90-4f07-a6de-000000000002",
+      "sequence": 3,
+      "occurred_at": "2026-11-15T08:30:00Z",
+      "payload": {
+        "type": "research.source.fetch",
+        "agent_id": "history_culture",
+        "run_id": "c8d4e17a-5b90-4f07-a6de-000000000003",
+        "source_id": "c8d4e17a-5b90-4f07-a6de-000000000004",
+        "attempt": 1,
+        "status": "succeeded"
+      }
+    },
+    {
+      "version": 1,
+      "event_id": "c8d4e17a-5b90-4f07-a6de-000000000033",
+      "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+      "trace_id": "c8d4e17a-5b90-4f07-a6de-000000000002",
+      "sequence": 4,
+      "occurred_at": "2026-11-15T08:30:00Z",
+      "payload": {
+        "type": "research.source.scored",
+        "agent_id": "history_culture",
+        "run_id": "c8d4e17a-5b90-4f07-a6de-000000000003",
+        "source_id": "c8d4e17a-5b90-4f07-a6de-000000000004",
+        "evidence_id": "c8d4e17a-5b90-4f07-a6de-000000000005",
+        "assignment_id": "c8d4e17a-5b90-4f07-a6de-000000000007",
+        "policy_version": "v1",
+        "level": "high",
+        "total_score": 9
+      }
+    },
+    {
+      "version": 1,
+      "event_id": "c8d4e17a-5b90-4f07-a6de-000000000034",
+      "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+      "trace_id": "c8d4e17a-5b90-4f07-a6de-000000000002",
+      "sequence": 5,
+      "occurred_at": "2026-11-15T08:30:00Z",
+      "payload": {
+        "type": "research.source.cited",
+        "agent_id": "report_writer",
+        "run_id": "c8d4e17a-5b90-4f07-a6de-000000000011",
+        "source_id": "c8d4e17a-5b90-4f07-a6de-000000000004",
+        "report_id": "c8d4e17a-5b90-4f07-a6de-000000000006",
+        "report_version": 1,
+        "evidence_id": "c8d4e17a-5b90-4f07-a6de-000000000005"
+      }
+    },
+    {
+      "version": 1,
+      "event_id": "c8d4e17a-5b90-4f07-a6de-000000000035",
+      "task_id": "c8d4e17a-5b90-4f07-a6de-000000000001",
+      "trace_id": "c8d4e17a-5b90-4f07-a6de-000000000002",
+      "sequence": 6,
+      "occurred_at": "2026-11-15T08:30:00Z",
+      "payload": {
+        "type": "agent.usage",
+        "agent_id": "history_culture",
+        "run_id": "c8d4e17a-5b90-4f07-a6de-000000000003",
+        "usage": {
+          "call_id": "c8d4e17a-5b90-4f07-a6de-000000000012",
+          "message_event_id": "c8d4e17a-5b90-4f07-a6de-000000000013",
+          "provider": "deepseek",
+          "model": "deepseek-flash",
+          "prompt_preview": "核对景点开放信息的来源与时效。",
+          "input_tokens": 620,
+          "output_tokens": 135
+        }
+      }
+    }
+  ],
+  "route": {
+    "route_id": "c8d4e17a-5b90-4f07-a6de-000000000015",
+    "provider": "amap",
+    "mode": "walking",
+    "origin": {
+      "provider": "amap",
+      "poi_id": "EXAMPLE-QUANZHOU-002",
+      "name": "示例起点",
+      "administrative": {
+        "province": "福建省",
+        "city": "泉州市",
+        "district": "鲤城区",
+        "adcode": "350502"
+      },
+      "coordinates": {
+        "crs": "gcj02",
+        "longitude": 118.575,
+        "latitude": 24.914
+      },
+      "address": "示例地址"
+    },
+    "destination": {
+      "provider": "amap",
+      "poi_id": "EXAMPLE-QUANZHOU-001",
+      "name": "泉州开元寺",
+      "administrative": {
+        "province": "福建省",
+        "city": "泉州市",
+        "district": "鲤城区",
+        "adcode": "350502"
+      },
+      "coordinates": {
+        "crs": "gcj02",
+        "longitude": 118.578,
+        "latitude": 24.914
+      },
+      "address": "示例地址"
+    },
+    "fetched_at": "2026-11-15T08:30:00Z",
+    "distance_m": 430,
+    "duration_seconds": 360
+  },
+  "social": {
+    "platform": "xiaohongshu",
+    "provider": "approved_sample",
+    "post_id": "example-post",
+    "sample_size": 3,
+    "evidence": {
+      "evidence_id": "c8d4e17a-5b90-4f07-a6de-000000000016",
+      "source_type": "social",
+      "source_title": "泉州徒步反馈（示例）",
+      "source_locator": "合成用例 sample-3",
+      "retrieved_at": "2026-11-15T08:30:00Z",
+      "excerpt": "部分旅客在节假日提到排队；样本规模有限。"
+    }
+  }
+}

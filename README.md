@@ -149,4 +149,4 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 
 证据评分、专家反思和离线评测的共享 Schema 与接入约定见 [Phase 3 公共接口](docs/phase-3-contract.md)。
 
-Research Browser、Agent Hover 指标和研究监控可视化列入 Phase 4。 [产品范围](PRD.md#phase-4)
+Phase 4 已定义目的地确认、动态问卷、路线规划、专家 Skills、Research Browser 和社交资料接入的开发契约。 [产品范围](PRD.md#phase-4) · [公共接口](docs/phase-4-contract.md) · [架构与验收](docs/phase-4-architecture.md)

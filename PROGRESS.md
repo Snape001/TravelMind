@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## Phase 4 · Step 0 公共契约
+
+- 冻结目的地、动态问卷、路线偏好、专家档案与 Skills、Research Browser 事件、模型用量和社交证据。交付 Pydantic Schema、共享合成 Fixture 和独立类型导出。现有路由、AgentEvent v1、六态任务机及 Worker 仍走 Phase 3。 [公共接口](docs/phase-4-contract.md)
+- 确认高德 POI、行政区划和 GCJ-02 坐标映射，保留 `travel_planning` Agent ID 给陆知行。浏览器扩展使用独立 SSE 地址及游标，沿用任务归属和会话复查。真实路线、供应商 Usage 和授权社交样本将在各自功能线验收。
+- 后续从本提交创建独立 Worktree。A 问卷、C Skills 与报告、D 桌面 UI、E 社交 PoC 并行，B 依赖已冻结的目的地模型，联调时复用 A 的高德客户端。按 A → B → C → D → E 集成，再进行真实浏览器和外部服务验收。高德凭据及 MediaCrawler 许可与授权要求见 [架构和验收标准](docs/phase-4-architecture.md)。
+- PostgreSQL 17 上 208 项后端测试通过，其中 26 项为新增契约用例。27 项前端测试、Ruff、ESLint、TypeScript 和 Alembic 一致性通过。独立 Phase 4 类型生成后通过 TypeScript 检查，现有 FastAPI OpenAPI 重新生成的前端类型与仓库一致。
+- **交付提交**　`feat: freeze Phase 4 public contracts`。
+
 ## Phase 3 · 发布验收（2026-11-15）
 
 - 删除对旧提交有硬性依赖的基线采集脚本，保留可重算的候选快照、独立判读、基线报告和复现测试。离线评测与 Runtime 共用反思轮数及独立来源判定，补充同域名不同网页的冲突回归。
