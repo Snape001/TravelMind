@@ -1,5 +1,12 @@
 # TravelMind 开发进度
 
+## Phase 3 · Evidence Quality（2026-11-15）
+
+- 实现六类来源的 0–100 加权筛选。返回权威性、时效、相关性、完整性和独立性依据，以及 A/B/C/D 对应的使用、交叉核实、补查或排除动作。原始 Evidence ID、来源与摘录随结果保留。[接入与权重说明](docs/evidence-quality.md)
+- 优先使用确定性规则，可接入按 Evidence ID 提供的归一化检索分数。按需批量调用既有结构化模型，逐字校验摘录并缓存有效判断。完整评分卡沿用冻结的等权 `EvidenceQuality` v1。启用语义评分和调度后续检索由调用方接入。
+- 临时 PostgreSQL 14 从空库迁移到 `0003` 后通过 146 项后端测试，其中 28 项为新增评分用例。Ruff 与 Alembic 一致性检查通过。可选模型接入通过测试替身验证批量、校验和缓存行为。
+- **交付提交**　`codex/evidence-quality` 基于 `aedb2b7`。提交 `feat: implement evidence quality screening`。
+
 ## Phase 3 · 公共接口基线（2026-11-15）
 
 - 冻结 `EvidenceQuality`、`ReflectionState`、`ReflectionAction`、`ExpertResearchResult` 和 `EvaluationCase`。评分附规则依据或原文摘录，绑定证据、分工、评分版本和时间上下文。反思契约定义四种状态、补查策略和停止条件，离线评测以参考发现及证据快照为基线。[架构及接口](docs/phase-3-contract.md)
