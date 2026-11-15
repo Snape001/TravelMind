@@ -7,7 +7,13 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from travelmind.db.models import DEFAULT_MAX_ATTEMPTS, ClarificationRow, EventRow, TaskRow
+from travelmind.db.models import (
+    DEFAULT_MAX_ATTEMPTS,
+    ClarificationRow,
+    EventRow,
+    IntakeRow,
+    TaskRow,
+)
 from travelmind.schemas.api import PendingClarification, TaskRead
 from travelmind.schemas.domain import ResearchBrief
 from travelmind.schemas.events import AgentEvent, EventPayload, TaskStatusEvent
@@ -26,16 +32,19 @@ async def create_task(
     *,
     owner_id: UUID,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+    from_destination: bool = False,
 ) -> tuple[TaskRow, bool]:
     body = brief.model_dump(mode="json")
     now = func.clock_timestamp()
     status = next_task_status(None, "create")
+    operation = "create_from_destination" if from_destination else "create_task"
     command = (
         insert(TaskRow)
         .values(
             task_id=uuid4(),
             trace_id=uuid4(),
             owner_id=owner_id,
+            create_operation=operation,
             idempotency_key=idempotency_key,
             max_attempts=max_attempts,
             brief=body,
@@ -56,17 +65,32 @@ async def create_task(
             existing = (
                 await session.scalars(
                     select(TaskRow).where(
-                        TaskRow.owner_id == owner_id, TaskRow.idempotency_key == idempotency_key
+                        TaskRow.owner_id == owner_id,
+                        TaskRow.create_operation == operation,
+                        TaskRow.idempotency_key == idempotency_key,
                     )
                 )
             ).one()
-            if ResearchBrief.model_validate(existing.brief) != brief:
+            if from_destination:
+                intake = await session.get(IntakeRow, existing.task_id)
+                matches = intake is not None and intake.original_destination == brief.destination
+            else:
+                matches = ResearchBrief.model_validate(existing.brief) == brief
+            if not matches:
                 raise IdempotencyConflict
             return existing, False
 
         store_event(
             session, task, 1, TaskStatusEvent(type="task.status", status=status), task.created_at
         )
+        if from_destination:
+            session.add(
+                IntakeRow(
+                    task_id=task.task_id,
+                    original_destination=brief.destination,
+                    search_text=brief.destination,
+                )
+            )
         return task, True
 
 

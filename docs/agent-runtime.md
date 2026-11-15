@@ -19,7 +19,7 @@ Worker 使用 `EvidenceQualityScorer` 为已入库的证据评分。每位专家
 - 分工开始时保存 UTC 参考时间。开放时间、票价、预约和交通等时效敏感主题使用 365 天窗口。各轮复用同一参考时间和窗口。
 - 各轮快照保存在 `reflection_rounds`，追加检索的决策、预算和质询名额先写入 Checkpoint，再派发。续跑复用已提交的结果。专家首轮检索前发出开始事件，终态结果存入 `expert_research` 时发出结束事件。同一分工的各轮共用运行 ID。
 
-新任务默认用 `durable-v2`，存量任务按 Checkpoint 记录的版本续跑。部署前先停止旧 Worker，再启动新版。 [Worker 恢复与投影](durable-runtime.md)
+结构化问卷的新任务使用 `durable-v3`，现有简报入口默认使用 `durable-v2`。已选路线的任务由陆知行查询高德并生成地图快照。存量任务按 Checkpoint 记录的版本续跑。部署前先停止旧 Worker，再启动新版。 [Worker 恢复与投影](durable-runtime.md) · [地图查询](phase-4-travel-planning.md#地图查询)
 
 ## 执行与持久化
 

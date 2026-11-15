@@ -161,7 +161,28 @@ Set-Location backend
 & .\.venv\Scripts\python.exe -m travelmind.research.check_amap
 ```
 
-该脚本可独立验证 Web 服务凭据。Phase 4 工作台地图和任务路线的端到端验收在功能分支接线后进行。
+该脚本可独立验证 Web 服务凭据。结构化问卷选中旅游路线后，默认 Worker 调度陆知行，并随已审核报告发布地图数据。 [Schema 与查询接口](docs/phase-4-travel-planning.md#地图查询)
+
+### Docker 更新 API 与 Worker
+
+从项目根目录启动或更新本地 OIDC 栈。脚本会重建镜像并运行数据库迁移。
+
+```powershell
+.\dev\local-oidc\stack.ps1 start
+```
+
+如果本地栈正在运行，可以单独升级后端。先停旧 Worker，重建后端并迁移，再重建 API 和 Worker 容器，让 Docker Compose 重新读取 `backend/.env`。
+
+```powershell
+$travelCompose = @('--env-file', '.artifacts/local-oidc/.env', '-f', 'dev/local-oidc/compose.yaml')
+docker compose @travelCompose stop worker
+docker compose @travelCompose build migrate
+docker compose @travelCompose run --rm --no-deps migrate
+docker compose @travelCompose up -d --no-deps --force-recreate api worker
+.\dev\local-oidc\stack.ps1 check
+```
+
+`api` 和 `worker` 共用 `backend/.env`。`frontend` 通过同源代理读取公开 JS Key。只改密钥时直接重建相应容器即可。
 
 ## 开发验证
 

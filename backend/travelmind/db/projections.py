@@ -4,16 +4,18 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from travelmind.db.evidence import save_evidence
 from travelmind.db.models import (
     AgentRunRow,
     ClarificationRow,
     EventRow,
     EvidenceRow,
     ReportRow,
+    TaskMapRow,
     TaskRow,
 )
 from travelmind.db.tasks import append_event, store_event
-from travelmind.schemas.agents import ErrorInfo
+from travelmind.schemas.agents import ErrorInfo, ResearchResult
 from travelmind.schemas.api import ReportRead
 from travelmind.schemas.domain import TaskStatus
 from travelmind.schemas.events import (
@@ -23,8 +25,14 @@ from travelmind.schemas.events import (
     ReportReviewedEvent,
     TaskStatusEvent,
 )
+from travelmind.schemas.map_data import MapData
 from travelmind.schemas.task_control import InvalidTaskTransition, next_task_status
-from travelmind.schemas.worker import ContinueCheckpoint, ProjectionBatch, ProjectionConflict
+from travelmind.schemas.worker import (
+    ContinueCheckpoint,
+    MapProjectionBatch,
+    ProjectionBatch,
+    ProjectionConflict,
+)
 
 
 def release_lease(task: TaskRow) -> None:
@@ -59,6 +67,8 @@ async def apply_batch(
         ).model_dump(mode="json")
 
     await _write_resources(session, task, batch)
+    if isinstance(batch, MapProjectionBatch):
+        await _write_task_map(session, task, batch)
     await _write_events(session, task, batch, now)
     if transition is None:
         return
@@ -136,6 +146,31 @@ async def _write_resources(session: AsyncSession, task: TaskRow, batch: Projecti
         session.add(ReportRow(**values, content=report.content.model_dump(mode="json")))
 
 
+async def _write_task_map(session: AsyncSession, task: TaskRow, batch: MapProjectionBatch) -> None:
+    snapshot = batch.map_data
+    if snapshot.task_id != task.task_id or snapshot.report_id is not None:
+        raise ProjectionConflict("map snapshot does not belong to this task")
+    references = {entry.evidence_id for entry in snapshot.routes if entry.evidence_id is not None}
+    sources = {
+        item.evidence_id: item
+        for run in batch.runs
+        if run.agent_id == "travel_planning" and isinstance(run.result, ResearchResult)
+        for item in run.result.evidence
+        if item.source_type == "map"
+    }
+    if set(sources) != references:
+        raise ProjectionConflict("map snapshot evidence differs from the travel result")
+    saved = await save_evidence(session, task.task_id, sources.values())
+    if {item.evidence_id: item for item in saved} != sources:
+        raise ProjectionConflict("map evidence changed during persistence")
+    payload = snapshot.model_dump(mode="json")
+    row = await session.get(TaskMapRow, task.task_id)
+    if row is None:
+        session.add(TaskMapRow(task_id=task.task_id, data=payload))
+    elif row.data != payload:
+        raise ProjectionConflict("published task map cannot be replaced")
+
+
 async def _write_events(
     session: AsyncSession, task: TaskRow, batch: ProjectionBatch, now: datetime
 ) -> None:
@@ -173,5 +208,14 @@ async def _write_events(
                 raise ProjectionConflict("referenced report is missing from the task")
             if isinstance(payload, ReportReadyEvent) and report.version != payload.version:
                 raise ProjectionConflict("report version does not match")
+            if isinstance(payload, ReportReadyEvent):
+                task_map = await session.get(TaskMapRow, task.task_id)
+                if task_map is not None:
+                    snapshot = MapData.model_validate(
+                        {**task_map.data, "report_id": payload.report_id}
+                    ).model_dump(mode="json")
+                    if report.map_data is not None and report.map_data != snapshot:
+                        raise ProjectionConflict("published report map cannot be replaced")
+                    report.map_data = snapshot
         sequence += 1
         store_event(session, task, sequence, payload, now, projection_key=event.projection_key)
