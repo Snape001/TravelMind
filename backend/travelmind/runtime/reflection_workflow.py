@@ -11,7 +11,10 @@ from travelmind.runtime import experts, planning, reflection
 from travelmind.runtime.execution import RunError, emit, result_identity, run_agent
 from travelmind.runtime.model import StructuredModel
 from travelmind.runtime.reflection import round_key
+from travelmind.runtime.research_telemetry import current_telemetry
 from travelmind.runtime.retrieval import research_query
+from travelmind.runtime.skills import SkillRegistry
+from travelmind.runtime.skills.research import research_skill
 from travelmind.runtime.state import ResearchState, run_mapping
 from travelmind.schemas.agents import AgentFailure, AgentInput, ResearchResult
 from travelmind.schemas.domain import Assignment
@@ -106,10 +109,12 @@ class ReflectionWorkflow:
         config: reflection.ReflectionConfig,
         model: StructuredModel,
         retrieve: experts.EvidenceRetriever | None,
+        skills: SkillRegistry | None = None,
     ):
         self.config = config
         self.model = model
         self.retrieve = retrieve
+        self.skills = skills
 
     async def _score(self, work: reflection.RoundWork, result: reflection.RoundResult) -> None:
         assert self.config.score is not None
@@ -132,12 +137,15 @@ class ReflectionWorkflow:
         limit = size * reflection.MAX_QUALITY_BATCHES
         for start in range(0, min(len(pending), limit), size):
             try:
-                result.quality += await reflection.score_batch(
+                cards = await reflection.score_batch(
                     self.config.score,
                     work.request.model_copy(update={"evidence": pending[start : start + size]}),
                     as_of=work.as_of,
                     max_age_days=work.max_age_days,
                 )
+                result.quality += cards
+                if telemetry := current_telemetry.get():
+                    await telemetry.scored(work.request, cards)
             except RunError:
                 continue
         if not result.quality:
@@ -253,20 +261,32 @@ class ReflectionWorkflow:
                     )
                 if request.evidence:
                     retained = [item.finding for item in questions if item.state == "sufficient"]
-                    candidates = await experts.find(
-                        self.model,
-                        request,
-                        f"{planning.EXPERTS[request.agent_id]} 针对分工和目标问题提出候选结论。"
-                        "只核验 brief 关心的问题。不得因材料中出现其他数字或叙述而扩张任务。"
-                        "保留有证据支持的已核实结论；标出有争议或缺少证据的问题。",
-                        social_analysis=request.agent_id == "social_sentiment",
-                        context={
-                            "target_questions": work.action.target_questions if work.action else [],
-                            "verified_findings": [
-                                item.model_dump(mode="json") for item in retained
-                            ],
-                        },
-                    )
+                    focus = work.action.target_questions if work.action else []
+                    if self.skills is not None:
+                        skill_request = request.model_copy(
+                            update={"prior_findings": [*retained, *request.prior_findings]}
+                        )
+                        candidates = await research_skill(
+                            self.skills,
+                            self.model,
+                            skill_request,
+                            focus=focus,
+                        )
+                    else:
+                        candidates = await experts.find(
+                            self.model,
+                            request,
+                            f"{planning.EXPERTS[request.agent_id]} 针对分工和目标问题提出候选结论。"
+                            "只核验 brief 关心的问题。不得因材料中出现其他数字或叙述而扩张任务。"
+                            "保留有证据支持的已核实结论；标出有争议或缺少证据的问题。",
+                            social_analysis=request.agent_id == "social_sentiment",
+                            context={
+                                "target_questions": focus,
+                                "verified_findings": [
+                                    item.model_dump(mode="json") for item in retained
+                                ],
+                            },
+                        )
                     result.questions = await reflection.assess(
                         self.model,
                         request,

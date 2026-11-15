@@ -11,10 +11,21 @@ from pydantic import BaseModel
 
 from travelmind.config import Settings
 from travelmind.runtime.execution import InvalidOutput
+from travelmind.runtime.research_telemetry import current_telemetry
 from travelmind.schemas.agents import AgentInput
 
 logger = logging.getLogger(__name__)
 Response = TypeVar("Response", bound=BaseModel)
+
+PROMPT_PREVIEWS = {
+    "QuestionnaireDraft": "生成目的地研究方向和可选追问。",
+    "PlanDraft": "按需求选择专家并安排调研分工。",
+    "Findings": "根据来源核对分工中的发现与证据缺口。",
+    "ReportOutline": "根据分工成果规划报告章节。",
+    "EvidenceSynthesis": "按章节整合可引用证据及争议。",
+    "ReportDraft": "撰写或编辑带引用的旅游调研报告。",
+    "Review": "独立审核报告事实、证据和覆盖范围。",
+}
 
 
 class StructuredModel(Protocol):
@@ -99,20 +110,34 @@ def create_structured_model(chat: BaseChatModel, *, model_name: str) -> Structur
                 type(exc).__name__,
             )
             raise InvalidOutput("provider returned an invalid chat response") from exc
-        if message.response_metadata.get("finish_reason") not in (None, "stop"):
-            raise InvalidOutput("provider did not complete the structured response")
         usage = message.usage_metadata or {}
+        reported = message.response_metadata.get("model_name") or message.response_metadata.get(
+            "model"
+        )
+        actual_model = (
+            reported.strip() if isinstance(reported, str) and reported.strip() else model_name
+        )
+        if telemetry := current_telemetry.get():
+            await telemetry.usage(
+                request,
+                model=actual_model,
+                prompt_preview=PROMPT_PREVIEWS.get(response_type.__name__),
+                input_tokens=usage.get("input_tokens"),
+                output_tokens=usage.get("output_tokens"),
+            )
         logger.info(
             "model.response task_id=%s trace_id=%s run_id=%s model=%s "
             "duration_ms=%d input_tokens=%s output_tokens=%s",
             request.task_id,
             request.trace_id,
             request.run_id,
-            model_name,
+            actual_model,
             (perf_counter() - started) * 1000,
             usage.get("input_tokens"),
             usage.get("output_tokens"),
         )
+        if message.response_metadata.get("finish_reason") not in (None, "stop"):
+            raise InvalidOutput("provider did not complete the structured response")
         return response_type.model_validate_json(message.text)
 
     return invoke

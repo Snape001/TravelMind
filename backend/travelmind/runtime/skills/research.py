@@ -1,3 +1,4 @@
+from travelmind.research.social.skills import SOCIAL_SCOPE, SOCIAL_SKILLS, SocialSkillsResult
 from travelmind.runtime.execution import InvalidOutput, RunError
 from travelmind.runtime.experts import EvidenceRetriever, Findings, retrieve_evidence
 from travelmind.runtime.model import StructuredModel
@@ -55,7 +56,7 @@ async def research_skill(
     if not request.assignment or request.assignment.agent_id != request.agent_id:
         raise RunError("SKILL_NOT_AVAILABLE", "专业技能需要当前专家的有效分工")
     stage = "plan_route" if request.agent_id == "travel_planning" else "research"
-    subject = ResearchInput(round_focus=focus or [])
+    subject = ResearchInput(round_focus=[item[:200] for item in (focus or [])[:10]])
     session = registry.session(request, stage)
     sources = {item.evidence_id: item for item in request.evidence}
     known = set(sources)
@@ -83,7 +84,22 @@ async def research_skill(
         if any(set(item.evidence_ids) - source_ids for item in findings.findings):
             raise InvalidOutput("finding cites unknown evidence")
 
-    result = await session.run(model, subject, Findings, validate=check)
+    if request.agent_id == "social_sentiment" and any(
+        item.source_type == "social" for item in evidence
+    ):
+
+        async def social_model(request, instructions, _output, *, context):
+            results = await model(
+                request,
+                instructions + "\n" + SOCIAL_SCOPE + SOCIAL_SKILLS,
+                SocialSkillsResult,
+                context=context,
+            )
+            return Findings(findings=results.findings())
+
+        result = await session.run(social_model, subject, Findings, validate=check)
+    else:
+        result = await session.run(model, subject, Findings, validate=check)
     return ResearchResult(
         run_id=request.run_id,
         agent_id=request.agent_id,

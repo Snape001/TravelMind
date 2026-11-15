@@ -10,6 +10,7 @@ from langgraph.types import Command
 from travelmind.runtime.controls import (
     GRAPH_VERSION,
     REFLECTION_GRAPH_VERSION,
+    SKILLS_GRAPH_VERSION,
     TRAVEL_GRAPH_VERSION,
 )
 from travelmind.runtime.experts import EvidenceRetriever
@@ -18,6 +19,8 @@ from travelmind.runtime.journal import ControlContext
 from travelmind.runtime.model import StructuredModel
 from travelmind.runtime.projection import batches
 from travelmind.runtime.reflection import ReflectionConfig
+from travelmind.runtime.research_telemetry import ResearchTelemetry, current_telemetry
+from travelmind.runtime.skills import SkillRegistry
 from travelmind.runtime.travel.planner import TravelPlanner
 from travelmind.runtime.workflow import build_research_graph
 from travelmind.schemas.agents import ErrorInfo
@@ -47,6 +50,8 @@ class DurableWorker:
         reflection: ReflectionConfig | None = None,
         intake: IntakeWorker | None = None,
         travel_planner: TravelPlanner | None = None,
+        skills: SkillRegistry | None = None,
+        telemetry: Callable[[TaskClaim], ResearchTelemetry] | None = None,
         lease_seconds: int = 45,
         poll_seconds: float = 2,
         worker_id: UUID | None = None,
@@ -60,6 +65,8 @@ class DurableWorker:
         self.reflection = reflection
         self.intake = intake
         self.travel_planner = travel_planner
+        self.skills = skills
+        self.telemetry = telemetry
         self.lease_seconds = lease_seconds
         self.poll_seconds = poll_seconds
         self.worker_id = worker_id or uuid4()
@@ -114,9 +121,17 @@ class DurableWorker:
             await wait_for_work(self.poll_seconds)
 
     async def execute(self, claim: TaskClaim) -> None:
-        """Reconcile the last checkpoint before issuing any further graph work."""
         # Validate even if a store constructs its claim without running the schema validators.
         claim = TaskClaim.model_validate(claim.model_dump())
+        telemetry = self.telemetry(claim) if self.telemetry and claim.execution_permitted else None
+        token = current_telemetry.set(telemetry)
+        try:
+            await self._execute(claim)
+        finally:
+            current_telemetry.reset(token)
+
+    async def _execute(self, claim: TaskClaim) -> None:
+        """Reconcile the last checkpoint before issuing any further graph work."""
         model = self.model
         intake = None
         if self.intake is not None:
@@ -133,17 +148,18 @@ class DurableWorker:
             REFLECTION_GRAPH_VERSION if self.reflection and self.reflection.score else GRAPH_VERSION
         )
         if intake is not None and self.travel_planner is not None and self.reflection is not None:
-            version = TRAVEL_GRAPH_VERSION
+            version = SKILLS_GRAPH_VERSION if self.skills is not None else TRAVEL_GRAPH_VERSION
         if previous is not None:
             version = previous.metadata.get("graph_version")
-        if version not in (GRAPH_VERSION, REFLECTION_GRAPH_VERSION, TRAVEL_GRAPH_VERSION):
+        typed = version in (TRAVEL_GRAPH_VERSION, SKILLS_GRAPH_VERSION)
+        if not typed and version not in (GRAPH_VERSION, REFLECTION_GRAPH_VERSION):
             await self._failure(lease, "CHECKPOINT_VERSION_MISMATCH", retryable=False)
             return
         reflection = None
-        if version == TRAVEL_GRAPH_VERSION and intake is None:
+        if typed and intake is None:
             await self._failure(lease, "CHECKPOINT_INTAKE_MISSING", retryable=False)
             return
-        if version in (REFLECTION_GRAPH_VERSION, TRAVEL_GRAPH_VERSION):
+        if typed or version == REFLECTION_GRAPH_VERSION:
             # This configuration also compiles the graph for read-only reconciliation.
             reflection = self.reflection or ReflectionConfig(model_id="unavailable")
         config["configurable"]["graph_version"] = version
@@ -152,8 +168,9 @@ class DurableWorker:
             checkpointer=saver,
             retrieve=self.retrieve(lease) if claim.execution_permitted and self.retrieve else None,
             reflection=reflection,
-            travel_intake=intake if version == TRAVEL_GRAPH_VERSION else None,
+            travel_intake=intake if typed else None,
             travel_planner=self.travel_planner,
+            skills=(self.skills or SkillRegistry()) if version == SKILLS_GRAPH_VERSION else None,
         )
         force_pause = False
 

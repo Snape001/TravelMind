@@ -25,26 +25,30 @@ class SearchRequest(Contract):
 class ToolResult(Contract):
     evidence: list[Evidence] = Field(default_factory=list)
     errors: list[ProviderError] = Field(default_factory=list)
+    body_text: str | None = None
 
 
 class SearchAdapter(Protocol):
     async def search(self, query: str, limit: int) -> list[Evidence]: ...
 
 
-async def _collect(operation: Awaitable[list[Evidence] | Evidence]) -> ToolResult:
+async def _collect(operation: Awaitable[list[Evidence]]) -> ToolResult:
     try:
         items = await operation
     except ProviderFailure as exc:
         return ToolResult(errors=[exc.error])
-    return ToolResult(evidence=[items] if isinstance(items, Evidence) else items)
+    return ToolResult(evidence=items)
 
 
 class ResearchEngine:
     """Async tools using a caller-owned HTTP client and the shared Evidence contract."""
 
     def __init__(
-        self, client: httpx.AsyncClient, settings: Settings,
-        *, social_client: httpx.AsyncClient | None = None,
+        self,
+        client: httpx.AsyncClient,
+        settings: Settings,
+        *,
+        social_client: httpx.AsyncClient | None = None,
     ):
         timeout = settings.research_timeout_seconds
         self.search_adapters: dict[SearchProvider, SearchAdapter] = {
@@ -62,19 +66,26 @@ class ResearchEngine:
         cache_path = settings.social_research_cache_path
         if settings.social_research_provider == "mediacrawler_export" and (token or cache_path):
             self.social = SocialResearchAdapter(
-                social_client or client, str(settings.social_research_url),
-                token.get_secret_value() if token else "", settings.social_research_timeout_seconds,
+                social_client or client,
+                str(settings.social_research_url),
+                token.get_secret_value() if token else "",
+                settings.social_research_timeout_seconds,
                 cache_path=cache_path,
             )
 
     async def search_social(
-        self, keywords: list[str], *,
-        platforms: tuple[Platform, ...] | None = None, timeout: float | None = None,
+        self,
+        keywords: list[str],
+        *,
+        platforms: tuple[Platform, ...] | None = None,
+        timeout: float | None = None,
     ) -> ToolResult:
         if self.social is None:
             return ToolResult()
         items, errors = await self.social.search(
-            keywords, self.social_platforms if platforms is None else platforms, timeout=timeout,
+            keywords,
+            self.social_platforms if platforms is None else platforms,
+            timeout=timeout,
         )
         return ToolResult(evidence=items, errors=errors)
 
@@ -106,4 +117,8 @@ class ResearchEngine:
         target = HttpUrl(url)
         if not is_public_target(target):
             raise ValueError("scrape requires a public HTTP(S) URL without credentials")
-        return await _collect(self.scraper.scrape(target))
+        try:
+            evidence, body = await self.scraper.scrape(target)
+        except ProviderFailure as exc:
+            return ToolResult(errors=[exc.error])
+        return ToolResult(evidence=[evidence], body_text=body)

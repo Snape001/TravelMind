@@ -141,7 +141,7 @@ class FirecrawlScrape:
     def __init__(self, http: ProviderClient):
         self.http = http
 
-    async def scrape(self, url: HttpUrl) -> Evidence:
+    async def scrape(self, url: HttpUrl) -> tuple[Evidence, str]:
         payload = await self.http.request(
             "POST",
             "https://api.firecrawl.dev/v2/scrape",
@@ -174,7 +174,7 @@ class FirecrawlScrape:
         final_url = source_url(reported_url) if reported_url is not None else url
         if final_url is None:
             raise invalid_response("firecrawl")
-        return Evidence(
+        evidence = Evidence(
             evidence_id=uuid4(),
             source_type=web_source_type(final_url),
             source_title=text_value(metadata.get("title")) or str(final_url),
@@ -186,3 +186,4 @@ class FirecrawlScrape:
             retrieved_at=datetime.now(UTC),
             excerpt=markdown[:EXCERPT_LIMIT].rstrip(),
         )
+        return evidence, markdown[:50000].rstrip()

@@ -10,7 +10,7 @@ from redis.asyncio import Redis
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, TimeoutError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from travelmind.api import amap, auth, health, intake, tasks
+from travelmind.api import amap, auth, experts, health, intake, tasks
 from travelmind.api.oidc import AuthSettings, OidcClient
 from travelmind.config import Settings, get_settings
 from travelmind.db.connection import create_database_engine
@@ -62,6 +62,7 @@ def create_app(
     app.include_router(amap.router)
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(experts.router)
     app.include_router(intake.router)
     app.include_router(tasks.router)
 

@@ -1,5 +1,4 @@
 import asyncio
-from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -175,6 +174,14 @@ def test_writer_uses_topic_outline_then_synthesis_writing_and_edit_with_independ
     draft_body = "沿遗产点步行能把古代港口活动与街区空间联系起来。"
     edited_body = draft_body + "先选一个主点，停留时间按个人兴趣预留。"
     revisions = 0
+    checked_revisions = []
+    finalize = editorial.finalize_revision
+
+    def check_revision(request, contributor_ids, **kwargs):
+        assert request.draft.sections[0].body == edited_body
+        assert request.draft.sections[0].evidence_ids == [evidence.evidence_id]
+        checked_revisions.append(request.run_id)
+        return finalize(request, contributor_ids, **kwargs)
 
     async def model(request, instructions, output, *, context=None):
         nonlocal revisions
@@ -231,10 +238,13 @@ def test_writer_uses_topic_outline_then_synthesis_writing_and_edit_with_independ
         async def retrieve(_):
             return [evidence]
 
-        monkeypatch.setattr(editorial, "write", partial(editorial.write, skills=registry))
-        monkeypatch.setattr(editorial, "review", partial(editorial.review, skills=registry))
-        state = await build_research_graph(model, retrieve=retrieve).ainvoke(research_input())
+        monkeypatch.setattr(editorial, "finalize_revision", check_revision)
+        state = await build_research_graph(model, retrieve=retrieve, skills=registry).ainvoke(
+            research_input()
+        )
         assert state["status"] == "completed"
+        assert state["review"].decision == "approved"
+        assert state["review_round"] == (2 if revise else 1)
         assert state["draft"].sections[0].evidence_ids == [evidence.evidence_id]
         assert state["draft"].sections[0].author_agent_ids == ["history_culture"]
 
@@ -246,7 +256,8 @@ def test_writer_uses_topic_outline_then_synthesis_writing_and_edit_with_independ
         ("writer", "ReportDraft"),
         ("reviewer", "Review"),
     ]
-    assert recorder == round_calls * (2 if revise else 1)
+    assert recorder == round_calls + (round_calls[:-1] if revise else [])
+    assert len(checked_revisions) == int(revise)
 
 
 def test_outline_and_synthesis_preserve_known_gaps_and_source_boundaries():

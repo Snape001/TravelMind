@@ -14,6 +14,7 @@ from travelmind.db.models import (
     TaskMapRow,
     TaskRow,
 )
+from travelmind.db.research_browser import publish_citations
 from travelmind.db.tasks import append_event, store_event
 from travelmind.schemas.agents import ErrorInfo, ResearchResult
 from travelmind.schemas.api import ReportRead
@@ -217,5 +218,6 @@ async def _write_events(
                     if report.map_data is not None and report.map_data != snapshot:
                         raise ProjectionConflict("published report map cannot be replaced")
                     report.map_data = snapshot
+                await publish_citations(session, report, task.trace_id, payload)
         sequence += 1
         store_event(session, task, sequence, payload, now, projection_key=event.projection_key)

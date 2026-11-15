@@ -12,6 +12,7 @@ from travelmind.runtime.journal import ControlContext, control_node, journal_nod
 from travelmind.runtime.model import StructuredModel
 from travelmind.runtime.reflection import ReflectionConfig
 from travelmind.runtime.reflection_workflow import ReflectionWorkflow, initial_work
+from travelmind.runtime.skills import SkillRegistry
 from travelmind.runtime.state import (
     ResearchInput,
     ResearchState,
@@ -132,11 +133,14 @@ def build_research_graph(
     reflection: ReflectionConfig | None = None,
     travel_intake: ResearchIntakeContext | None = None,
     travel_planner: TravelPlanner | None = None,
+    skills: SkillRegistry | None = None,
 ):
     """Compile the research workflow. Custom stream items are AgentEvent payloads."""
     run_budget = budget or RunBudget()
     durable = checkpointer is not None
-    reflection_flow = ReflectionWorkflow(reflection, model, retrieve) if reflection else None
+    reflection_flow = (
+        ReflectionWorkflow(reflection, model, retrieve, skills) if reflection else None
+    )
     if travel_intake is not None and reflection_flow is None:
         raise ValueError("typed intake graph requires reflection configuration")
 
@@ -397,6 +401,7 @@ def build_research_graph(
                 state.get("review"),
                 experts=assessments,
                 verified_map=verified_map_evidence(state),
+                skills=skills,
             ),
         )
         if isinstance(result, AgentFailure):
@@ -450,6 +455,7 @@ def build_research_graph(
                 contributor_ids,
                 experts=assessments,
                 verified_map=verified_map,
+                skills=skills,
             )
 
         updates = {}

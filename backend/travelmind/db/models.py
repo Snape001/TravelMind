@@ -301,3 +301,39 @@ class TaskMapRow(Base):
         ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
     )
     data: Mapped[dict] = mapped_column(JSONB)
+
+
+class ResearchSourceRow(Base):
+    __tablename__ = "research_sources"
+    __table_args__ = (
+        UniqueConstraint("task_id", "evidence_id", name="uq_research_source_evidence"),
+    )
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
+    )
+    source_id: Mapped[UUID] = mapped_column(primary_key=True)
+    evidence_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("evidence.evidence_id", ondelete="SET NULL")
+    )
+    data: Mapped[dict] = mapped_column(JSONB)
+    fetch_attempt: Mapped[int] = mapped_column(server_default="0")
+
+
+class ResearchEventRow(Base):
+    __tablename__ = "research_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "trace_id"],
+            ["research_tasks.task_id", "research_tasks.trace_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("sequence BETWEEN 1 AND 9007199254740991", name="ck_research_events_seq"),
+    )
+
+    task_id: Mapped[UUID] = mapped_column(primary_key=True)
+    sequence: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    trace_id: Mapped[UUID]
+    event_id: Mapped[UUID] = mapped_column(unique=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    payload: Mapped[dict] = mapped_column(JSONB)

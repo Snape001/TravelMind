@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from time import monotonic
 from typing import Annotated
 from uuid import UUID
@@ -10,6 +10,7 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from travelmind.api.dependencies import Sessions, SignedIn, WriteUser, api_error
 from travelmind.config import WAKE_CHANNEL
@@ -21,7 +22,8 @@ from travelmind.db.control import (
     TaskNotFound,
     apply_command,
 )
-from travelmind.db.models import EvidenceRow, ReportRow, TaskMapRow, TaskRow
+from travelmind.db.models import EvidenceRow, ReportRow, ResearchSourceRow, TaskMapRow, TaskRow
+from travelmind.db.research_browser import research_events_after
 from travelmind.db.tasks import (
     IdempotencyConflict,
     create_task,
@@ -40,7 +42,8 @@ from travelmind.schemas.api import (
 from travelmind.schemas.domain import ResearchBrief
 from travelmind.schemas.events import AgentEvent, EventCursor
 from travelmind.schemas.map_data import MapData, MapIssue
-from travelmind.schemas.phase4_sources import TravelRoutesRead
+from travelmind.schemas.phase4_events import ResearchBrowserEvent
+from travelmind.schemas.phase4_sources import ResearchSourceRead, TravelRoutesRead
 from travelmind.schemas.task_control import InvalidTaskTransition
 
 logger = logging.getLogger(__name__)
@@ -57,6 +60,9 @@ not_found = {404: {"model": ErrorResponse}}
 task_location = {"Location": {"description": "Task resource URL", "schema": {"type": "string"}}}
 sse_error_content = {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
 SSE_SESSION_CHECK_SECONDS = 5
+EventReader = Callable[
+    [AsyncSession, UUID, int], Awaitable[Sequence[AgentEvent | ResearchBrowserEvent]]
+]
 CONTROL_ERRORS = {status: {"model": ErrorResponse} for status in (403, 404, 409, 422)}
 ControlKey = Annotated[IdempotencyKey, Header()]
 
@@ -255,6 +261,40 @@ async def stream_events(
     last_event_id: Annotated[EventCursor | None, Header()] = None,
 ) -> AsyncIterator[ServerSentEvent]:
     cursor = last_event_id if last_event_id is not None else after
+    async for event in _stream_task(task, sessions, user, cursor, events_after):
+        yield event
+
+
+@router.get(
+    "/{task_id}/research-events",
+    response_class=EventSourceResponse,
+    responses={
+        200: {"model": ResearchBrowserEvent},
+        401: {"content": sse_error_content},
+        404: {"content": sse_error_content},
+        500: {"content": sse_error_content},
+        503: {"content": sse_error_content},
+    },
+)
+async def stream_research_events(
+    task: ExistingTask,
+    sessions: Sessions,
+    user: SignedIn,
+    after: EventCursor = 0,
+    last_event_id: Annotated[EventCursor | None, Header()] = None,
+) -> AsyncIterator[ServerSentEvent]:
+    cursor = last_event_id if last_event_id is not None else after
+    async for event in _stream_task(task, sessions, user, cursor, research_events_after):
+        yield event
+
+
+async def _stream_task(
+    task: TaskRow,
+    sessions: Sessions,
+    user: SignedIn,
+    cursor: int,
+    read: EventReader,
+) -> AsyncIterator[ServerSentEvent]:
     check_at = 0.0
     while True:
         try:
@@ -263,7 +303,7 @@ async def stream_events(
                     if not await session_is_active(session, user):
                         return
                     check_at = monotonic() + SSE_SESSION_CHECK_SECONDS
-                events = await events_after(session, task.task_id, cursor)
+                events = await read(session, task.task_id, cursor)
                 if not events:
                     status = await session.scalar(
                         select(TaskRow.status).where(TaskRow.task_id == task.task_id)
@@ -272,7 +312,7 @@ async def stream_events(
                         return
                     if status in ("completed", "failed"):
                         # Recheck the event cursor after observing a committed terminal state.
-                        events = await events_after(session, task.task_id, cursor)
+                        events = await read(session, task.task_id, cursor)
                         if not events:
                             return
         except (OSError, SQLAlchemyError) as exc:
@@ -290,13 +330,33 @@ async def stream_events(
                 event=event.payload.type,
                 raw_data=event.model_dump_json(),
             )
-            if event.payload.type == "task.status" and event.payload.status in (
-                "completed",
-                "failed",
+            if (
+                isinstance(event, AgentEvent)
+                and event.payload.type == "task.status"
+                and (
+                    event.payload.status
+                    in (
+                        "completed",
+                        "failed",
+                    )
+                )
             ):
                 return
         if not events:
             await asyncio.sleep(1)
+
+
+@router.get("/{task_id}/research-sources/{source_id}", responses=not_found)
+async def read_research_source(
+    task: ExistingTask,
+    source_id: UUID,
+    sessions: Sessions,
+) -> ResearchSourceRead:
+    async with sessions() as session:
+        source = await session.get(ResearchSourceRow, (task.task_id, source_id))
+    if source is None:
+        raise api_error(404, "RESEARCH_SOURCE_NOT_FOUND", "未找到该任务的研究来源")
+    return ResearchSourceRead.model_validate(source.data)
 
 
 @router.get("/{task_id}/evidence/{evidence_id}", responses=not_found)

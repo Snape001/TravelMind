@@ -30,7 +30,9 @@ from travelmind.runtime.durable_worker import DurableWorker
 from travelmind.runtime.intake.worker import IntakeWorker
 from travelmind.runtime.model import StructuredModel, open_structured_model
 from travelmind.runtime.reflection import ReflectionConfig
+from travelmind.runtime.research_telemetry import ResearchTelemetry
 from travelmind.runtime.retrieval import ResearchRetriever
+from travelmind.runtime.skills import SkillRegistry
 from travelmind.runtime.travel.map_cache import AmapResultCache
 from travelmind.runtime.travel.places import AmapPlaces
 from travelmind.runtime.travel.planner import TravelPlanner
@@ -123,7 +125,10 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
             model,
             lambda lease: FencedPostgresSaver(pool, store, lease),
             retrieve=lambda lease: ResearchRetriever(
-                research, sessions, store=store, lease=lease,
+                research,
+                sessions,
+                store=store,
+                lease=lease,
                 social_search=research.search_social if research.social is not None else None,
             ),
             reflection=reflection_for(model, settings.deepseek_model),
@@ -131,6 +136,8 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
             travel_planner=TravelPlanner(
                 AmapPlaces(map_cache), AmapRoutes(map_cache), notices=research
             ),
+            skills=SkillRegistry(),
+            telemetry=lambda claim: ResearchTelemetry(store, claim.lease, claim.trace_id),
             lease_seconds=lease_seconds,
             poll_seconds=poll_seconds,
         )

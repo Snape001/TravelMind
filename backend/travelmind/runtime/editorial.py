@@ -92,7 +92,11 @@ async def write(
         report = await write_report(
             skills, model, request, contributions, previous_review, experts or []
         )
-        return ReportResult(**result_identity(request), kind="report", report=report)
+        return ReportResult(
+            **result_identity(request),
+            kind="report",
+            report=with_social_sample_notes(report, request.evidence),
+        )
 
     findings = [
         {
