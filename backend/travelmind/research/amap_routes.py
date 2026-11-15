@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date, datetime, time
+from math import cos, hypot, radians
 from typing import Any, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -13,6 +14,7 @@ from travelmind.schemas.phase4_intake import Destination, Gcj02Point, TravelMode
 from travelmind.schemas.phase4_sources import TravelRoute
 
 ROUTE_TTL = 300
+MAX_POLYLINE_JOIN_METERS = 10
 ROUTE_PATHS = {
     "driving": "driving",
     "transit": "transit/integrated",
@@ -79,6 +81,13 @@ def _transit_parts(segment: dict) -> list[Any]:
     return parts
 
 
+def _join_distance_m(left: Gcj02Point, right: Gcj02Point) -> float:
+    dlat = left.latitude - right.latitude
+    dlon = abs(left.longitude - right.longitude)
+    longitude_scale = cos(radians((left.latitude + right.latitude) / 2))
+    return 111_195 * hypot(dlat, min(dlon, 360 - dlon) * longitude_scale)
+
+
 def _polyline(option: dict, *, transit: bool) -> list[Gcj02Point] | None:
     if transit:
         sections = [
@@ -89,15 +98,19 @@ def _polyline(option: dict, *, transit: bool) -> list[Gcj02Point] | None:
         pieces = [step.get("polyline") for step in _objects(option.get("steps"))]
     if not pieces:
         pieces = [option.get("polyline")]
-    # A missing or discontinuous section can't be rendered as one provider polyline.
+    pieces = [piece.get("polyline") if isinstance(piece, dict) else piece for piece in pieces]
+    # Amap snaps adjacent steps independently. Keep the returned points and reject real gaps.
     if sum(piece.count(";") + 1 for piece in pieces if isinstance(piece, str)) > 10_000:
         return None
     points: list[Gcj02Point] = []
     for piece in pieces:
         if not isinstance(piece, str):
             return None
-        parsed = [parse_point(item) for item in piece.split(";")]
-        if points and parsed[0] != points[-1]:
+        parsed = [parse_point(item) for item in piece.strip(";").split(";")]
+        first = parsed[0]
+        if first is None or (
+            points and _join_distance_m(points[-1], first) > MAX_POLYLINE_JOIN_METERS
+        ):
             return None
         for point in parsed:
             if point is None:
@@ -122,6 +135,8 @@ def _route_snapshot(payload: dict, fetched_at: datetime, *, mode: TravelMode) ->
     for index, option in enumerate(options):
         cost = option.get("cost")
         duration = _metric(cost.get("duration") if isinstance(cost, dict) else None)
+        if duration is None:
+            duration = _metric(option.get("duration"))
         distance = _metric(option.get("distance"))
         if duration is None or distance is None:
             continue

@@ -317,6 +317,51 @@ async def test_partial_provider_geometry_and_driving_restrictions_are_reported()
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("mode", ["cycling", "transit"])
+async def test_live_v5_route_field_variants(mode):
+    first = "94.661706,40.128989;94.662357,40.129010"
+    second = "94.662354,40.129009;94.662465,40.129084"
+
+    def handle(_):
+        if mode == "cycling":
+            return ok(
+                route={
+                    "paths": [
+                        {
+                            "distance": "6460",
+                            "duration": "2099",
+                            "steps": [{"polyline": first}, {"polyline": second}],
+                        }
+                    ]
+                }
+            )
+        return ok(
+            route={
+                "transits": [
+                    {
+                        "distance": "4108",
+                        "cost": {"duration": "1550"},
+                        "segments": [
+                            {
+                                "walking": {"steps": [{"polyline": {"polyline": first}}]},
+                                "bus": {"buslines": [{"polyline": {"polyline": second}}]},
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        routes = AmapRoutes(AmapResultCache(StubTransport(http)))
+        outcome = await routes.route(destination(), destination("B0002", 118.593411), mode)
+    (route,) = outcome.routes
+    assert route.duration_seconds == (2099 if mode == "cycling" else 1550)
+    assert len(route.polyline) == 4
+    assert route.polyline[-1].longitude == 94.662465
+
+
+@pytest.mark.anyio
 async def test_poi_cache_isolated_from_caller_mutation_and_keyed_by_region():
     calls = []
 
