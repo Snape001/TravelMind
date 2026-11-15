@@ -86,3 +86,5 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 - 如需验证 DeepSeek 密钥、网络和所选模型，从后端目录运行 `uv run python -m travelmind.runtime.check_deepseek`。该命令只读取官方模型列表。
 
 任务状态机、API、数据模型与身份边界见 [Phase 2 公共契约](docs/phase-2-contract.md)。图状态与 Worker 事务边界见 [Agent Runtime](docs/agent-runtime.md) 和 [持久化 Worker](docs/durable-runtime.md)。
+
+证据评分、专家反思和离线评测的共享 Schema 与接入约定见 [Phase 3 公共接口](docs/phase-3-contract.md)。

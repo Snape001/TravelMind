@@ -1,5 +1,12 @@
 # TravelMind 开发进度
 
+## Phase 3 · 公共接口基线（2026-11-15）
+
+- 冻结 `EvidenceQuality`、`ReflectionState`、`ReflectionAction`、`ExpertResearchResult` 和 `EvaluationCase`。评分附规则依据或原文摘录，绑定证据、分工、评分版本和时间上下文。反思契约定义四种状态、补查策略和停止条件，离线评测以参考发现及证据快照为基线。[架构及接口](docs/phase-3-contract.md)
+- 在迁移后的临时 PostgreSQL 14 上通过全部 118 项后端测试，其中 30 项为新增契约用例。前端 22 项测试、Ruff、锁文件与 Alembic 一致性检查均通过。FastAPI 测试客户端读取 OpenAPI 返回 HTTP 200，重新生成的前端 API 类型与仓库一致。
+- 后续接入评分执行、专家反思和离线评分，验证存量 Checkpoint 恢复及真实模型输出。当前交付为共享 Schema 和接入约定。
+- **交付提交**　`feat: freeze Phase 3 research quality contracts`。
+
 ## Phase 2 · 正式完成与发布验收（2026-11-15）
 
 - 删除 Phase 1 内嵌执行器和 Worker 构造器的重复预算配置。原执行器的集成断言迁入真实 PostgreSQL 与 Checkpoint 测试。移除公开模拟任务和登录路由、运行时模拟开关及重复文档，保留测试 Fixture 和只读泉州示例。
