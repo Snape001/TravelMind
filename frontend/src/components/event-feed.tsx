@@ -5,7 +5,7 @@ import { Activity, ArrowUpRight, FileText, MessagesSquare } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ExpertAvatar, ExpertLabel } from "./expert-identity";
 import { UsageHover } from "./usage-hover";
-import type { Connection } from "./use-task-session";
+import type { StreamConnection } from "@/lib/task-client";
 import type { SourceSelection } from "./research-browser";
 import { canonicalAgentId, expertName } from "@/lib/experts";
 import { formatTime, reportHref, taskStatusLabels, type AgentEvent } from "@/lib/research";
@@ -20,7 +20,7 @@ export function EventFeed({ events, taskId, toolNames, agent, connection, resear
   taskId: string;
   toolNames: Map<string, string>;
   agent: string;
-  connection: Connection;
+  connection: StreamConnection;
   research: ResearchView;
   controls?: ReactNode;
   onSource: (source: SourceSelection) => void;

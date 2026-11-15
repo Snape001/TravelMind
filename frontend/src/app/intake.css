@@ -58,11 +58,9 @@
 .intake-text-field input[type="date"], .intake-text-field input[type="number"] { width: min(100%, 260px); }
 .intake-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px clamp(16px, 4vw, 32px); border-top: 1px solid #e0d7c5; }
 .intake-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-left: auto; }
-.workbench:has(.intake-round) .workbench-grid { display: none; }
 
 @media (max-width: 620px) {
   .destination-home { min-height: 390px; padding: 24px; }
-  .destination-input-row { flex-direction: column; }
   .intake-progress li { flex-wrap: wrap; gap: 4px; }
   .intake-choice-grid { grid-template-columns: 1fr; }
 }

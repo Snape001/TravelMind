@@ -8,9 +8,8 @@ from datetime import UTC, datetime
 from time import monotonic
 from typing import Protocol, TypeVar, cast
 
-import httpx
-
 from travelmind.runtime.execution import RunError
+from travelmind.server_logging import amap_log_filter
 
 CacheKey = tuple[str, tuple[tuple[str, str], ...]]
 Result = TypeVar("Result")
@@ -18,17 +17,6 @@ Result = TypeVar("Result")
 
 class AmapTransport(Protocol):
     async def get(self, path: str, **params: str | int) -> dict: ...
-
-
-def _hide_amap_query(record: logging.LogRecord) -> bool:
-    if isinstance(record.args, tuple):
-        record.args = tuple(
-            arg.copy_with(query=None, fragment=None)
-            if isinstance(arg, httpx.URL) and arg.host == "restapi.amap.com"
-            else arg
-            for arg in record.args
-        )
-    return True
 
 
 def invalid_response() -> RunError:
@@ -59,8 +47,7 @@ class AmapResultCache:
         self._cache: OrderedDict[CacheKey, tuple[float, object]] = OrderedDict()
         self._pending: dict[CacheKey, _Pending] = {}
         self._connections = asyncio.Semaphore(4)
-        # HTTPX INFO messages otherwise include the Amap key and the query string.
-        logging.getLogger("httpx").addFilter(_hide_amap_query)
+        logging.getLogger("httpx").addFilter(amap_log_filter)
 
     async def request(
         self,

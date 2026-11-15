@@ -6,6 +6,7 @@ import { ArrowRight, MapPin } from "lucide-react";
 import { destinationLoginDraft, prepareDestination } from "@/lib/intake";
 import { createDestinationTask, loginHref } from "@/lib/task-client";
 import { rememberTask } from "@/lib/task-history";
+import { workbenchHref } from "@/lib/research";
 import { saveLoginReturn, useSession } from "./session";
 
 export function ResearchForm() {
@@ -57,7 +58,7 @@ export function ResearchForm() {
       const task = await createDestinationTask(body, lastRequest.current.key, user.csrf_token, controller.signal);
       if (controller.signal.aborted) return;
       rememberTask(user.user_id, task.task_id);
-      router.push(`/workbench/${task.task_id}`);
+      router.push(workbenchHref(task.task_id));
     } catch (problem) {
       if (controller?.signal.aborted) return;
       handleError(problem);

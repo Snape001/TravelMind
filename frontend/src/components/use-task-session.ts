@@ -1,19 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, readTask, subscribe, subscribeResearch } from "@/lib/task-client";
+import { ApiError, readTask, subscribe, subscribeResearch, type StreamConnection } from "@/lib/task-client";
 import { isTerminal, nextSnapshot } from "@/lib/task-lifecycle";
 import type { AgentEvent, TaskRead } from "@/lib/research";
 import type { ResearchEvent } from "@/lib/research-browser";
 
-export type Connection = "connecting" | "open" | "reconnecting" | "closed" | "unavailable";
-
 export function useTaskSession(taskId: string | null, onAccessError: (error: unknown) => void) {
   const [task, setTask] = useState<TaskRead | null>(null);
   const [events, setEvents] = useState<AgentEvent[]>([]);
-  const [connection, setConnection] = useState<Connection>("connecting");
+  const [connection, setConnection] = useState<StreamConnection>("connecting");
   const [research, setResearch] = useState<ResearchEvent[]>([]);
-  const [researchConnection, setResearchConnection] = useState<Connection>("connecting");
+  const [researchConnection, setResearchConnection] = useState<StreamConnection>("connecting");
   const [error, setError] = useState("");
   const reload = useRef<(() => void) | null>(null);
 

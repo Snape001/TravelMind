@@ -3,14 +3,14 @@ import type { components } from "./api.generated";
 export type ConfirmedRoute = components["schemas"]["TravelRoute"];
 export type MapData = components["schemas"]["MapData"];
 export type MapRoute = components["schemas"]["MapRoute"];
-export type MapSegment = components["schemas"]["MapSegment"];
+type MapSegment = components["schemas"]["MapSegment"];
 export type RouteMode = ConfirmedRoute["mode"];
 type Place = ConfirmedRoute["origin"];
 export type MapPoint = [longitude: number, latitude: number];
 export type MapStop = { place: Place; number: number; position: MapPoint; category?: string | null };
-export type PoiName = { id: string; name: string };
-export type RouteLeg = { selected: MapRoute; alternatives: MapRoute[] };
-export type MapDayView = {
+type PoiName = { id: string; name: string };
+type RouteLeg = { selected: MapRoute; alternatives: MapRoute[] };
+type MapDayView = {
   number: number;
   date?: string | null;
   stops: MapStop[];
@@ -108,10 +108,10 @@ export function routeModes(legs: RouteLeg[]): RouteMode[] {
 export function routePaths(routes: MapRoute[]) {
   return routes.flatMap(({ route, segments }) => {
     const geometry = segments?.length ? segments : [{ path: route.polyline, mode: route.mode }];
-    return geometry.flatMap(({ path, mode }, index) => {
+    return geometry.flatMap(({ path, mode }) => {
       const points = path?.map(mapPoint);
       return points && points.length > 1 && points.every((point) => point !== null)
-        ? [{ id: `${route.route_id}:${index}`, routeId: route.route_id, mode, points }]
+        ? [{ routeId: route.route_id, mode, points }]
         : [];
     });
   });

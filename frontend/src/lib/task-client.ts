@@ -1,9 +1,9 @@
 import { eventCursor, eventTypes, readEvent } from "./agent-events";
-import type { AgentEvent, CurrentUser, EvidenceRead, ReportRead, ResearchBrief, TaskRead } from "./research";
+import type { AgentEvent, CurrentUser, EvidenceRead, ReportRead, TaskRead } from "./research";
 import type { TaskCommand } from "./task-lifecycle";
 import { isTerminal } from "./task-lifecycle";
 import { readResearchEvent, type ResearchEvent, type ResearchSource } from "./research-browser";
-import type { DestinationTaskCreate, Intake, Submission } from "./intake";
+import type { DestinationTaskCreate, Intake } from "./intake";
 import type { components as LiveComponents } from "./api.generated";
 import type { ProfileEdit, ProviderLogout, ReportPage } from "./account";
 
@@ -64,25 +64,20 @@ export const readAccountReports = (cursor: string | null, signal?: AbortSignal) 
   if (cursor !== null) query.set("cursor", cursor);
   return json<ReportPage>(`/api/v1/account/reports?${query}`, { ...accountRequest, signal });
 };
-export const createTask = (brief: ResearchBrief, key: string, csrf: string, signal?: AbortSignal) =>
-  json<TaskRead>(collection, write(csrf, key, brief, signal));
 export const createDestinationTask = (body: DestinationTaskCreate, key: string, csrf: string, signal?: AbortSignal) =>
   json<TaskRead>(`${collection}/from-destination`, write(csrf, key, body, signal));
 export const readIntake = (taskId: string, signal: AbortSignal) =>
   json<Intake>(`${taskUrl(taskId)}/intake`, { signal });
 export const readResearchSource = (taskId: string, id: string, signal: AbortSignal) =>
   json<ResearchSource>(`${taskUrl(taskId)}/research-sources/${encodeURIComponent(id)}`, { signal });
-export const answerQuestionnaire = (taskId: string, roundId: string, body: Submission, key: string, csrf: string, signal?: AbortSignal) =>
-  json<TaskRead>(`${taskUrl(taskId)}/questionnaires/${encodeURIComponent(roundId)}/answer`, write(csrf, key, body, signal));
 export function sendCommand(taskId: string, command: TaskCommand, key: string, csrf: string, signal?: AbortSignal) {
-  if (command.operation === "answer-questionnaire") {
-    return answerQuestionnaire(taskId, command.roundId, command.body, key, csrf, signal);
+  const url = taskUrl(taskId);
+  if (command.operation === "answer" || command.operation === "answer-questionnaire") {
+    const section = command.operation === "answer" ? "clarifications" : "questionnaires";
+    const round = encodeURIComponent(command.roundId);
+    return json<TaskRead>(`${url}/${section}/${round}/answer`, write(csrf, key, command.body, signal));
   }
-  const answer = command.operation === "answer";
-  const path = answer ?
-    `clarifications/${encodeURIComponent(command.roundId)}/answer` :
-    command.operation;
-  return json<TaskRead>(`${taskUrl(taskId)}/${path}`, write(csrf, key, answer ? command.body : undefined, signal));
+  return json<TaskRead>(`${url}/${command.operation}`, write(csrf, key, undefined, signal));
 }
 export const readTask = (taskId: string, signal: AbortSignal) => json<TaskRead>(taskUrl(taskId), { signal });
 export const readReport = (taskId: string, reportId: string, signal: AbortSignal) =>
@@ -137,11 +132,11 @@ export function subscribe(
   };
 }
 
-export type ResearchConnection = "connecting" | "open" | "reconnecting" | "closed" | "unavailable";
+export type StreamConnection = "connecting" | "open" | "reconnecting" | "closed" | "unavailable";
 
 export function subscribeResearch(
   task: TaskRead, onEvent: (event: ResearchEvent) => void,
-  onConnection: (state: ResearchConnection) => void, onAccessError: (error: ApiError) => void,
+  onConnection: (state: StreamConnection) => void, onAccessError: (error: ApiError) => void,
 ): () => void {
   const controller = new AbortController();
   const { signal } = controller;

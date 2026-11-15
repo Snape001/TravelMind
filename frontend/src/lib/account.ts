@@ -2,7 +2,6 @@ import type { components } from "./api.generated";
 
 type Schemas = components["schemas"];
 export type AccountUser = Schemas["CurrentUser"];
-export type ReportSummary = Schemas["ReportSummary"];
 export type ReportPage = Schemas["AccountReports"];
 export type ProfileEdit = Schemas["ProfileEdit"];
 export type ProviderLogout = Schemas["ProviderLogout"];

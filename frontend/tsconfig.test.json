@@ -5,7 +5,7 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "noEmit": false,
-    "outDir": ".artifacts/tests",
+    "outDir": "../.artifacts/tests/frontend",
     "rootDir": "."
   },
   "include": ["test/**/*.test.ts"]

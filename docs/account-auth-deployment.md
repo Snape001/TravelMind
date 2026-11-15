@@ -78,4 +78,4 @@ location ~ ^/realms/[^/]+/login-actions/(registration|reset-credentials|required
 
 `GET /api/v1/auth/me` 返回应用用户 UUID、显示姓名、邮箱与验证状态、可空的 HTTPS `avatar_url` 和 CSRF Token。头像来自签名 ID Token 的 `picture`，默认本地 Keycloak 未配置头像时返回 `null`。编辑使用既有 CSRF 保护，并通过 Keycloak 更新姓名。报告列表通过 `GET /api/v1/account/reports` 按游标分页，从本人任务的最后一次 `report.ready` 读取，可继续用旧链接访问本人历史报告。
 
-在专用 PostgreSQL 数据库执行 `alembic upgrade head`，设置 `TEST_DATABASE_URL` 后，在 `backend` 运行 `uv run pytest tests/test_auth_phase2.py tests/test_account.py tests/test_research_browser.py`。浏览器验收可用两个无痕会话验证跨账户报告、证据和两条 SSE 为 404。Keycloak 管理端注销同一个用户后，旧应用 Cookie 返回 401，两条已打开的流在下一次会话检查关闭。SMTP 测试不依赖 TravelMind Worker 或研究供应商。
+在专用 PostgreSQL 数据库执行 `alembic upgrade head`，设置 `TEST_DATABASE_URL` 后按 [账户认证 QA](account-auth-qa.md#复用与自动化层) 运行后端定向测试。浏览器验收可用两个无痕会话验证跨账户报告、证据和两条 SSE 为 404。Keycloak 管理端注销同一个用户后，旧应用 Cookie 返回 401，两条已打开的流在下一次会话检查关闭。SMTP 测试可独立于 TravelMind Worker 和研究供应商运行。

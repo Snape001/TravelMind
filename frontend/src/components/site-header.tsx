@@ -9,10 +9,10 @@ import { AccountSignOut } from "./account-sign-out";
 import { LoginLink, useSession } from "./session";
 
 const links = [
-  { href: "/", match: "/", label: "首页", icon: House },
-  { href: "/workbench", match: "/workbench", label: "调研工作台", icon: FlaskConical },
-  { href: "/guild", match: "/guild", label: "专家公会", icon: UsersRound },
-  { href: "/reports", match: "/reports", label: "报告中心", icon: FileText },
+  { href: "/", label: "首页", icon: House },
+  { href: "/workbench", label: "调研工作台", icon: FlaskConical },
+  { href: "/guild", label: "专家公会", icon: UsersRound },
+  { href: "/reports", label: "报告中心", icon: FileText },
 ];
 
 export function SiteHeader() {
@@ -26,8 +26,8 @@ export function SiteHeader() {
           <span>Travel<span className="brand-accent">Mind</span></span>
         </Link>
         <nav className="site-nav" aria-label="主导航">
-          {links.map(({ href, match, label, icon: Icon }) => {
-            const current = pathname === match || pathname.startsWith(`${match}/`);
+          {links.map(({ href, label, icon: Icon }) => {
+            const current = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
             return <Link key={href} href={href} aria-current={current ? "page" : undefined}>
               <Icon size={16} aria-hidden />{label}
             </Link>;

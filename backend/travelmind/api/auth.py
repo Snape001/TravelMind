@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qsl
 
 import httpx
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from travelmind.api.dependencies import SESSION_COOKIE, Sessions, SignedIn, WriteUser, api_error
@@ -27,6 +27,7 @@ from travelmind.db.auth import (
     revoke_session,
     start_session,
 )
+from travelmind.db.models import LoginFlowRow
 from travelmind.schemas.api import (
     BackchannelLogoutError,
     CurrentUser,
@@ -46,7 +47,6 @@ AUTH_ERRORS = {
 }
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"], responses=AUTH_ERRORS)
 COOKIE_OPTIONS = {"httponly": True, "secure": True, "samesite": "lax", "path": "/"}
-NO_STORE = {"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"}
 LOCATION = {"Location": {"description": "Redirect URL", "schema": {"type": "string"}}}
 
 
@@ -69,6 +69,10 @@ def _provider_error(request: Request):
     if request.app.state.auth_settings.account_enabled:
         return api_error(503, "AUTH_PROVIDER_UNAVAILABLE", "身份认证服务暂时不可用", retryable=True)
     return api_error(503, "DATABASE_UNAVAILABLE", "身份认证服务暂时不可用", retryable=True)
+
+
+def _invalid_callback() -> HTTPException:
+    return api_error(400, "AUTH_CALLBACK_INVALID", "登录回调无效或已过期")
 
 
 async def _discover(request: Request, provider: OidcClient) -> dict:
@@ -139,7 +143,7 @@ async def _login_redirect(
     request: Request, sessions: Sessions, *, params: dict[str, str] | None = None
 ) -> RedirectResponse:
     location, token = await _begin_authorization(request, sessions, params=params)
-    response = RedirectResponse(location, status_code=302, headers=NO_STORE)
+    response = RedirectResponse(location, status_code=302)
     response.set_cookie(LOGIN_COOKIE, token, max_age=LOGIN_SECONDS, **COOKIE_OPTIONS)
     return response
 
@@ -177,18 +181,9 @@ def _avatar(value: object) -> str | None:
     return None
 
 
-@router.get(
-    "/callback",
-    status_code=302,
-    response_class=RedirectResponse,
-    responses={
-        302: {"headers": LOCATION},
-        400: {"model": ErrorResponse},
-        403: {"model": ErrorResponse},
-    },
-)
-async def callback(request: Request, sessions: Sessions) -> RedirectResponse:
-    provider = _provider(request)
+async def _exchange_callback(
+    request: Request, sessions: Sessions, provider: OidcClient
+) -> tuple[LoginFlowRow, dict]:
     params = request.query_params
     state, code = params.getlist("state"), params.getlist("code")
     issuer = params.getlist("iss")
@@ -222,11 +217,26 @@ async def callback(request: Request, sessions: Sessions) -> RedirectResponse:
             not isinstance(exc, httpx.HTTPStatusError) or exc.response.status_code >= 500
         ):
             raise _provider_error(request) from None
-        raise api_error(400, "AUTH_CALLBACK_INVALID", "登录回调无效或已过期") from None
+        raise _invalid_callback() from None
     except ValueError as exc:
         logger.warning("oidc.callback_rejected type=%s", type(exc).__name__)
-        raise api_error(400, "AUTH_CALLBACK_INVALID", "登录回调无效或已过期") from None
+        raise _invalid_callback() from None
+    return flow, claims
 
+
+@router.get(
+    "/callback",
+    status_code=302,
+    response_class=RedirectResponse,
+    responses={
+        302: {"headers": LOCATION},
+        400: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+    },
+)
+async def callback(request: Request, sessions: Sessions) -> RedirectResponse:
+    provider = _provider(request)
+    flow, claims = await _exchange_callback(request, sessions, provider)
     settings = provider.settings
     email = _claim_text(claims.get("email"), limit=320)
     verified = claims.get("email_verified")
@@ -236,7 +246,7 @@ async def callback(request: Request, sessions: Sessions) -> RedirectResponse:
         if not email or verified is not True:
             raise api_error(403, "AUTH_EMAIL_UNVERIFIED", "请先验证邮箱再登录")
         if not oidc_identifier(sid):
-            raise api_error(400, "AUTH_CALLBACK_INVALID", "登录回调无效或已过期")
+            raise _invalid_callback()
         identity = OidcSession(claims["iss"], settings.client_id, sid)
     profile_edit = flow.expected_user_id is not None
     old_token = request.cookies.get(SESSION_COOKIE)
@@ -245,7 +255,7 @@ async def callback(request: Request, sessions: Sessions) -> RedirectResponse:
         async with sessions.begin() as session:
             if profile_edit and not settings.account_enabled:
                 raise SessionBindingInvalid
-            if profile_edit and params.getlist("kc_action_status") == ["cancelled"]:
+            if profile_edit and request.query_params.getlist("kc_action_status") == ["cancelled"]:
                 await require_profile_session(
                     session, flow, claims["iss"], claims["sub"], old_token
                 )
@@ -264,11 +274,9 @@ async def callback(request: Request, sessions: Sessions) -> RedirectResponse:
                     profile_flow=flow if profile_edit else None,
                 )
     except SessionBindingInvalid:
-        raise api_error(400, "AUTH_CALLBACK_INVALID", "登录回调无效或已过期") from None
+        raise _invalid_callback() from None
     target = "account" if profile_edit else "workbench"
-    response = RedirectResponse(
-        f"{settings.public_origin}/{target}", status_code=302, headers=NO_STORE
-    )
+    response = RedirectResponse(f"{settings.public_origin}/{target}", status_code=302)
     if token:
         response.set_cookie(
             SESSION_COOKIE, token, max_age=settings.session_seconds, **COOKIE_OPTIONS
@@ -278,8 +286,7 @@ async def callback(request: Request, sessions: Sessions) -> RedirectResponse:
 
 
 @router.get("/me")
-async def me(request: Request, user: SignedIn, response: Response) -> CurrentUser:
-    response.headers.update(NO_STORE)
+async def me(request: Request, user: SignedIn) -> CurrentUser:
     return CurrentUser(
         user_id=user.user_id,
         display_name=user.display_name,
@@ -295,7 +302,7 @@ async def me(request: Request, user: SignedIn, response: Response) -> CurrentUse
 async def logout(user: WriteUser, sessions: Sessions) -> Response:
     async with sessions.begin() as session:
         await revoke_session(session, user.session_hash)
-    response = Response(status_code=204, headers=NO_STORE)
+    response = Response(status_code=204)
     response.delete_cookie(SESSION_COOKIE, **COOKIE_OPTIONS)
     return response
 

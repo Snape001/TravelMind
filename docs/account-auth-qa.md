@@ -62,7 +62,7 @@ API 路径均相对 `/api/v1`。P0 属于阻断项，P1 是本次交付的必测
 ```powershell
 # backend/
 uv run alembic upgrade head
-uv run pytest -q tests/test_account_auth_fixture.py tests/test_auth_phase2.py tests/test_research_browser.py tests/test_api.py
+uv run --locked pytest -q --basetemp ../.artifacts/tests/backend/account-auth-pytest --junitxml ../.artifacts/tests/backend/account-auth.xml tests/test_account_auth_fixture.py tests/test_auth_phase2.py tests/test_research_browser.py tests/test_api.py
 # frontend/
 npm test
 ```

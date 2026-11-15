@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { makeAnswers, nextSnapshot, taskControls } from "../src/lib/task-lifecycle";
-import { ApiError, createTask, readSession, sendCommand, subscribe } from "../src/lib/task-client";
+import { ApiError, createDestinationTask, readSession, sendCommand, subscribe } from "../src/lib/task-client";
 import { rememberLoginReturn, takeLoginReturn } from "../src/lib/login-return";
 import { readTaskHistory, rememberTask } from "../src/lib/task-history";
 import { demoResearch } from "../src/lib/demo";
@@ -67,24 +67,26 @@ test("recent task links are isolated by account, ignore the former fixture names
   assert.deepEqual(JSON.parse(values.get(a)!), [id, next]);
 });
 
-test("HTTP client sends CSRF and idempotency headers, with a body only for answers", async (t) => {
+test("destination creation and task commands send CSRF, idempotency keys and the expected bodies", async (t) => {
   const task = queued;
   const calls: [string, RequestInit | undefined][] = [];
   t.mock.method(globalThis, "fetch", async (url: string, options?: RequestInit) => {
     calls.push([url, options]);
     return Response.json(task);
   });
-  await createTask(task.brief, "create-key", "session-token");
+  const destination = { destination: task.brief.destination };
+  await createDestinationTask(destination, "create-key", "session-token");
   await sendCommand(task.task_id, { operation: "pause" }, "pause-key", "session-token");
   await sendCommand(task.task_id, { operation: "resume" }, "resume-key", "session-token");
   const body = makeAnswers(round, Object.fromEntries(round.questions.map(({ question_id }) => [question_id, "步行"])));
   await sendCommand(task.task_id, { operation: "answer", roundId: round.clarification_id, body }, "answer-key", "session-token");
   assert.deepEqual(calls.map(([url]) => url), [
-    "/api/v1/tasks", `/api/v1/tasks/${task.task_id}/pause`, `/api/v1/tasks/${task.task_id}/resume`,
+    "/api/v1/tasks/from-destination", `/api/v1/tasks/${task.task_id}/pause`, `/api/v1/tasks/${task.task_id}/resume`,
     `/api/v1/tasks/${task.task_id}/clarifications/${round.clarification_id}/answer`,
   ]);
   assert.deepEqual(calls.map(([, init]) => new Headers(init?.headers).get("Idempotency-Key")), ["create-key", "pause-key", "resume-key", "answer-key"]);
   assert.ok(calls.every(([, init]) => new Headers(init?.headers).get("X-CSRF-Token") === "session-token"));
+  assert.deepEqual(JSON.parse(String(calls[0][1]?.body)), destination);
   assert.equal(calls[1][1]?.body, undefined);
   assert.equal(calls[2][1]?.body, undefined);
   assert.deepEqual(JSON.parse(String(calls[3][1]?.body)), body);

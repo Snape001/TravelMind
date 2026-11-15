@@ -7,14 +7,14 @@ import { demo, demoResearch } from "@/lib/demo";
 import { expertName } from "@/lib/experts";
 import { fetchLabels, publicSourceUrl, qualityLabels, safeIdentifier, sourceTypes, type BrowserSource, type ResearchSource } from "@/lib/research-browser";
 import { reportHref, type EvidenceRead } from "@/lib/research";
-import { readEvidence, readResearchSource, type ResearchConnection } from "@/lib/task-client";
+import { readEvidence, readResearchSource, type StreamConnection } from "@/lib/task-client";
 import { ExpertLabel } from "./expert-identity";
 
 export type SourceSelection = { sourceId: string } | { evidenceId: string };
 export type LegacyEvidence = { evidenceId: string; agentId: string };
 type Category = EvidenceRead["source_type"];
 const icons = { web: Globe2, official: FileText, academic: BookOpen, book: LibraryBig, map: Map, social: MessagesSquare };
-const connectionLabels: Record<ResearchConnection, string> = {
+const connectionLabels: Record<StreamConnection, string> = {
   connecting: "正在连接", open: "实时更新", reconnecting: "正在重连", closed: "回放结束", unavailable: "历史证据",
 };
 
@@ -22,7 +22,7 @@ export function ResearchBrowser({ taskId, sources, evidence, connection, selecte
   taskId: string;
   sources: BrowserSource[];
   evidence: LegacyEvidence[];
-  connection: ResearchConnection;
+  connection: StreamConnection;
   selected: SourceSelection | null;
   onSelect: (source: SourceSelection | null) => void;
   citedIds: Set<string> | null;

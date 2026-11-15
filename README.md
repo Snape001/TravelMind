@@ -197,8 +197,9 @@ docker compose @travelCompose up -d --no-deps --force-recreate api worker
 
 ## 开发验证
 
-- 后端目录执行 `uv run pytest` 和 `uv run ruff check .`。将 `TEST_DATABASE_URL` 指向已经执行 `alembic upgrade head` 的专用测试数据库，以运行任务状态、租约、Checkpoint 投影、OIDC 和权限集成测试。
+- 后端目录执行 `uv run --locked pytest --basetemp ../.artifacts/tests/backend/pytest --junitxml ../.artifacts/tests/backend/junit.xml` 和 `uv run --locked ruff check .`。将 `TEST_DATABASE_URL` 指向已经执行 `alembic upgrade head` 的专用测试数据库，以运行任务状态、租约、Checkpoint 投影、OIDC 和权限集成测试。
 - 前端目录执行 `npm test`、`npm run lint`、`npm run typecheck` 和 `npm run build`。测试覆盖任务控制、澄清、会话、报告分页和 SSE 续传。真实浏览器用例及合成报告装载说明见 [账户认证验收](docs/account-auth-qa.md)。
+- 测试执行产物统一写入仓库根目录的 `.artifacts/tests/`。前端编译文件位于 `frontend/` 子目录，由 `npm test` 重新生成。后端和其他验收报告各用自己的子目录。 [测试产物约定](DEVELOPMENT_GUIDELINES.md#3-测试先行test-driven-development)
 - 公共契约改动后，启动后端并在前端目录运行 `npm run generate:api`，提交生成的 TypeScript 类型。
 - 如需验证 DeepSeek 密钥、网络和所选模型，从后端目录运行 `uv run python -m travelmind.runtime.check_deepseek`。该命令只读取官方模型列表。
 

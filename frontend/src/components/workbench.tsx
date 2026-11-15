@@ -11,7 +11,7 @@ import { demo, demoResearch } from "@/lib/demo";
 import { expertName } from "@/lib/experts";
 import { readReport } from "@/lib/task-client";
 import { rememberTask } from "@/lib/task-history";
-import { depthOptions, formatDate, reportHref, taskStatusLabels, type CurrentUser, type ReportRead } from "@/lib/research";
+import { depthLabels, formatDate, reportHref, taskStatusLabels, type CurrentUser, type ReportRead } from "@/lib/research";
 import { projectResearch, type ResearchEvent } from "@/lib/research-browser";
 import { ResearchBrowser, type LegacyEvidence, type SourceSelection } from "./research-browser";
 import { WorkspacePanes } from "./workspace-panes";
@@ -69,11 +69,11 @@ function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: Curr
     const controller = new AbortController();
     readReport(taskId, publishedId, controller.signal).then((report) => {
       if (!controller.signal.aborted) setReportSnapshot(report);
-    }).catch(() => {
-      // A transient report read error does not interrupt the stream or report link.
+    }).catch((problem: unknown) => {
+      if (!controller.signal.aborted) handleError(problem);
     });
     return () => controller.abort();
-  }, [taskId, publishedId, userId, example]);
+  }, [taskId, publishedId, userId, example, handleError]);
 
   if (!task || !view) return (
     <main className="shell inner-page">
@@ -84,10 +84,10 @@ function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: Curr
     </main>
   );
 
-  const depth = depthOptions.find((option) => option.value === task.brief.depth)?.label;
+  const depth = task.brief.depth && depthLabels[task.brief.depth];
   const completed = view.assignments.filter(({ status }) => status === "completed").length;
   const publishedReport = example ? demoResearch.reports.find(({ report_id }) => report_id === publishedId) : reportSnapshot;
-  const citedIds = publishedReport?.report_id === publishedId && publishedReport ?
+  const citedIds = publishedReport && publishedReport.report_id === publishedId ?
     new Set(publishedReport.content.sections.flatMap(({ evidence_ids }) => evidence_ids ?? [])) : null;
   const reportLink = view.published ?? view.report;
   const controls = user && !example && <TaskControls task={task} user={user} accept={accept} refresh={refresh} onError={handleError} />;
