@@ -77,6 +77,17 @@ async def research(
     )
 
 
+def historical_source_guidance(request: AgentInput) -> str:
+    if request.agent_id == "history_culture" and any(
+        item.source_type == "book" for item in request.evidence
+    ):
+        return (
+            "\n引用游记、地方志时核对卷页和底本，注明记述时代，区分亲历、转述与后人注释。"
+            "涉及古今地名对应、遗址现状或开放信息时，用当代资料单独核实。"
+        )
+    return ""
+
+
 async def find(
     model: StructuredModel,
     request: AgentInput,
@@ -91,6 +102,7 @@ async def find(
         f"{instructions}\n只使用输入 evidence 中的 ID，且所引原文须支持结论。"
         "每条结论明确标记 supported、disputed 或 insufficient。"
     )
+    prompt += historical_source_guidance(request)
     if social_analysis:
         prompt += SOCIAL_SCOPE
 

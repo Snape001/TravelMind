@@ -11,7 +11,7 @@ from pydantic import SecretStr
 
 from travelmind.schemas.agents import ErrorInfo
 
-Provider = Literal["bocha", "firecrawl", "openalex", "social"]
+Provider = Literal["bocha", "firecrawl", "openalex", "social", "cnkgraph"]
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 logger = logging.getLogger(__name__)
 
@@ -80,10 +80,14 @@ class ProviderClient:
         json: dict[str, Any] | None = None,
         params: dict[str, str | int] | None = None,
         status_field: str | None = None,
+        headers: dict[str, str] | None = None,
+        accepted_status: int | None = None,
     ) -> dict[str, Any]:
-        if not self.key and self.provider != "openalex":
+        if not self.key and self.provider not in ("openalex", "cnkgraph"):
             raise failure(self.provider, "NOT_CONFIGURED", "研究服务尚未配置 API Key")
-        headers = {"Authorization": f"Bearer {self.key}"} if self.key else {}
+        headers = dict(headers or {})
+        if self.key:
+            headers["Authorization"] = f"Bearer {self.key}"
         for attempt in range(1, 3):
             started = monotonic()
             response = None
@@ -100,7 +104,7 @@ class ProviderClient:
                         follow_redirects=False,
                     ) as response,
                 ):
-                    if not response.is_success:
+                    if not response.is_success and response.status_code != accepted_status:
                         raise status_failure(self.provider, response.status_code)
                     body = bytearray()
                     async for chunk in response.aiter_bytes():

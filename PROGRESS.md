@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## 沈观澜 · 游记与地方志检索（2026-11-15）
+
+- 古籍分支 `dac15fd` 接入 CNKGraph 正文检索和读卷。分支实测从《徐霞客游记》和《大清一统志》取得 3 条原文，均写入独立 PostgreSQL 并进入沈观澜的结构化分析。 [接口和启用方式](docs/research-engine.md#游记与地方志)
+- 合入 main 的默认 Worker、历史文化 Skill 和资料追踪。非商业深度及学术调研通过 `CNKGRAPH_ENABLED=true` 启用。PostgreSQL 14 后端 286 项和前端 31 项通过，Ruff、Alembic、TypeScript、ESLint 通过。
+- 真实深度调研「泉州府城池」用时 98.24 秒。博查请求 8 次、Firecrawl 6 次（其中 3 次超时）、CNKGraph 3 次（搜索 1 次、读卷 2 次），记录 35 次 DeepSeek 供应商用量响应。两卷《大清一统志》原文成功入库并通过 Evidence API 读回，因评分为低等级未进入正式引用。
+- 默认 Worker 真实运行「《游天台山日记》从哪座城门出发」，从提交深度任务到 `report.ready` 用时 108.63 秒。需求与分工 4.44 秒，专家并行检索、评分、分析及补查 88.97 秒，撰稿与一次返修 10.22 秒，审核 4.84 秒，其余节点切换与投影 0.15 秒。正式报告 HTTP 200，引用《徐霞客游记》卷一上第 1-1a 页，与 PostgreSQL、Evidence API 和 `research.source.cited` 的 Evidence ID 一致。
+- 第二次共 47 次外部 HTTP 请求。DeepSeek 29 次（需求和分工 2、评分 12、专家分析 6、反思 6、撰稿与返修 2、审核 1），博查 7 次，Firecrawl 9 次（3 次 HTTP 200、3 次超时取消、2 次 HTTP 500、1 次连接失败），CNKGraph 2 次（搜索和读卷各 1 次）。此为单次墙钟耗时，专家与供应商调用可以并行。**交付提交**　`merge: integrate historical book research`。
+
 ## 首页登录入口修复（2026-11-15）
 
 - 首页右上角显示「登录 / 注册」。登录后展示账号头像，菜单提供「我的报告」和「退出登录」。头像使用 OIDC 会话返回的显示名首字，缺少姓名时显示通用头像。首页主视觉及目的地入口沿用现有设计。
@@ -119,6 +127,7 @@
 - PostgreSQL 17 上 218 项后端测试通过（新增 10 项），覆盖四平台映射、序列化、任务取消、超时降级、真实 PostgreSQL 写入、五项技能结构和报告样本说明。Ruff、Alembic 一致性检查通过。Windows 启动独立进程，以合成样本逐平台验证各 1 篇原帖、1 条评论的导入、状态读取和 JSONL 导出。
 - 四个平台均为 0 条真实采集。平台授权、允许的访问方式及可用于分析的真实导出待确认，尚未进行在线搜索、详情、评论和真实样本的模型验收。 [Windows 配置、许可证及逐平台结果](docs/phase-4-social-research.md)
 - **交付提交**　`feat: integrate local social research exports`，分支 `feat/social-research-adapter`。
+
 ## Phase 4 · 默认 Worker 旅游规划与报告地图（2026-11-15）
 
 - 复用问卷后端 `b7d64a8` 和高德适配器 `e080bf2`。结构化问卷的新任务使用 `durable-v3`。Planner 按实际选择调度陆知行，默认 Worker 使用高德 POI 搜索、详情和路线工具。旧简报任务及已有 `durable-v1`、`durable-v2` Checkpoint 沿用原图。

@@ -1,6 +1,11 @@
 from travelmind.research.social.skills import SOCIAL_SCOPE, SOCIAL_SKILLS, SocialSkillsResult
 from travelmind.runtime.execution import InvalidOutput, RunError
-from travelmind.runtime.experts import EvidenceRetriever, Findings, retrieve_evidence
+from travelmind.runtime.experts import (
+    EvidenceRetriever,
+    Findings,
+    historical_source_guidance,
+    retrieve_evidence,
+)
 from travelmind.runtime.model import StructuredModel
 from travelmind.runtime.planning import DirectorDecision
 from travelmind.runtime.skills.contracts import DirectorInput, ResearchInput
@@ -98,6 +103,12 @@ async def research_skill(
             return Findings(findings=results.findings())
 
         result = await session.run(social_model, subject, Findings, validate=check)
+    elif guidance := historical_source_guidance(session.request):
+
+        async def historical_model(request, instructions, output, *, context):
+            return await model(request, instructions + guidance, output, context=context)
+
+        result = await session.run(historical_model, subject, Findings, validate=check)
     else:
         result = await session.run(model, subject, Findings, validate=check)
     return ResearchResult(

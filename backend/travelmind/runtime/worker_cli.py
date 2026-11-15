@@ -130,6 +130,7 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
                 store=store,
                 lease=lease,
                 social_search=research.search_social if research.social is not None else None,
+                library_enabled=research.library_enabled,
             ),
             reflection=reflection_for(model, settings.deepseek_model),
             intake=IntakeWorker(store, AmapPoi(amap), model),
