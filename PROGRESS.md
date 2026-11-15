@@ -1,5 +1,11 @@
 # TravelMind 开发进度
 
+## 本地 Docker · Windows PowerShell 邮件配置修复（2026-11-15）
+
+- 复现 Windows PowerShell 5.1 把 Keycloak Admin CLI 写入 stderr 的普通登录提示提升为 `NativeCommandError`，导致 SMTP 设置尚未保存就退出。Admin CLI 现按原生命令退出码判断结果，并在 Keycloak 尚未就绪时重试。
+- Windows PowerShell 5.1 的 3 项定向测试通过。使用实际 Docker CLI，在容器已停止且只剩独立数据卷的情况下运行 `set-qq-smtp`，成功保存合成的 SMTP 配置并清理临时管理员。真实 QQ 鉴权和投递需在本机输入授权码后验证。
+- **交付提交**　`fix: handle Keycloak CLI stderr in Windows PowerShell`。
+
 ## 本地 Docker · QQ 邮箱发信（2026-11-15）
 
 - 新增 `stack.ps1 set-qq-smtp`，交互输入发件邮箱和 SMTP 授权码，在现有 Keycloak Realm 中保存 `smtp.qq.com:465` 的 TLS 发信设置。空 Realm 默认接入 Mailpit，`upgrade-auth` 保留已配置的邮件服务器。 [配置步骤](docs/account-auth-deployment.md#使用-qq-邮箱发送验证邮件)

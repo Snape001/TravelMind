@@ -31,7 +31,7 @@
 
 登录 QQ 邮箱网页版，在「设置 → 账号与安全 → 安全设置」中开启 `POP3/SMTP` 或 `IMAP/SMTP` 服务并生成授权码。 [QQ 邮箱](https://mail.qq.com/)
 
-在项目根目录运行以下命令。
+在项目根目录运行以下命令，可在本地栈运行时直接执行。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\dev\local-oidc\stack.ps1 set-qq-smtp

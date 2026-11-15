@@ -90,12 +90,14 @@ function Invoke-Compose {
 function Invoke-RealmAdmin {
     param([string[]]$Arguments, [object]$Body = $null)
 
+    # Windows PowerShell 5.1 also treats native progress on stderr as an error record.
+    $ErrorActionPreference = 'Continue'
     $command = @('exec', '-T', 'keycloak', '/opt/keycloak/bin/kcadm.sh') +
         $Arguments + @('--config', $adminConfig)
     if ($null -eq $Body) {
         & docker @composeArgs @command
     } else {
-        $json = ConvertTo-Json -InputObject $Body -Depth 20 -Compress
+        $json = ConvertTo-Json -InputObject $Body -Depth 20 -Compress -ErrorAction Stop
         $json | & docker @composeArgs @command -f -
     }
     if ($LASTEXITCODE -ne 0) { throw "Keycloak Admin CLI failed on '$($Arguments[0])'." }
@@ -168,6 +170,12 @@ function Update-LocalRealm {
     Invoke-RealmAdmin @('update', "clients/$($clients[0].id)", '-r', $realm, '-n') $clientPatch | Out-Null
 }
 
+function Test-LocalRealmAdminLogin([string]$Command) {
+    $ErrorActionPreference = 'Continue'
+    $null = & docker @composeArgs exec -T -e TM_KEYCLOAK_UPGRADE_PASSWORD -e TM_KEYCLOAK_UPGRADE_USERNAME keycloak sh -ec $Command 2>$null
+    return ($LASTEXITCODE -eq 0)
+}
+
 function Invoke-LocalRealmAdmin {
     param([scriptblock]$Update)
 
@@ -176,8 +184,10 @@ function Invoke-LocalRealmAdmin {
     }
     $existing = @(Invoke-Compose ps -a --services keycloak)
     if ('keycloak' -notin $existing) {
-        & docker volume inspect "${composeProject}_keycloak" --format '{{.Name}}' 2>$null | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw 'Run stack.ps1 start to import a new local Realm.' }
+        $realmVolume = "${composeProject}_keycloak"
+        $volumes = @(& docker volume ls --filter "name=$realmVolume" --format '{{.Name}}')
+        if ($LASTEXITCODE -ne 0) { throw 'Could not list local Docker volumes.' }
+        if ($realmVolume -notin $volumes) { throw 'Run stack.ps1 start to import a new local Realm.' }
     }
 
     $nonce = [Guid]::NewGuid().ToString('N')
@@ -196,9 +206,7 @@ function Invoke-LocalRealmAdmin {
         }
         $deadline = (Get-Date).AddMinutes(2)
         $authenticate = '/opt/keycloak/bin/kcadm.sh config credentials --config "/tmp/$TM_KEYCLOAK_UPGRADE_USERNAME.config" --server http://127.0.0.1:8080 --realm master --user "$TM_KEYCLOAK_UPGRADE_USERNAME" --password "$TM_KEYCLOAK_UPGRADE_PASSWORD"'
-        while ($true) {
-            & docker @composeArgs exec -T -e TM_KEYCLOAK_UPGRADE_PASSWORD -e TM_KEYCLOAK_UPGRADE_USERNAME keycloak sh -ec $authenticate 2>$null
-            if ($LASTEXITCODE -eq 0) { break }
+        while (-not (Test-LocalRealmAdminLogin $authenticate)) {
             if ((Get-Date) -ge $deadline) { throw 'Could not authenticate to the private Keycloak Admin API.' }
             Start-Sleep -Seconds 2
         }

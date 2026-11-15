@@ -4,6 +4,18 @@ Describe 'Local Keycloak SMTP' {
         . "$PSScriptRoot/../stack.ps1" status
     }
 
+    It 'uses the native exit code when login writes progress to stderr' {
+        function docker {
+            & cmd.exe /d /c "echo Logging into Keycloak 1>&2 & exit /b $nativeExitCode"
+            $global:LASTEXITCODE = $LASTEXITCODE
+        }
+
+        $nativeExitCode = 0
+        Test-LocalRealmAdminLogin 'login' | Should Be $true
+        $nativeExitCode = 1
+        Test-LocalRealmAdminLogin 'login' | Should Be $false
+    }
+
     It 'sets the QQ sender and uses TLS and authentication' {
         $code = ConvertTo-SecureString 'qq-test-code' -AsPlainText -Force
         $calls = [System.Collections.Generic.List[string]]::new()
