@@ -13,6 +13,7 @@ from travelmind.research.social.mediacrawler_api import (
     collect,
     main,
     resolve_commit,
+    run_crawler,
     stage_outputs,
     verify_source,
 )
@@ -110,9 +111,7 @@ def test_resolve_commit_follows_ref_and_packed_refs(tmp_path):
     (git / "refs" / "heads" / "main").write_text(f"{UPSTREAM_COMMIT}\n", encoding="utf-8")
     assert resolve_commit(source) == UPSTREAM_COMMIT
     (git / "refs" / "heads" / "main").unlink()
-    (git / "packed-refs").write_text(
-        f"{UPSTREAM_COMMIT} refs/heads/main\n", encoding="utf-8"
-    )
+    (git / "packed-refs").write_text(f"{UPSTREAM_COMMIT} refs/heads/main\n", encoding="utf-8")
     assert resolve_commit(source) == UPSTREAM_COMMIT
 
 
@@ -136,8 +135,10 @@ def test_build_command_pins_bounded_search_crawl(tmp_path):
     python = tmp_path / "python.exe"
     save = tmp_path / "runs" / "batch"
     command = build_command(python, "xhs", KEYWORD, "search", None, 20, save)
-    assert command[0] == str(python) and command[1] == "main.py"
-    pairs = dict(zip(command[2::2], command[3::2]))
+    assert command[0] == str(python) and command[1] == "-c"
+    assert "CDP_CONNECT_EXISTING = False" in command[2]
+    assert "runpy.run_path('main.py'" in command[2]
+    pairs = dict(zip(command[3::2], command[4::2]))
     assert pairs["--platform"] == "xhs" and pairs["--lt"] == "qrcode"
     assert pairs["--type"] == "search" and pairs["--keywords"] == KEYWORD
     assert pairs["--get_comment"] == pairs["--get_sub_comment"] == "true"
@@ -150,10 +151,15 @@ def test_build_command_pins_bounded_search_crawl(tmp_path):
 
 def test_build_command_detail_passes_source_url(tmp_path):
     command = build_command(
-        tmp_path / "python.exe", "bili", KEYWORD, "detail", "https://www.bilibili.com/video/av1", 5,
+        tmp_path / "python.exe",
+        "bili",
+        KEYWORD,
+        "detail",
+        "https://www.bilibili.com/video/av1",
+        5,
         tmp_path / "save",
     )
-    pairs = dict(zip(command[2::2], command[3::2]))
+    pairs = dict(zip(command[3::2], command[4::2]))
     assert pairs["--type"] == "detail"
     assert pairs["--specified_id"] == "https://www.bilibili.com/video/av1"
 
@@ -182,12 +188,24 @@ def test_stage_outputs_requires_contents(tmp_path):
     assert empty.value.exit_code == 6 and empty.value.message == "NO_CONTENTS"
 
 
+def test_run_crawler_drops_bracketed_ipv6_from_no_proxy(tmp_path, monkeypatch):
+    for name in ("NO_PROXY", "no_proxy"):
+        monkeypatch.setenv(name, "localhost,127.0.0.1,::1,[::1]")
+    runner = fake_runner()
+    run_crawler(["python", "main.py"], tmp_path, tmp_path / "crawler.log", 60, runner=runner)
+    env = runner.calls[0][1]["env"]
+    sanitized = env.get("NO_PROXY") or env.get("no_proxy")
+    assert sanitized == "localhost,127.0.0.1,::1"
+
+
 def test_collect_stages_batch_and_feeds_import(tmp_path):
     source = fake_source(tmp_path)
     data = tmp_path / "data"
-    runner = fake_runner(writer=lambda command: write_xhs_export(
-        dict(zip(command[2::2], command[3::2]))["--save_data_path"]
-    ))
+    runner = fake_runner(
+        writer=lambda command: write_xhs_export(
+            dict(zip(command[3::2], command[4::2]))["--save_data_path"]
+        )
+    )
     before = datetime.now(UTC)
     request = collect(
         source=source,
@@ -300,11 +318,13 @@ def test_main_prints_import_request(tmp_path, capsys, monkeypatch):
             "S",
             (),
             {
-                "run": staticmethod(fake_runner(
-                    writer=lambda command: write_xhs_export(
-                        dict(zip(command[2::2], command[3::2]))["--save_data_path"]
+                "run": staticmethod(
+                    fake_runner(
+                        writer=lambda command: write_xhs_export(
+                            dict(zip(command[3::2], command[4::2]))["--save_data_path"]
+                        )
                     )
-                )),
+                ),
                 "STDOUT": subprocess.STDOUT,
                 "TimeoutExpired": subprocess.TimeoutExpired,
             },

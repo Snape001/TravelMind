@@ -3,13 +3,17 @@
 The crawler runs in a visible browser and requires the user to scan the platform
 QR code with their own account. The pinned checkout already bundles its own
 anti-detection for standard Playwright runs; this module adds no captcha
-solving, no proxy pool and keeps concurrency at 1. Any failure (unexpected
-checkout, crawler error, timeout, empty output) aborts the batch with a
-distinct exit code and leaves `runs/<batch>/crawler.log` for inspection.
+solving, no proxy pool and keeps concurrency at 1. The launcher disables the
+upstream `CDP_CONNECT_EXISTING` switch so the crawler starts its own browser
+with a dedicated profile instead of waiting for a pre-opened browser on the
+debug port. Any failure (unexpected checkout, crawler error, timeout, empty
+output) aborts the batch with a distinct exit code and leaves
+`runs/<batch>/crawler.log` for inspection.
 """
 
 import argparse
 import json
+import os
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
@@ -77,6 +81,14 @@ def verify_source(source: Path) -> Path:
     return python
 
 
+CDP_BOOTSTRAP = (
+    "import runpy\n"
+    "import config\n"
+    "config.CDP_CONNECT_EXISTING = False\n"
+    "runpy.run_path('main.py', run_name='__main__')\n"
+)
+
+
 def build_command(
     python: Path,
     platform_key: str,
@@ -88,7 +100,8 @@ def build_command(
 ) -> list[str]:
     command = [
         str(python),
-        "main.py",
+        "-c",
+        CDP_BOOTSTRAP,
         "--platform",
         platform_key,
         "--lt",
@@ -123,6 +136,22 @@ def build_command(
     return command
 
 
+def _child_env() -> dict[str, str]:
+    """Copy the environment after dropping bracketed IPv6 entries from NO_PROXY.
+
+    Some networks export `[::1]`-style entries; httpx rejects them as an invalid
+    port when it checks the local debug endpoint, which breaks the CDP handshake.
+    """
+    env = os.environ.copy()
+    for name in ("NO_PROXY", "no_proxy"):
+        raw = env.get(name)
+        if not raw:
+            continue
+        entries = [part.strip() for part in raw.split(",")]
+        env[name] = ",".join(part for part in entries if part and "[" not in part)
+    return env
+
+
 def run_crawler(
     command: list[str],
     source: Path,
@@ -142,6 +171,7 @@ def run_crawler(
                 stderr=subprocess.STDOUT,
                 timeout=timeout_seconds,
                 check=False,
+                env=_child_env(),
             )
         except subprocess.TimeoutExpired:
             raise MediacrawlerError(5, "CRAWLER_TIMEOUT") from None
@@ -189,9 +219,7 @@ def collect(
     batch_id = uuid4()
     run_dir = data / "runs" / str(batch_id)
     run_dir.mkdir(parents=True, exist_ok=False)
-    command = build_command(
-        python, PLATFORM_KEYS[platform], keyword, mode, url, max_notes, run_dir
-    )
+    command = build_command(python, PLATFORM_KEYS[platform], keyword, mode, url, max_notes, run_dir)
     run_crawler(command, source, run_dir / "crawler.log", timeout_seconds, runner=runner)
     collected = datetime.now(UTC)
     request = ImportRequest(
