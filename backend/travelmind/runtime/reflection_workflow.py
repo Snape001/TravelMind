@@ -253,6 +253,7 @@ class ReflectionWorkflow:
                         self.model,
                         request,
                         f"{planning.EXPERTS[request.agent_id]} 针对分工和目标问题提出候选结论。"
+                        "只核验 brief 关心的问题。不得因材料中出现其他数字或叙述而扩张任务。"
                         "保留有证据支持的已核实结论；标出有争议或缺少证据的问题。",
                         context={
                             "target_questions": work.action.target_questions if work.action else [],

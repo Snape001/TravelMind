@@ -158,7 +158,10 @@ def build_research_graph(
 
     async def planner(state: ResearchState) -> dict:
         request = request_for(state, planning.PLANNER)
-        result = await run_agent(request, lambda: planning.plan_research(model, request))
+        result = await run_agent(
+            request,
+            lambda: planning.plan_research(model, request, focused=reflection_flow is not None),
+        )
         if isinstance(result, AgentFailure):
             return records(result) | publish_status("failed", error=result.error)
         emit(PlanReadyEvent(type="plan.ready", plan=result.plan))

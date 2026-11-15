@@ -45,10 +45,15 @@ async def write(
         for result in contributions
     ]
     author_ids = "、".join(sorted({result.agent_id for result in contributions}))
+    structure = (
+        "根据用户主题决定章节数量。范围很窄时只用一到两节，先直接回答用户的问题。"
+        if experts
+        else "将相关主题合并成 3–6 节，每节正文控制在约 400 字以内。"
+    )
     instructions = (
         "担任首席撰写师。按用户主题编排简体中文报告。"
         "各章节提供标题、正文、专家署名和证据 ID。"
-        "将相关主题合并成 3–6 节，每节正文控制在约 400 字以内。"
+        f"{structure}"
         "事实必须有输入证据支持。说明共识、分歧和缺口，并将待核实信息明确标记为待核实。"
         "不得把问题或推测写成事实。"
         "根据 contributions 汇总各专家成果。"
@@ -72,8 +77,10 @@ async def write(
             update={"evidence": [item for item in request.evidence if item.evidence_id in eligible]}
         )
         instructions += (
-            "结合 expert_assessments 说明未解决问题。只能引用 input.evidence 中的 ID。"
-            "材料没有支持时可直接说明无法核实，保留专家分歧及其适用范围。"
+            "只处理用户明确的调研范围。每条重要事实使用能直接支撑它的一个或少量来源，"
+            "不重复堆放相近转述，不铺陈用户未问的列表、数字或假设。"
+            "用 expert_assessments 提示直接影响答案的待核事项及不同口径。"
+            "只能引用 input.evidence 中的 ID。证据不足可直接交代缺口，不能将其写成断言。"
         )
         data["expert_assessments"] = editorial_assessments(experts)
     report = await with_budget(
@@ -131,8 +138,9 @@ async def review(
         if experts:
             data = {"expert_assessments": editorial_assessments(experts)}
             instructions += (
-                "逐项核对报告是否保留 expert_assessments 中影响用户目标的证据缺口及冲突。"
-                "对时效敏感的结论核对日期，单一来源或评级不能代替同章摘录支撑。"
+                "只审核用户任务范围内实质性的覆盖与证据缺口，"
+                "按 expert_assessments 检查与用户答案直接相关的争议。"
+                "对时效敏感的结论核对日期，评级不能代替同章摘录支撑。"
             )
         verdict = await model(request, instructions, Review, context=data)
         if any(set(issue.evidence_ids) - evidence_ids for issue in verdict.issues):

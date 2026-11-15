@@ -271,6 +271,23 @@ def test_invalid_model_quote_is_never_cached_or_reported_as_a_card(request_input
     assert len(model.calls) == 2
 
 
+def test_invalid_quote_preserves_the_other_valid_card_in_the_batch(request_input):
+    class MixedQuotes(SemanticModel):
+        async def __call__(self, *args, **kwargs):
+            result = await super().__call__(*args, **kwargs)
+            result.assessments[0].directness.quote = "不存在的原文"
+            return result
+
+    model = MixedQuotes()
+    scorer = EvidenceQualityScorer(model=model, model_id="test-model")
+    first, second = evidence(), evidence(source_url="https://example.org/source")
+    observed = assess(request_input, first, second, scorer=scorer, require_contract_cards=True)
+    assert observed[0].quality is not None
+    assert observed[1].quality is None
+    assess(request_input, first, second, scorer=scorer, require_contract_cards=True)
+    assert [len(call["evidence"]) for call in model.calls] == [2, 1]
+
+
 def test_batch_limit_and_invalid_ids_do_not_discard_other_batches(request_input):
     class BatchModel(SemanticModel):
         async def __call__(self, *args, **kwargs):

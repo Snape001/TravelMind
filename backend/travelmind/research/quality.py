@@ -308,8 +308,9 @@ class EvidenceQualityScorer:
                     "针对 assignment.objective 为每个给定 evidence_id 输出一次独立评分。"
                     "relevance 取 2（直接回答）、1（部分或背景）、0（不相关）。"
                     "directness 取 2（摘录明确陈述事实或规则）、1（需要有限推断）、"
-                    "0（无相关事实或只有标题）。正分提供一段尽可能短的逐字摘录。"
-                    "每项判断只能使用对应的 excerpt，不能用标题、网址或其他材料代替原文。",
+                    "0（无相关事实或只有标题）。正分从本条 excerpt 连续复制一小段字面原文，"
+                    "避免过长摘录，保留原标点和字内空格。"
+                    "只使用对应 excerpt，不能用标题、网址或其他材料代替原文。",
                     SemanticBatch,
                     context=context,
                 )
@@ -319,12 +320,17 @@ class EvidenceQualityScorer:
                     or judgments.keys() != excerpts.keys()
                 ):
                     raise InvalidOutput("quality batch must match the requested evidence IDs")
-                for evidence_id, judgment in judgments.items():
-                    excerpt = excerpts[evidence_id]
-                    for dimension in (judgment.relevance, judgment.directness):
-                        if dimension.quote is not None and dimension.quote not in excerpt:
-                            raise InvalidOutput("quality quote must occur verbatim in the excerpt")
-                return judgments
+                verified = {
+                    evidence_id: judgment
+                    for evidence_id, judgment in judgments.items()
+                    if all(
+                        dimension.quote is None or dimension.quote in excerpts[evidence_id]
+                        for dimension in (judgment.relevance, judgment.directness)
+                    )
+                }
+                if not verified:
+                    raise InvalidOutput("quality quote must occur verbatim in the excerpt")
+                return verified
 
             try:
                 batch_results = await with_budget(evaluate, request.budget)
@@ -337,7 +343,10 @@ class EvidenceQualityScorer:
                 )
                 continue
             for key, item in batch:
-                self._semantic_cache[key] = batch_results[item.evidence_id]
+                judgment = batch_results.get(item.evidence_id)
+                if judgment is None:
+                    continue
+                self._semantic_cache[key] = judgment
                 self._semantic_cache.move_to_end(key)
                 if len(self._semantic_cache) > SEMANTIC_CACHE_SIZE:
                     self._semantic_cache.popitem(last=False)

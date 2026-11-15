@@ -235,7 +235,8 @@ async def assess(
         result = await model(
             request,
             "作为本分工专家进行局部反思。仅核对本分工目标中的关键问题。首轮列出所有关键问题"
-            "（最多五个），有 required_questions 时逐字沿用，每题恰好判断一次。每个问题给出简短"
+            "（最多五个），只保留影响用户所问内容的具体问题。"
+            "有 required_questions 时逐字沿用，每题恰好判断一次。每个问题给出简短"
             "依据、相关证据 ID，以及对应的候选结论序号（从 0 开始，找不到填 null）。"
             "逐条核读摘录。只有原始发布直接支撑结论时才填 original_id；"
             "只有两份来源独立且均能支撑同一结论时才填 corroborating_ids。"

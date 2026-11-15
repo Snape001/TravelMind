@@ -82,16 +82,24 @@ async def understand(
     return BriefResult(**result_identity(request), kind="brief", brief=brief)
 
 
-async def plan_research(model: StructuredModel, request: AgentInput) -> PlanResult:
+async def plan_research(
+    model: StructuredModel, request: AgentInput, *, focused: bool = False
+) -> PlanResult:
     roster = "\n".join(f"- {agent_id}：{role}" for agent_id, role in EXPERTS.items())
 
     async def make_plan() -> ResearchPlan:
+        scope = (
+            "只围绕 brief 明确请求的范围分配互补核验。不在分工中预设日期、数字或争议；"
+            "范围窄时将专家用于独立复核资料及来源关系。\n"
+            if focused
+            else ""
+        )
         draft = await model(
             request,
             "担任 Planner。按主题和深度从以下名册选择 3 至 5 个不同专家，分配互补、可核查的目标。"
             "覆盖用户明确要求。仅在确实需要另一位专家的研究结果时填写 depends_on，"
             "填写已选专家的 agent_id，保证无环，并让可独立运行的任务并行。\n"
-            f"{roster}",
+            f"{scope}{roster}",
             PlanDraft,
         )
         ids = {task.agent_id: uuid5(request.run_id, task.agent_id) for task in draft.assignments}
