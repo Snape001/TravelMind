@@ -29,6 +29,14 @@
 - 后续接入评分执行、专家反思和离线评分，验证存量 Checkpoint 恢复及真实模型输出。当前交付为共享 Schema 和接入约定。
 - **交付提交**　`feat: freeze Phase 3 research quality contracts`。
 
+## Guild UI Optimization · 前端支线（2026-11-15）
+
+- 公会按领导层、专业专家层和执行层展示九位专家，统一档案字段并提供详情页。九张肖像由内置 imagegen 生成，按原有 Agent ID 保存为本地 WebP。历史任务中的旅游规划角色仍可打开原档案。
+- 工作台的事件、组织节点和任务分工共享专家身份展示。报告用现有章节署名显示头像和角色，标示明示的专家共识及争议章节，并保留目录和证据跳转。后端 API、LangGraph Runtime、AgentEvent v1 和工具调度经差异检查无变更。
+- **验收**　26 项前端测试通过，ESLint、TypeScript 和 Next.js 生产构建通过。1024 和 1440 像素桌面浏览器验证公会布局、档案、专家筛选和报告引用。本地 HTTP 检查九份档案及肖像、历史档案和未知档案 404。用契约 Fixture 验证登录、SSE 在第 9 条事件断开后续传至 39 条事件、报告及证据读取、退出后隐藏受限报告。
+- **遗留与下一步**　专家档案仍使用前端 Fixture，后续接入统一档案配置。真实服务未在本支线重新联调。实现与肖像规范见 [Guild UI Optimization](docs/guild-ui.md)。
+- **交付提交**　基于 `main@350acf1` 的 `codex/guild-ui-optimization`，提交 `feat: redesign the expert guild experience`。
+
 ## Phase 2 · 正式完成与发布验收（2026-11-15）
 
 - 删除 Phase 1 内嵌执行器和 Worker 构造器的重复预算配置。原执行器的集成断言迁入真实 PostgreSQL 与 Checkpoint 测试。移除公开模拟任务和登录路由、运行时模拟开关及重复文档，保留测试 Fixture 和只读泉州示例。

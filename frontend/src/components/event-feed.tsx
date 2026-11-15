@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { Activity, FileText, ListFilter, MessagesSquare, Radio } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ExpertIcon } from "./expert-icon";
+import { ExpertAvatar, ExpertLabel } from "./expert-identity";
 import { EvidenceCard } from "./evidence-card";
 import type { Connection } from "./use-task-session";
-import { expertName, findExpert } from "@/lib/experts";
+import { expertName } from "@/lib/experts";
 import { formatTime, reportHref, taskStatusLabels, type AgentEvent } from "@/lib/research";
 
 export function EventFeed({ events, taskId, toolNames, agent, onSelectAgent, connection }: {
@@ -60,10 +60,10 @@ export function EventFeed({ events, taskId, toolNames, agent, onSelectAgent, con
           const { payload } = event;
           const id = "agent_id" in payload ? payload.agent_id : null;
           return <li key={event.event_id} className={payload.type === "agent.message" ? "message event-item" : "event-item"}>
-            {id ? <ExpertIcon id={id} /> : <span className="icon-tile"><Activity size={16} aria-hidden /></span>}
+            {id ? <ExpertAvatar id={id} /> : <span className="icon-tile"><Activity size={16} aria-hidden /></span>}
             <div className="event-content">
               <div className="event-meta">
-                {id && findExpert(id) ? <Link href={`/guild/${id}`}>{expertName(id)}</Link> : <strong>{id ? expertName(id) : "调研系统"}</strong>}
+                {id ? <ExpertLabel id={id} /> : <strong>调研系统</strong>}
                 <time dateTime={event.occurred_at}>{formatTime(event.occurred_at)}</time>
               </div>
               <EventDetails event={event} taskId={taskId} toolNames={toolNames} />

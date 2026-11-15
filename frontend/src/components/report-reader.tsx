@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, FileText } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CircleCheck, FileText, MessagesSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { EvidenceCard } from "./evidence-card";
-import { expertName, findExpert } from "@/lib/experts";
+import { ExpertLabel } from "./expert-identity";
+import { reportDiscussion } from "@/lib/report-discussion";
 import { readReport } from "@/lib/task-client";
 import { formatDate, workbenchHref, type ReportRead } from "@/lib/research";
 import { demo, demoResearch } from "@/lib/demo";
@@ -48,7 +49,7 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
   const evidence = new Map(Array.from(new Set(sections.flatMap(({ evidence_ids }) => evidence_ids ?? [])))
     .map((id, index) => [id, index + 1]));
   return (
-    <main className="shell inner-page">
+    <main className="shell inner-page report-page">
       <div className="reader-navigation">
         <Link className="text-link back" href="/reports"><ArrowLeft size={16} aria-hidden /> 报告中心</Link>
         <Link className="text-link back" href={workbenchHref(taskId)}>查看调研过程 <ArrowUpRight size={16} aria-hidden /></Link>
@@ -67,14 +68,23 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
             </ol>
           </nav>
           <article className="panel report-content">
-            {sections.map((section, index) => <section key={index} id={`section-${index + 1}`} className="report-section">
-              <h2>{section.heading}</h2>
-              <div className="byline">章节署名 {section.author_agent_ids.map((id) =>
-                findExpert(id) ? <Link key={id} href={`/guild/${id}`}>{expertName(id)}</Link> : <span key={id}>{expertName(id)}</span>)}</div>
-              <p className="report-body">{section.body}</p>
-              {(section.evidence_ids?.length ?? 0) > 0 && <p className="citation-links">引用 {Array.from(new Set(section.evidence_ids)).map((id) =>
-                <a className="chip" key={id} href={`#evidence-${id}`} aria-label={`查看引用 ${evidence.get(id)}`}>[{evidence.get(id)}]</a>)}</p>}
-            </section>)}
+            {sections.map((section, index) => {
+              const discussion = reportDiscussion(section.heading);
+              const DiscussionIcon = discussion === "consensus" ? CircleCheck : MessagesSquare;
+              return <section key={index} id={`section-${index + 1}`} className="report-section">
+                <div className={discussion ? `report-discussion ${discussion}` : undefined}>
+                  <h2>{discussion && <DiscussionIcon size={21} aria-hidden />}{section.heading}</h2>
+                  <div className="byline">
+                    <span>章节署名</span>
+                    <ul aria-label="本章专家">{Array.from(new Set(section.author_agent_ids)).map((id) =>
+                      <li key={id}><ExpertLabel id={id} avatar /></li>)}</ul>
+                  </div>
+                  <p className="report-body">{section.body}</p>
+                  {(section.evidence_ids?.length ?? 0) > 0 && <p className="citation-links">引用 {Array.from(new Set(section.evidence_ids)).map((id) =>
+                    <a className="chip" key={id} href={`#evidence-${id}`} aria-label={`查看引用 ${evidence.get(id)}`}>[{evidence.get(id)}]</a>)}</p>}
+                </div>
+              </section>;
+            })}
             {evidence.size > 0 && <section id="sources" className="report-section">
               <h2>参考资料与证据</h2>
               <ol className="bibliography">{Array.from(evidence).map(([id, index]) =>
