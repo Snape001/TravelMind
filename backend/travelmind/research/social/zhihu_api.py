@@ -3,15 +3,10 @@
 import argparse
 import hashlib
 import json
-import os
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
-from time import monotonic, time
 from typing import Literal
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import HTTPRedirectHandler, Request, build_opener
 from uuid import uuid4
 
 from pydantic import TypeAdapter, ValidationError
@@ -33,87 +28,20 @@ from travelmind.research.social.schemas import (
     keyword_key,
     zhihu_source,
 )
+from travelmind.research.social.zhihu_client import ZhihuError, ZhihuOfficialClient
 
 Mode = Literal["search", "answers", "owned"]
-API_ORIGIN = "https://developer.zhihu.com/api/v1/"
 MAX_PAGES = 2
 PAGE_SIZE = 5
-MAX_BYTES = 512 * 1024
-MAX_REQUEST_SECONDS = 8
-API_ERRORS = {
-    10001: "CONTENT_UNAVAILABLE",
-    20001: "AUTHENTICATION_FAILED",
-    30001: "RATE_LIMITED",
-    30002: "QUOTA_EXHAUSTED",
-    30003: "ACCESS_DENIED",
-}
-
-
-class ZhihuError(Exception):
-    pass
-
-
-class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
-
-
-def api_request(secret: str) -> Callable[..., dict]:
-    opener = build_opener(NoRedirect())
-
-    def call(endpoint: str, **params: str | int) -> dict:
-        request = Request(
-            f"{API_ORIGIN}{endpoint}?{urlencode(params)}",
-            headers={
-                "Authorization": f"Bearer {secret}",
-                "X-Request-Timestamp": str(int(time())),
-                "Content-Type": "application/json",
-            },
-        )
-        deadline = monotonic() + MAX_REQUEST_SECONDS
-        try:
-            with opener.open(request, timeout=MAX_REQUEST_SECONDS) as response:
-                raw = bytearray()
-                while chunk := response.read1(32 * 1024):
-                    if monotonic() > deadline:
-                        raise ZhihuError("TIMEOUT")
-                    raw.extend(chunk)
-                    if len(raw) > MAX_BYTES:
-                        raise ZhihuError("RESPONSE_TOO_LARGE")
-            payload = json.loads(raw)
-        except HTTPError as exc:
-            code = {401: "AUTHENTICATION_FAILED", 403: "ACCESS_DENIED", 429: "RATE_LIMITED"}.get(
-                exc.code, "HTTP_ERROR"
-            )
-            exc.close()
-            raise ZhihuError(code) from None
-        except TimeoutError:
-            raise ZhihuError("TIMEOUT") from None
-        except URLError as exc:
-            raise ZhihuError(
-                "TIMEOUT" if isinstance(exc.reason, TimeoutError) else "NETWORK_ERROR"
-            ) from None
-        except (OSError, ValueError, RecursionError):
-            raise ZhihuError("INVALID_RESPONSE") from None
-        if not isinstance(payload, dict) or type(payload.get("Code")) is not int:
-            raise ZhihuError("INVALID_RESPONSE")
-        if payload["Code"] != 0:
-            raise ZhihuError(API_ERRORS.get(payload["Code"], "UPSTREAM_ERROR"))
-        data = payload.get("Data")
-        if not isinstance(data, dict):
-            raise ZhihuError("INVALID_RESPONSE")
-        return data
-
-    return call
 
 
 def rows(value: object) -> list[dict]:
-    if not isinstance(value, list):
+    if not isinstance(value, list) or any(not isinstance(item, dict) for item in value):
         raise ZhihuError("INVALID_RESPONSE")
-    return [item for item in value if isinstance(item, dict)]
+    return value
 
 
-def pages(call, endpoint: str, target: dict) -> Iterator[tuple[list[dict], bool]]:
+def pages(call, endpoint: str, target: dict) -> Iterator[list[dict]]:
     offset = 0
     for _ in range(MAX_PAGES):
         page = call(endpoint, **target, Offset=offset, Limit=PAGE_SIZE)
@@ -124,7 +52,7 @@ def pages(call, endpoint: str, target: dict) -> Iterator[tuple[list[dict], bool]
         next_offset = paging.get("NextOffset")
         if not end and (type(next_offset) is not int or next_offset <= offset):
             raise ZhihuError("INVALID_PAGINATION")
-        yield rows(page.get("Items"))[:PAGE_SIZE], end
+        yield rows(page.get("Items"))[:PAGE_SIZE]
         if end:
             break
         offset = next_offset
@@ -181,12 +109,18 @@ def record(item: dict, keyword: str, collected: datetime, mode: Mode) -> SocialE
 
 
 def comment(item: dict, parent: str | None = None) -> SocialComment:
+    if not isinstance(item, dict):
+        raise ZhihuError("INVALID_RESPONSE")
     comment_id = public_id(item.get("ID"))
     reply = item.get("ReplyID")
     target = public_id(reply) if reply not in (None, 0, "0", "") else parent
+    root = item.get("RootID")
+    root_id = public_id(root) if root not in (None, 0, "0", "") else parent
     return SocialComment(
         comment_id=comment_id,
         parent_comment_id=target if target != comment_id else parent,
+        root_comment_id=root_id if root_id != comment_id else None,
+        author_token=clean(item.get("AuthorToken"), 200) or None,
         content=clean(item.get("Content"), 320),
         published_at=parse_time(item.get("CreatedAt")),
         like_count=parse_count(item.get("LikeCount")),
@@ -205,7 +139,7 @@ def collect(
             raise ZhihuError("INVALID_SOURCE_URL") from None
         if mode == "answers" and post_id.startswith("question-"):
             items = []
-            for page, _ in pages(call, "content/question_answers", {"QuestionUrl": target}):
+            for page in pages(call, "content/question_answers", {"QuestionUrl": target}):
                 items.extend(page)
         elif mode == "owned" and post_id.startswith("answer-"):
             detail = call("user/content_detail", ContentUrl=target)
@@ -214,20 +148,23 @@ def collect(
                 raise ZhihuError("INVALID_RESPONSE")
             comments = {}
             seen: set[str] = set()
-            for page, end in pages(call, "user/content_comments", {"ContentUrl": target}):
+            for page in pages(call, "user/content_comments", {"ContentUrl": target}):
                 for thread in page:
                     root_comment = comment(thread.get("Comment") or {})
-                    keep_comment(comments, seen, root_comment)
+                    keep_comment(comments, seen, root_comment, deduplicate_text=False)
                     for child in rows(thread.get("Children") or []):
-                        keep_comment(comments, seen, comment(child, root_comment.comment_id))
+                        keep_comment(
+                            comments,
+                            seen,
+                            comment(child, root_comment.comment_id),
+                            deduplicate_text=False,
+                        )
                         if len(comments) >= MAX_COMMENTS:
                             break
                     if len(comments) >= MAX_COMMENTS:
                         break
                 if len(comments) >= MAX_COMMENTS:
                     break
-                if end:
-                    result.collection_status = "collected"
             result.comments = list(comments.values())
             return [result]
         else:
@@ -245,21 +182,28 @@ def collect(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data", type=Path, required=True)
-    parser.add_argument("--keyword", required=True)
+    parser.add_argument("--quota", action="store_true", help="check authentication and free quota")
+    parser.add_argument("--data", type=Path)
+    parser.add_argument("--keyword")
     parser.add_argument("--mode", choices=("search", "answers", "owned"), default="search")
     parser.add_argument("--url")
     args = parser.parse_args()
-    secret = os.environ.get("ZHIHU_ACCESS_SECRET", "").strip()
-    if not secret:
-        parser.exit(2, "ZHIHU_ACCESS_SECRET is required for the official API.\n")
+    if not args.quota and (args.data is None or args.keyword is None):
+        parser.error("--data and --keyword are required for collection")
+    try:
+        client = ZhihuOfficialClient.from_environment()
+        if args.quota:
+            print(json.dumps(client.quota(), ensure_ascii=True))
+            return
+    except ZhihuError as exc:
+        parser.exit(1, f"Zhihu API {exc}\n")
     try:
         keyword = TypeAdapter(Keyword).validate_python(args.keyword)
     except ValidationError:
         parser.exit(2, "INVALID_KEYWORD\n")
     collected = datetime.now(UTC)
     try:
-        results = collect(api_request(secret), args.mode, keyword, collected, args.url)
+        results = collect(client, args.mode, keyword, collected, args.url)
     except ZhihuError as exc:
         parser.exit(1, f"Zhihu API {exc}\n")
     except (ValueError, TypeError, AttributeError):

@@ -15,6 +15,7 @@ from travelmind.research.social.adapter import SocialResearchAdapter
 from travelmind.research.social.platforms import PLATFORMS, load_export
 from travelmind.research.social.schemas import ImportRequest, SocialEvidenceRecord
 from travelmind.research.social.service import create_social_app
+from travelmind.research.social.zhihu_api import collect
 from travelmind.runtime.editorial import write
 from travelmind.runtime.experts import find
 from travelmind.runtime.retrieval import ResearchRetriever
@@ -262,14 +263,47 @@ def test_writer_adds_actual_sample_count_time_and_platform(tmp_path):
 
 
 @pytest.mark.postgres
-@pytest.mark.parametrize("platform", ["bilibili", "zhihu"])
-def test_retriever_saves_social_evidence_and_falls_back_without_sidecar(client, tmp_path, platform):
+@pytest.mark.parametrize(
+    ("platform", "official"),
+    [("bilibili", False), ("zhihu", False), ("zhihu", True)],
+    ids=["bilibili-export", "zhihu-export", "zhihu-official"],
+)
+def test_retriever_saves_social_evidence_and_falls_back_without_sidecar(
+    client,
+    tmp_path,
+    platform,
+    official,
+):
     app = create_social_app(tmp_path, TOKEN)
     with TestClient(app, base_url="http://127.0.0.1") as sidecar:
         sidecar.headers["Authorization"] = f"Bearer {TOKEN}"
         request = stage(tmp_path, platform)
+        if official:
+
+            def upstream(endpoint, **params):
+                assert endpoint == "content/zhihu_search" and params["Query"] == request.keyword
+                return {
+                    "Items": [
+                        {
+                            "ContentID": "456",
+                            "ContentType": "Answer",
+                            "Url": "https://www.zhihu.com/question/123/answer/456",
+                            "Title": "泉州",
+                            "ContentText": "测试回答摘要",
+                            "AuthorName": "测试作者",
+                            "CommentInfoList": [{"Content": "测试精选评论"}],
+                        }
+                    ]
+                }
+
+            (record,) = collect(upstream, "search", request.keyword, COLLECTED)
+            request = request.model_copy(update={"format": "normalized"})
+            batch = tmp_path / "inbox" / str(request.batch_id)
+            (batch / "evidence.jsonl").write_text(record.model_dump_json() + "\n", encoding="utf-8")
         job = sidecar.post("/v1/jobs", json=request.model_dump(mode="json"))
-        assert finished_job(sidecar, job.headers["Location"])["status"] == "completed"
+        assert finished_job(sidecar, job.headers["Location"])["status"] == (
+            "partial" if official else "completed"
+        )
         task = client.post("/api/v1/tasks", json={"destination": "泉州", "topics": ["体验"]}).json()
         agent_request = AgentInput(
             task_id=task["task_id"],
@@ -341,6 +375,9 @@ def test_retriever_saves_social_evidence_and_falls_back_without_sidecar(client, 
         assert web == website and social.source_type == "social"
         if platform == "zhihu":
             assert str(social.source_url) == "https://www.zhihu.com/question/123/answer/456"
+        if official:
+            assert "知乎开放平台摘要" in social.source_locator
+            assert "测试作者" in social.source_locator and "测试精选评论" in social.excerpt
         saved = client.get(f"/api/v1/tasks/{task['task_id']}/evidence/{social.evidence_id}")
         assert saved.status_code == 200
         assert saved.json()["source_locator"] == social.source_locator

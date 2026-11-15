@@ -97,23 +97,48 @@ Sidecar 的 `SocialEvidenceRecord` 记录原帖和评论样本。交给 Research
 
 ### 开放平台采集
 
-先启动本机 Sidecar。在调用终端本地设置 `SOCIAL_RESEARCH_TOKEN` 和拥有对应权限、额度的 `ZHIHU_ACCESS_SECRET`。命令返回导入任务状态，使用 `Job` 查看结果，使用 `Read -Platform zhihu` 按关键词查询或导出。
+#### 权限与数据范围
+
+使用知乎账号登录开放平台「个人中心」，新建 Access Secret。站内搜索、问题回答摘要和本人创作接口均使用 Bearer 鉴权，由客户端生成 Unix 秒级时间戳。此流程无需创建 OAuth 应用。后台若提示实名或能力受限，由账号持有人处理。 [个人中心](https://developer.zhihu.com/profile) · [鉴权](https://developer.zhihu.com/docs?key=authorization)
+
+| 能力 | 官方范围 | TravelMind 范围 |
+| --- | --- | --- |
+| 站内搜索 | 返回问题、回答或文章摘要，可附精选评论。单次最多 10 条，`HasMore` 固定为 `false` | `search` 导入问题和回答。精选评论只有正文，使用本地去重键，无法还原评论树 |
+| 问题下的回答 | 按问题 URL 获取回答列表和摘录，使用上游分页游标 | `answers` 最多两页，每页 5 条。完整回答 URL 保留所属问题 |
+| 回答全文 | 仅允许凭据所属账号读取本人已发布内容 | `owned` 获取本人回答正文并按证据长度限额保留摘录 |
+| 评论和回复 | 仅支持本人已发布内容，按根评论分页，附带的子评论可能不完整 | `owned` 最多两页，每页 5 条根评论，共保留最多 12 条评论和回复 |
+
+官方文档未提供任意第三方回答全文、完整评论树或独立问题正文的通用读取接口。第三方登录或代表授权用户读取文档列出的用户数据属于另一个 OAuth 流程，需邮件向知乎申请应用凭据和权限，填写应用信息、回调地址和所需权限，经用户确认后交换授权码。这类授权不扩展本人全文和评论接口的内容归属。 [站内搜索](https://developer.zhihu.com/docs?key=zhihu_search) · [问题回答](https://developer.zhihu.com/docs?key=question_answers) · [本人详情](https://developer.zhihu.com/docs?key=user_content_detail) · [本人评论](https://developer.zhihu.com/docs?key=user_content_comments) · [OAuth](https://developer.zhihu.com/docs?key=zhihu_oauth_integrated)
+
+#### 额度、收费与限流（2026-11-15 核对）
+
+官方按成功调用次数计费。每日免费额度于北京时间零点重置，同账号的多个 Access Secret 共享额度。站内搜索和问题回答超免费额度后均为 **20 元／千次**，本人全文和本人评论均为 **10 元／千次**。官方文档列出问题发现默认每租户每天 100 次，创作能力组默认 500 次，低额度账号示例均为 10 次。搜索实际配额和其他能力剩余额度以「用量统计」或 `ZhihuQuota` 为准。 [服务价格](https://developer.zhihu.com/docs?key=billing_price) · [额度说明](https://developer.zhihu.com/docs?key=quota)
+
+公开文档说明频率、并发和额度错误，未公布这些接口统一的每秒上限。客户端默认每次请求启动间隔至少 1 秒，连接与读取超时默认 8 秒，响应大小上限 512 KiB。仅对临时服务错误重试一次。权限拒绝、限流、额度耗尽和风控拒绝直接返回错误。一次采集只处理一个关键词或内容链接。
+
+#### Windows 配置与验证
+
+在运行命令的 PowerShell 本地设置 `ZHIHU_ACCESS_SECRET`。`dev/social-research/.env.example` 列出可选的超时和间隔，脚本从进程环境读取。额度查询只验证凭据并返回配置的限免额度，不消耗业务额度，也不要求启动 Sidecar。
 
 ```powershell
 $social = '.\dev\social-research\social.ps1'
-& $social -Action ZhihuCollect -Keyword '泉州 预约'
+$env:ZHIHU_ACCESS_SECRET = [System.Net.NetworkCredential]::new(
+    '', (Read-Host '知乎 Access Secret' -AsSecureString)
+).Password
+& $social -Action ZhihuQuota
+```
+
+确认所需能力和剩余额度后，再启动本机 Sidecar，并在调用终端设置与 Sidecar 一致的 `SOCIAL_RESEARCH_TOKEN`。采集命令返回导入任务状态。通过 `Job` 查看批次，通过 `Read` 查询结果。
+
+```powershell
+$job = & $social -Action ZhihuCollect -Keyword '泉州 预约'
+& $social -Action Job -BatchId $job.batch_id
 & $social -Action ZhihuCollect -Keyword '泉州 预约' -ZhihuMode answers -SourceUrl $questionUrl
 & $social -Action ZhihuCollect -Keyword '泉州 预约' -ZhihuMode owned -SourceUrl $ownAnswerUrl
 & $social -Action Read -Platform zhihu -Keyword '泉州 预约'
 ```
 
-| 模式 | 接口范围 | 预算 |
-| --- | --- | --- |
-| `search` | 关键词搜索。导入问题、回答摘要和接口返回的精选评论。精选评论没有原始评论 ID 或回复关系，按正文生成本地去重键 | 一次请求，最多 10 个上游结果 |
-| `answers` | 由知乎问题链接获取回答列表和摘要。问题正文通过正常浏览或授权导出取得 | 最多两页，每页请求 5 条 |
-| `owned` | 由本人已发布的回答链接获取正文和评论，以及接口附带的子评论 | 一次详情请求，最多两页评论，每页请求 5 条根评论 |
-
-API 每次请求有 8 秒超时和响应大小限制。分页遵循服务端游标，遇到验证码、拒绝访问、限流或游标异常即停止。摘要和详情摘录分别标记；平台提供作者和溯源参数时，保留可用于引用的公开署名及开放平台标识。已导入资料进同一 SQLite 缓存，Worker 仅查询缓存。全平台默认预算仍为每批 15 篇、每篇 12 条评论或回复，单次研究最多向苏听雨提供 6 篇。 [搜索接口](https://developer.zhihu.com/docs?key=zhihu_search) · [问题回答接口](https://developer.zhihu.com/docs?key=question_answers) · [本人详情](https://developer.zhihu.com/docs?key=user_content_detail) · [本人评论](https://developer.zhihu.com/docs?key=user_content_comments)
+结果沿用 Sidecar JSONL、`SocialEvidence` 和 Evidence Center。保留原链接、官方溯源参数、可用公开作者、采集时间及评论创建时间。搜索返回的 `CreateTime` 单独记录为平台创建时间。回答准确发布时间缺失时留空。评论树按原始评论 ID 去重，并保留上游直接回复和根评论关系，评论作者标识留在本地导出记录。
 
 ## 验收记录（2026-11-15）
 

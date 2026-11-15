@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('Setup', 'Start', 'Status', 'Import', 'Job', 'Stop', 'Read', 'ZhihuLogin', 'ZhihuCollect')]
+    [ValidateSet('Setup', 'Start', 'Status', 'Import', 'Job', 'Stop', 'Read', 'ZhihuLogin', 'ZhihuQuota', 'ZhihuCollect')]
     [string]$Action,
     [string]$Root = (Join-Path $env:LOCALAPPDATA 'TravelMind\social-research'),
     [ValidateRange(1024, 65535)]
@@ -37,6 +37,18 @@ function Invoke-Checked {
     & $Command @ArgumentList
     if ($LASTEXITCODE -ne 0) {
         throw "$Command exited with code $LASTEXITCODE"
+    }
+}
+
+function Invoke-ZhihuCli {
+    param([string[]]$Options)
+    Push-Location $backend
+    try {
+        Invoke-Checked (Join-Path $venvPath 'Scripts\python.exe') (
+            @('-m', 'travelmind.research.social.zhihu_api') + $Options
+        )
+    } finally {
+        Pop-Location
     }
 }
 
@@ -96,6 +108,10 @@ if ($Action -eq 'ZhihuLogin') {
     return
 }
 
+if ($Action -eq 'ZhihuQuota') {
+    Invoke-ZhihuCli -Options @('--quota') | ConvertFrom-Json
+    return
+}
 if (!$env:SOCIAL_RESEARCH_TOKEN) { throw 'Set SOCIAL_RESEARCH_TOKEN in this shell.' }
 if ($Action -eq 'Start') {
     $env:SOCIAL_DATA_PATH = $dataPath
@@ -124,16 +140,10 @@ if ($Action -eq 'ZhihuCollect') {
     if ($ZhihuMode -ne 'search' -and !$SourceUrl) { throw 'Provide SourceUrl.' }
     $null = Invoke-RestMethod "$baseUri/status" -Headers $headers
     $cliArgs = @(
-        '-m', 'travelmind.research.social.zhihu_api',
         '--data', $dataPath, "--keyword=$Keyword", '--mode', $ZhihuMode
     )
     if ($SourceUrl) { $cliArgs += @('--url', $SourceUrl) }
-    Push-Location $backend
-    try {
-        $body = Invoke-Checked (Join-Path $venvPath 'Scripts\python.exe') $cliArgs
-    } finally {
-        Pop-Location
-    }
+    $body = Invoke-ZhihuCli -Options $cliArgs
     $arguments = @{
         Uri = "$baseUri/jobs"
         Method = 'Post'

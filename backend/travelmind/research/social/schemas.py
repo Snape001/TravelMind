@@ -72,6 +72,8 @@ def canonical_url(platform: Platform, post_id: str) -> str:
 class SocialComment(Contract):
     comment_id: SourceID
     parent_comment_id: SourceID | None = None
+    root_comment_id: SourceID | None = None
+    author_token: ShortText | None = None
     content: Annotated[Text, Field(max_length=320)]
     published_at: AwareDatetime | None = None
     like_count: Count | None = None
@@ -93,6 +95,7 @@ class SocialEvidenceRecord(Contract):
     author_display_name: ShortText | None = None
     original_url: HttpUrl
     published_at: AwareDatetime | None = None
+    created_at: AwareDatetime | None = None
     collected_at: AwareDatetime
     like_count: Count | None = None
     comment_count: Count | None = None
@@ -138,6 +141,8 @@ class SocialEvidenceRecord(Contract):
         if self.provider == "zhihu_open_api":
             scope = "摘要" if self.content_scope == "excerpt" else "详情摘录"
             attribution = f"，来源 知乎开放平台{scope}"
+            if self.created_at:
+                attribution += f"，平台记录创建时间 {self.created_at.astimezone(UTC).isoformat()}"
             if self.author_display_name:
                 attribution += f"，来源作者 {self.author_display_name}"
         elif self.provider == "manual_browser":

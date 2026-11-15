@@ -116,6 +116,8 @@ def test_official_search_keeps_attribution_and_selected_comment_scope():
         "Url": ANSWER + "?utm_medium=openapi_platform&utm_source=abc&session=discard",
         "CommentCount": 20,
         "AuthorName": "公开昵称",
+        "CreateTime": 1760000000,
+        "EditTime": 1760000123,
         "CommentInfoList": [{"Content": "周末需排队"}, {"Content": "周末需排队"}],
     }
     call, calls = send(iter([{"Items": [item]}]))
@@ -123,6 +125,9 @@ def test_official_search_keeps_attribution_and_selected_comment_scope():
     assert calls == [("content/zhihu_search", {"Query": "泉州", "Count": 10})]
     assert record.provider == "zhihu_open_api"
     assert record.author_display_name == "公开昵称"
+    assert record.created_at == datetime.fromtimestamp(1760000000, UTC)
+    assert record.published_at is None
+    assert record.collected_at == COLLECTED
     assert "utm_source=abc" in str(record.original_url)
     assert "session=" not in str(record.original_url)
     assert record.collection_status == "partial" and len(record.comments) == 1
@@ -154,13 +159,22 @@ def test_question_answers_rejects_nonincreasing_offset():
     assert len(calls) == 1
 
 
-def test_owned_answer_reads_child_replies_and_rejects_wrong_target():
+def test_owned_answer_reads_child_replies_and_rejects_wrong_target(tmp_path):
     owned = {"ContentType": "answer", "ContentToken": "456", "Url": ANSWER, "Body": "详情"}
     comments = {
         "Items": [
             {
                 "Comment": {"ID": 19_446_744_073_709_551_615, "Content": "原评论"},
-                "Children": [{"ID": "9", "Content": "回复"}],
+                "Children": [
+                    {"ID": "9", "Content": "回复", "CreatedAt": 1760000123},
+                    {
+                        "ID": "10",
+                        "Content": "回复",
+                        "ReplyID": "9",
+                        "RootID": 19_446_744_073_709_551_615,
+                        "AuthorToken": "local-test-author",
+                    },
+                ],
             }
         ],
         "Paging": {"IsEnd": True},
@@ -170,9 +184,33 @@ def test_owned_answer_reads_child_replies_and_rejects_wrong_target():
     assert [name for name, _ in calls] == ["user/content_detail", "user/content_comments"]
     assert record.comments[1].parent_comment_id == record.comments[0].comment_id
     assert record.comments[0].comment_id == "19446744073709551615"
+    assert record.comments[1].published_at == datetime.fromtimestamp(1760000123, UTC)
+    assert record.comments[2].parent_comment_id == "9"
+    assert record.comments[2].root_comment_id == "19446744073709551615"
+    assert record.comments[2].author_token == "local-test-author"
+    assert record.collection_status == "partial"
+    assert "local-test-author" not in record.to_evidence().model_dump_json()
+
+    request = ImportRequest(
+        batch_id=uuid4(),
+        platform="zhihu",
+        keyword="泉州",
+        collected_at=COLLECTED,
+        format="normalized",
+    )
+    (tmp_path / "evidence.jsonl").write_text(record.model_dump_json() + "\n", encoding="utf-8")
+    (loaded,), errors = load_export(tmp_path, request)
+    assert errors == 0 and loaded == record
     call, _ = send(iter([{**owned, "Url": ANSWER.replace("456", "457")}]))
     with pytest.raises(ZhihuError, match="INVALID_RESPONSE"):
         collect(call, "owned", "泉州", COLLECTED, ANSWER)
+
+
+def test_search_distinguishes_empty_from_malformed_rows():
+    call, _ = send(iter([{"Items": []}, {"Items": ["not a record"]}]))
+    assert collect(call, "search", "泉州", COLLECTED) == []
+    with pytest.raises(ZhihuError, match="INVALID_RESPONSE"):
+        collect(call, "search", "泉州", COLLECTED)
 
 
 def test_phase4_contract_advertises_zhihu():

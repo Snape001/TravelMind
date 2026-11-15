@@ -152,3 +152,5 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 Phase 4 已定义目的地确认、动态问卷、路线规划、专家 Skills、Research Browser 和社交资料接入的开发契约。 [产品范围](PRD.md#phase-4) · [公共接口](docs/phase-4-contract.md) · [架构与验收](docs/phase-4-architecture.md)
 
 苏听雨可通过本机 Sidecar 读取已授权的 MediaCrawler JSONL 或规范化社交证据。Windows 下运行 `.\dev\social-research\social.ps1 -Action ZhihuLogin`，在独立浏览器资料目录中手动登录知乎。一篇用户提供的知乎回答摘录及其评论和回复已通过本机导入、Evidence Center 入库和苏听雨分析验收。 [固定版复核、登录步骤与导入说明](docs/phase-4-social-research.md#知乎)
+
+知乎开放平台采集支持站内问题和回答摘要、问题下的回答列表，以及本人回答详情和接口附带的评论回复。首次调用前使用 `ZhihuQuota` 验证凭据和查看限免额度。 [开放平台权限、配置与收费](docs/phase-4-social-research.md#开放平台采集)

@@ -131,6 +131,7 @@ def zhihu_record(
     title = clean(row.get("title"), 200)
     content = clean(row.get("content_text"), 1600) or clean(row.get("desc"), 1600) or title
     author = clean(row.get("author_display_name"), 200) if official else ""
+    created = parse_time(row.get("created_time"))
     return SocialEvidenceRecord(
         platform="zhihu",
         post_id=post_id,
@@ -141,7 +142,8 @@ def zhihu_record(
         title=title or content[:200],
         content=content,
         original_url=url,
-        published_at=parse_time(row.get("created_time")),
+        published_at=None if official else created,
+        created_at=created if official else None,
         collected_at=collected_at,
         like_count=parse_count(row.get("voteup_count")),
         comment_count=parse_count(row.get("comment_count")),
@@ -214,9 +216,19 @@ def json_rows(path: Path, stop: Event) -> Iterator[dict | None]:
             yield row if isinstance(row, dict) else None
 
 
-def keep_comment(target: dict[str, SocialComment], keys: set[str], comment: SocialComment) -> None:
+def keep_comment(
+    target: dict[str, SocialComment],
+    keys: set[str],
+    comment: SocialComment,
+    *,
+    deduplicate_text: bool = True,
+) -> None:
     key = keyword_key(comment.content)
-    if len(target) < MAX_COMMENTS and comment.comment_id not in target and key not in keys:
+    if (
+        len(target) < MAX_COMMENTS
+        and comment.comment_id not in target
+        and (not deduplicate_text or key not in keys)
+    ):
         target[comment.comment_id] = comment
         keys.add(key)
 
@@ -231,10 +243,21 @@ def normalize_record(row: dict, request: ImportRequest) -> SocialEvidenceRecord:
         raise ValueError("normalized record does not match batch metadata")
     comments: dict[str, SocialComment] = {}
     keys: set[str] = set()
+    preserve_threads = item.provider == "zhihu_open_api" and item.content_scope == "detail"
     for comment in item.comments:
         content = clean(comment.content, 320)
         if content:
-            keep_comment(comments, keys, comment.model_copy(update={"content": content}))
+            author = (
+                clean(comment.author_token, 200) or None
+                if item.provider == "zhihu_open_api"
+                else None
+            )
+            keep_comment(
+                comments,
+                keys,
+                comment.model_copy(update={"content": content, "author_token": author}),
+                deduplicate_text=not preserve_threads,
+            )
     return SocialEvidenceRecord.model_validate(
         {
             **item.model_dump(),
