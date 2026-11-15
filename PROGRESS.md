@@ -46,6 +46,14 @@
 - `python -m travelmind.research.check_amap` 可独立验证真实 POI、输入提示和驾车路径规划。该轮验证了缺 Key 时以退出码 2 终止。
 - PostgreSQL 14 全量后端 213 项通过，含 5 项新增配置测试。前端 27 项、Ruff、Alembic、ESLint、TypeScript、Next.js 生产构建和 Compose 配置检查通过。**交付提交**　`fix: standardize Amap credentials and add live probe`。
 
+## Phase 4 · 动态需求问卷与目的地确认
+
+- 首页只提交目的地。高德关键词搜索与输入提示用于形成可确认的 POI 候选，同名候选显示行政区和地址，零候选可细化关键词。地点确认后生成研究方向、条件追问和个性化补充，路线需求进入三步可选出行问卷。标准目的地、问卷、答复和规划偏好已接入 Planner。 [配置与实现](docs/dynamic-research-questionnaire.md)
+- 问卷、答复、任务状态和幂等结果使用 PostgreSQL，沿用现有 Worker 租约、AgentEvent v1 和核心研究图。三个 intake 路由按冻结 Schema 实现，前端类型从当前 FastAPI OpenAPI 生成，再次生成结果一致。
+- PostgreSQL 17 上 217 项后端测试、31 项前端测试全部通过。Ruff、ESLint、TypeScript、Next.js 生产构建和 Alembic 一致性通过。另验证了迁移回退时 typed 任务发布终止事件，旧任务保留原状态。
+- 桌面浏览器通过生产 Next.js、实际 FastAPI、PostgreSQL 和供应商 Fixture 完成同名确认、刷新待答轮次、条件追问、路线偏好、Planner 交接和报告入口。真实 DeepSeek 使用合成地点，一次调用发布六题。当前环境缺少高德 Web 服务 Key，真实 POI 和输入提示仍待配置后联调。
+- **交付分支**　`feat/dynamic-research-questionnaire`，基于 `03d56a1`。**交付提交**　`feat: add destination intake and dynamic research questionnaires`。
+
 ## Phase 4 · Step 0 公共契约
 
 - 冻结目的地、动态问卷、路线偏好、专家档案与 Skills、Research Browser 事件、模型用量和社交证据。交付 Pydantic Schema、共享合成 Fixture 和独立类型导出。现有路由、AgentEvent v1、六态任务机及 Worker 仍走 Phase 3。 [公共接口](docs/phase-4-contract.md)

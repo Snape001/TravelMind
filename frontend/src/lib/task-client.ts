@@ -1,4 +1,5 @@
 import { eventCursor, eventTypes, readEvent } from "./agent-events";
+import type { DestinationTaskCreate, Intake, Submission } from "./intake";
 import type { AgentEvent, CurrentUser, EvidenceRead, ReportRead, ResearchBrief, TaskRead } from "./research";
 import type { TaskCommand } from "./task-lifecycle";
 
@@ -41,6 +42,12 @@ export const readSession = (signal?: AbortSignal) => json<CurrentUser>(`${auth}/
 export const logout = (csrf: string) => request(`${auth}/logout`, write(csrf));
 export const createTask = (brief: ResearchBrief, key: string, csrf: string, signal?: AbortSignal) =>
   json<TaskRead>(collection, write(csrf, key, brief, signal));
+export const createDestinationTask = (body: DestinationTaskCreate, key: string, csrf: string, signal?: AbortSignal) =>
+  json<TaskRead>(`${collection}/from-destination`, write(csrf, key, body, signal));
+export const readIntake = (taskId: string, signal?: AbortSignal) =>
+  json<Intake>(`${taskUrl(taskId)}/intake`, { signal });
+export const answerQuestionnaire = (taskId: string, roundId: string, body: Submission, key: string, csrf: string, signal?: AbortSignal) =>
+  json<TaskRead>(`${taskUrl(taskId)}/questionnaires/${encodeURIComponent(roundId)}/answer`, write(csrf, key, body, signal));
 export function sendCommand(taskId: string, command: TaskCommand, key: string, csrf: string, signal?: AbortSignal) {
   const path = command.operation === "answer" ? `clarifications/${encodeURIComponent(command.roundId)}/answer` : command.operation;
   return json<TaskRead>(`${taskUrl(taskId)}/${path}`, write(csrf, key, command.operation === "answer" ? command.body : undefined, signal));

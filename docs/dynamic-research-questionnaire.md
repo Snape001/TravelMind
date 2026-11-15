@@ -1,6 +1,6 @@
 # 目的地确认与动态问卷
 
-`POST /api/v1/tasks/from-destination` 接受目的地单字段并为已登录用户创建任务。历史、示例和报告沿用现有入口。接口、请求和事件格式以 [Phase 4 公共接口](phase-4-contract.md) 为准。
+首页只提交目的地。已登录用户直接创建待处理任务。需要登录时，同一浏览器标签页保留输入，完成现有 OIDC 回调后回填首页。历史、示例和报告沿用现有入口。接口、请求和事件格式以 [Phase 4 公共接口](phase-4-contract.md) 为准。
 
 ## 地点确认
 
@@ -19,4 +19,4 @@
 
 从 `backend/` 运行 `alembic upgrade head` 应用迁移 `0004`，然后启动同版本 API、Worker 与前端。旧版本 Worker 无法解释 typed intake，回退前应停掉 API 和 Worker。`alembic downgrade 0003` 会结束未完成的 typed 任务并移除问卷数据，已发布报告仍可访问。
 
-`backend/tests/test_intake.py` 使用可控的高德和结构化模型响应，校验地点消歧、问卷重读、幂等、隐藏答案、偏好转换和 Planner 交接。PostgreSQL 用例沿用现有 `TEST_DATABASE_URL`。
+`backend/tests/test_intake.py` 使用可控的高德和结构化模型响应，校验地点消歧、问卷重读、幂等、隐藏答案、偏好转换和 Planner 交接。PostgreSQL 用例沿用现有 `TEST_DATABASE_URL`。前端测试读取共享 Phase 4 Fixture。此次浏览器验收使用生产 Next.js、实际 FastAPI 和 PostgreSQL，外部采用合成响应。另用合成地点独立执行真实 DeepSeek 结构化生成。
