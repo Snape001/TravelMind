@@ -36,6 +36,7 @@ async def write(
     previous_review: Review | None,
     *,
     experts: list[ExpertResearchResult] | None = None,
+    verified_map: frozenset[UUID] = frozenset(),
 ) -> ReportResult:
     findings = [
         {
@@ -72,7 +73,7 @@ async def write(
         "previous_review": previous_review.model_dump(mode="json") if previous_review else None,
     }
     if experts:
-        eligible = usable_evidence(experts)
+        eligible = usable_evidence(experts) | verified_map
         request = request.model_copy(
             update={"evidence": [item for item in request.evidence if item.evidence_id in eligible]}
         )
@@ -95,10 +96,11 @@ async def review(
     contributor_ids: set[str],
     *,
     experts: list[ExpertResearchResult] | None = None,
+    verified_map: frozenset[UUID] = frozenset(),
 ) -> ReviewResult:
     assert request.draft is not None
     evidence_ids = {item.evidence_id for item in request.evidence}
-    eligible = usable_evidence(experts) if experts else evidence_ids
+    eligible = usable_evidence(experts) | verified_map if experts else evidence_ids
     issues = []
     for section in request.draft.sections:
         if set(section.evidence_ids) - evidence_ids:

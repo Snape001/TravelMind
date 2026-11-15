@@ -8,7 +8,7 @@
 
 ## 恢复与投影
 
-- 图按 `thread_id=str(task_id)` 保存 Checkpoint。新任务使用 `durable-v2`，存量任务按 Checkpoint 中的图版本恢复。每个 superstep 使用同步持久化，Worker 先对账已提交的 Checkpoint 及业务游标，再推进下一步。
+- 图按 `thread_id=str(task_id)` 保存 Checkpoint。结构化问卷的新任务使用 `durable-v3`，旧简报入口默认使用 `durable-v2`，已有任务按 Checkpoint 中的图版本恢复。每个 superstep 使用同步持久化，Worker 先对账已提交的 Checkpoint 及业务游标，再推进下一步。
 - 完整 Checkpoint、并行分支的中间写入和提前落库的证据均在实际写入的数据库事务中调用 `check_lease`。失去当前 epoch 后停止执行。
 - Agent 执行、证据引用事件、报告审核版本和事件标识来自持久化节点输出。终态及资源事件按冻结的投影批次提交。任务存储维护 SSE 序号和资源可见性。
 - 暂停在节点或并行批次之间的安全点生效。澄清问题、答复历史和消费指令 ID 持久化。恢复时使用匹配的 LangGraph 中断 ID，投影确认消费后才推进后续节点。

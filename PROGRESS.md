@@ -7,6 +7,14 @@
 - ESLint、TypeScript、38 项前端测试与 Next.js 生产构建通过。当前应用 OpenAPI 尚无报告地图接口和 `MapData`，生产联调、多日切换、建议停留时间与公交分段仍依赖后端交付。 [实现与联调边界](docs/report-map-ui.md)
 - **交付分支**　`codex/report-map-ui`。**交付提交**　`feat: visualize confirmed routes in reports and workbench`。
 
+## Phase 4 · 默认 Worker 旅游规划与报告地图（2026-11-15）
+
+- 复用问卷后端 `b7d64a8` 和高德适配器 `e080bf2`。结构化问卷的新任务使用 `durable-v3`。Planner 按实际选择调度陆知行，默认 Worker 使用高德 POI 搜索、详情和路线工具。旧简报任务及已有 `durable-v1`、`durable-v2` Checkpoint 沿用原图。
+- 迁移 `0004`、`0005` 分别落地问卷与地图。按当前租约投影真实点位、多天行程、已选和备选路线及地图 Evidence。报告通过审核后关联同一快照，任务路线和报告地图 API 校验归属。公交线路、站点和独立几何分段可直接读取，断开的分段不拼成单线。数据缺口通过 `partial` 和报告正文说明展示。 [地图查询](docs/phase-4-travel-planning.md#地图查询)
+- 使用默认 Worker、真实高德与 DeepSeek，在隔离 PostgreSQL 14 上从泉州大开元寺问卷跑到已审核报告，约 28.4 秒。地图接口返回 HTTP 200、2 天、7 个 POI、2 条已选路线、8 个步行/公交方案、94 个几何分段和 2 条地图 Evidence，原 SSE 共 48 条。真实高德详情限流和分段缺口记为 `partial`，报告正常发布。
+- PostgreSQL 14 全量 248 项通过。覆盖未选路线、限流时继续出报告、多天多方式、投影中断及续跑、旧 epoch 拒写、公交断开几何、跨用户 404、历史报告和旧图恢复。Ruff 与 Alembic 一致性通过。
+- Compose 渲染和临时 API、Worker 容器均确认读取三项高德变量，前端容器通过同源代理接入。现有容器继续运行，升级步骤见 [README](README.md#docker-更新-api-与-worker)。工作台地图显示留给前端接线。**交付提交**　`feat: integrate durable travel planning and report maps`。
+
 ## Phase 4 · 高德真实 API 验收（2026-11-15）
 
 - `backend/.env` 的 `AMAP_WEB_API_KEY`、`NEXT_PUBLIC_AMAP_JS_API_KEY`、`AMAP_SECURITY_JS_CODE` 均由后端成功读取。A 线客户端注入 Web 服务 Key，B 线 POI、地理编码和路线适配复用同一客户端。前端从登录后的 `/_AMapService/config` 读取公开 JS Key，安全密钥用于服务端代理。已核对前后端环境变量模板及 Git 忽略规则。

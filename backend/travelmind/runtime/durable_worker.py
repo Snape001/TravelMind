@@ -7,12 +7,18 @@ from uuid import UUID, uuid4, uuid5
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.types import Command
 
-from travelmind.runtime.controls import GRAPH_VERSION, REFLECTION_GRAPH_VERSION
+from travelmind.runtime.controls import (
+    GRAPH_VERSION,
+    REFLECTION_GRAPH_VERSION,
+    TRAVEL_GRAPH_VERSION,
+)
 from travelmind.runtime.experts import EvidenceRetriever
+from travelmind.runtime.intake.worker import IntakeWorker, model_with_intake
 from travelmind.runtime.journal import ControlContext
 from travelmind.runtime.model import StructuredModel
 from travelmind.runtime.projection import batches
 from travelmind.runtime.reflection import ReflectionConfig
+from travelmind.runtime.travel.planner import TravelPlanner
 from travelmind.runtime.workflow import build_research_graph
 from travelmind.schemas.agents import ErrorInfo
 from travelmind.schemas.worker import (
@@ -39,6 +45,8 @@ class DurableWorker:
         *,
         retrieve: Callable[[LeaseRef], EvidenceRetriever] | None = None,
         reflection: ReflectionConfig | None = None,
+        intake: IntakeWorker | None = None,
+        travel_planner: TravelPlanner | None = None,
         lease_seconds: int = 45,
         poll_seconds: float = 2,
         worker_id: UUID | None = None,
@@ -50,6 +58,8 @@ class DurableWorker:
         self.saver = saver
         self.retrieve = retrieve
         self.reflection = reflection
+        self.intake = intake
+        self.travel_planner = travel_planner
         self.lease_seconds = lease_seconds
         self.poll_seconds = poll_seconds
         self.worker_id = worker_id or uuid4()
@@ -107,6 +117,14 @@ class DurableWorker:
         """Reconcile the last checkpoint before issuing any further graph work."""
         # Validate even if a store constructs its claim without running the schema validators.
         claim = TaskClaim.model_validate(claim.model_dump())
+        model = self.model
+        intake = None
+        if self.intake is not None:
+            proceed, intake = await self.intake.prepare(claim)
+            if not proceed:
+                return
+            if intake is not None:
+                model = model_with_intake(model, intake)
         lease = claim.lease
         saver = self.saver(lease)
         config = {"configurable": {"thread_id": str(lease.task_id)}}
@@ -114,21 +132,28 @@ class DurableWorker:
         version = (
             REFLECTION_GRAPH_VERSION if self.reflection and self.reflection.score else GRAPH_VERSION
         )
+        if intake is not None and self.travel_planner is not None and self.reflection is not None:
+            version = TRAVEL_GRAPH_VERSION
         if previous is not None:
             version = previous.metadata.get("graph_version")
-        if version not in (GRAPH_VERSION, REFLECTION_GRAPH_VERSION):
+        if version not in (GRAPH_VERSION, REFLECTION_GRAPH_VERSION, TRAVEL_GRAPH_VERSION):
             await self._failure(lease, "CHECKPOINT_VERSION_MISMATCH", retryable=False)
             return
         reflection = None
-        if version == REFLECTION_GRAPH_VERSION:
+        if version == TRAVEL_GRAPH_VERSION and intake is None:
+            await self._failure(lease, "CHECKPOINT_INTAKE_MISSING", retryable=False)
+            return
+        if version in (REFLECTION_GRAPH_VERSION, TRAVEL_GRAPH_VERSION):
             # This configuration also compiles the graph for read-only reconciliation.
             reflection = self.reflection or ReflectionConfig(model_id="unavailable")
         config["configurable"]["graph_version"] = version
         graph = build_research_graph(
-            self.model,
+            model,
             checkpointer=saver,
             retrieve=self.retrieve(lease) if claim.execution_permitted and self.retrieve else None,
             reflection=reflection,
+            travel_intake=intake if version == TRAVEL_GRAPH_VERSION else None,
+            travel_planner=self.travel_planner,
         )
         force_pause = False
 

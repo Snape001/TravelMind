@@ -83,9 +83,17 @@ async def understand(
 
 
 async def plan_research(
-    model: StructuredModel, request: AgentInput, *, focused: bool = False
+    model: StructuredModel,
+    request: AgentInput,
+    *,
+    focused: bool = False,
+    travel_requested: bool | None = None,
 ) -> PlanResult:
-    roster = "\n".join(f"- {agent_id}：{role}" for agent_id, role in EXPERTS.items())
+    roster = "\n".join(
+        f"- {agent_id}：{role}"
+        for agent_id, role in EXPERTS.items()
+        if travel_requested is not False or agent_id != "travel_planning"
+    )
 
     async def make_plan() -> ResearchPlan:
         scope = (
@@ -107,6 +115,18 @@ async def plan_research(
             raise InvalidOutput("planner must select distinct experts from the roster")
         if any(set(task.depends_on) - ids.keys() for task in draft.assignments):
             raise InvalidOutput("dependency must reference a selected expert")
+        assignments = draft.assignments.copy()
+        if travel_requested is False:
+            ids.pop("travel_planning", None)
+            assignments = [task for task in assignments if task.agent_id in ids]
+        if travel_requested and "travel_planning" not in ids:
+            ids["travel_planning"] = uuid5(request.run_id, "travel_planning")
+            assignments.append(
+                ExpertAssignment(
+                    agent_id="travel_planning",
+                    objective="按已确认目的地和偏好核对景点及交通路线",
+                )
+            )
         return ResearchPlan(
             objective=draft.objective,
             assignments=[
@@ -114,9 +134,11 @@ async def plan_research(
                     assignment_id=ids[task.agent_id],
                     agent_id=task.agent_id,
                     objective=task.objective,
-                    depends_on=[ids[parent] for parent in dict.fromkeys(task.depends_on)],
+                    depends_on=[
+                        ids[parent] for parent in dict.fromkeys(task.depends_on) if parent in ids
+                    ],
                 )
-                for task in draft.assignments
+                for task in assignments
             ],
         )
 

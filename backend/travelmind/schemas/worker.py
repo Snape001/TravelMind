@@ -7,6 +7,7 @@ from travelmind.schemas.agents import AgentOutput, ErrorInfo
 from travelmind.schemas.api import ClarificationAnswers, PendingClarification, ReportRead
 from travelmind.schemas.domain import AgentId, Contract, ResearchBrief, Text
 from travelmind.schemas.events import ClarificationEvent, EventPayload, TaskStatusEvent
+from travelmind.schemas.map_data import MapData
 
 LeaseEpoch = Annotated[int, Field(ge=1)]
 LeaseSeconds = Annotated[int, Field(ge=1)]
@@ -120,6 +121,10 @@ class ProjectionBatch(Contract):
                 "task status and clarification events are materialized from transitions"
             )
         return self
+
+
+class MapProjectionBatch(ProjectionBatch):
+    map_data: MapData
 
 
 class AttemptFailure(Contract):

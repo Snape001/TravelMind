@@ -19,6 +19,8 @@ from travelmind.runtime.state import (
     output_for,
     run_mapping,
 )
+from travelmind.runtime.travel.integration import incomplete_map, run_travel
+from travelmind.runtime.travel.planner import TRAVEL_AGENT_ID, TravelPlanner
 from travelmind.schemas.agents import (
     AgentFailure,
     AgentInput,
@@ -29,7 +31,7 @@ from travelmind.schemas.agents import (
     ResearchResult,
     RunBudget,
 )
-from travelmind.schemas.domain import Assignment, Evidence, Finding, TaskStatus
+from travelmind.schemas.domain import Assignment, Evidence, Finding, ReportSection, TaskStatus
 from travelmind.schemas.events import (
     AgentMessageEvent,
     ClarificationEvent,
@@ -39,6 +41,8 @@ from travelmind.schemas.events import (
     ReportReviewedEvent,
     TaskStatusEvent,
 )
+from travelmind.schemas.map_data import MapData
+from travelmind.schemas.phase4_intake import ResearchIntakeContext
 from travelmind.schemas.research_quality import ExpertResearchResult
 
 
@@ -103,6 +107,14 @@ def expert_assessments(state: ResearchState) -> list[ExpertResearchResult]:
     ]
 
 
+def verified_map_evidence(state: ResearchState) -> frozenset[UUID]:
+    return frozenset(
+        UUID(entry["evidence_id"])
+        for entry in state.get("map_data", {}).get("routes", [])
+        if entry["evidence_id"] is not None
+    )
+
+
 def build_research_graph(
     model: StructuredModel,
     *,
@@ -111,6 +123,8 @@ def build_research_graph(
     max_revision_rounds: int = 1,
     checkpointer: BaseCheckpointSaver | None = None,
     reflection: ReflectionConfig | None = None,
+    travel_intake: ResearchIntakeContext | None = None,
+    travel_planner: TravelPlanner | None = None,
 ):
     """Compile the research workflow. Custom stream items are AgentEvent payloads."""
     if not 0 <= max_revision_rounds <= 2:
@@ -118,6 +132,8 @@ def build_research_graph(
     run_budget = budget or RunBudget()
     durable = checkpointer is not None
     reflection_flow = ReflectionWorkflow(reflection, model, retrieve) if reflection else None
+    if travel_intake is not None and reflection_flow is None:
+        raise ValueError("typed intake graph requires reflection configuration")
 
     def request_for(state: ResearchState, agent_id: str, *, run_id=None, **context) -> AgentInput:
         return AgentInput(
@@ -160,7 +176,12 @@ def build_research_graph(
         request = request_for(state, planning.PLANNER)
         result = await run_agent(
             request,
-            lambda: planning.plan_research(model, request, focused=reflection_flow is not None),
+            lambda: planning.plan_research(
+                model,
+                request,
+                focused=reflection_flow is not None,
+                travel_requested=travel_intake.travel_route_requested if travel_intake else None,
+            ),
         )
         if isinstance(result, AgentFailure):
             return records(result) | publish_status("failed", error=result.error)
@@ -247,7 +268,10 @@ def build_research_graph(
             ]
             if reflection_flow:
                 return [
-                    initial_work(request, missing_dependencies=missing) for request, missing in work
+                    Send("travel_expert", request.model_dump(mode="json"))
+                    if travel_intake is not None and request.agent_id == TRAVEL_AGENT_ID
+                    else initial_work(request, missing_dependencies=missing)
+                    for request, missing in work
                 ]
             return [
                 Send("expert", ExpertRun(request.model_dump(mode="json"), missing))
@@ -287,6 +311,26 @@ def build_research_graph(
         assert request.assignment is not None
         return records(result) | {
             "assignment_runs": {request.assignment.assignment_id: result.run_id},
+        }
+
+    async def travel_expert(payload: dict) -> dict:
+        assert travel_intake is not None and travel_intake.travel_route_requested
+        request = AgentInput.model_validate(payload)
+        snapshot: MapData | None = None
+
+        async def execute() -> ResearchResult:
+            nonlocal snapshot
+            result, snapshot = await run_travel(request, travel_intake, travel_planner)
+            return result
+
+        result = await run_agent(request, execute)
+        if isinstance(result, AgentFailure):
+            snapshot = incomplete_map(request.task_id, travel_intake, result.error)
+        assert request.assignment is not None and snapshot is not None
+        return records(result) | {
+            "assignment_runs": {request.assignment.assignment_id: result.run_id},
+            "map_data": snapshot.model_dump(mode="json"),
+            "map_ready": [True],
         }
 
     async def cross_examine(work: ExpertExchange) -> dict:
@@ -335,11 +379,29 @@ def build_research_graph(
         result = await run_agent(
             request,
             lambda: editorial.write(
-                model, request, inputs, state.get("review"), experts=assessments
+                model,
+                request,
+                inputs,
+                state.get("review"),
+                experts=assessments,
+                verified_map=verified_map_evidence(state),
             ),
         )
         if isinstance(result, AgentFailure):
             return records(result) | publish_status("failed", error=result.error)
+        if state.get("map_data", {}).get("status") == "partial":
+            author = next(
+                (item.agent_id for item in inputs if item.agent_id == TRAVEL_AGENT_ID),
+                inputs[0].agent_id,
+            )
+            notice = ReportSection(
+                heading="地图数据完整性",
+                body="地图数据不完整。缺失的点位、路段或交通方式请在出行前核验。",
+                author_agent_ids=[author],
+                evidence_ids=[],
+            )
+            draft = result.report.model_copy(update={"sections": [*result.report.sections, notice]})
+            result = result.model_copy(update={"report": draft})
         return records(result) | {"draft": result.report, "report_id": uuid4()}
 
     async def review(state: ResearchState) -> dict:
@@ -356,7 +418,11 @@ def build_research_graph(
         result = await run_agent(
             request,
             lambda: editorial.review(
-                model, request, {item.agent_id for item in inputs}, experts=assessments
+                model,
+                request,
+                {item.agent_id for item in inputs},
+                experts=assessments,
+                verified_map=verified_map_evidence(state),
             ),
         )
         if isinstance(result, AgentFailure):
@@ -431,6 +497,11 @@ def build_research_graph(
             journal_node(reflection_director) if durable else reflection_director,
         )
         builder.add_edge("reflect_expert", "reflection_director")
+        if travel_intake is not None:
+            builder.add_node(
+                "travel_expert", journal_node(travel_expert) if durable else travel_expert
+            )
+            builder.add_edge("travel_expert", "reflection_director")
         next_step = "before_reflection" if durable else "dispatch_reflection"
         if durable:
             builder.add_node(next_step, control_node(controls.pause_gate))
@@ -498,6 +569,8 @@ def build_research_graph(
         if reflection_flow
         else ["expert", "cross_examine", "write", END]
     )
+    if travel_intake is not None:
+        targets.append("travel_expert")
     builder.add_conditional_edges("schedule", dispatch, targets)
     if reflection_flow is None:
         builder.add_edge("cross_examine", "write")

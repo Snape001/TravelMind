@@ -11,6 +11,7 @@ from travelmind.schemas.worker import AnswerClarification, ExecutionInstruction,
 
 GRAPH_VERSION = "durable-v1"
 REFLECTION_GRAPH_VERSION = "durable-v2"
+TRAVEL_GRAPH_VERSION = "durable-v3"
 instruction_adapter = TypeAdapter(ExecutionInstruction)
 
 
