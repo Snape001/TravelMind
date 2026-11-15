@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { EvidenceCard } from "./evidence-card";
 import { ExpertLabel } from "./expert-identity";
 import { reportDiscussion } from "@/lib/report-discussion";
+import { canonicalAgentId } from "@/lib/experts";
 import { readReport } from "@/lib/task-client";
 import { formatDate, workbenchHref, type ReportRead } from "@/lib/research";
 import { demo, demoResearch } from "@/lib/demo";
@@ -76,7 +77,7 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
                   <h2>{discussion && <DiscussionIcon size={21} aria-hidden />}{section.heading}</h2>
                   <div className="byline">
                     <span>章节署名</span>
-                    <ul aria-label="本章专家">{Array.from(new Set(section.author_agent_ids)).map((id) =>
+                    <ul aria-label="本章专家">{Array.from(new Set(section.author_agent_ids.map(canonicalAgentId))).map((id) =>
                       <li key={id}><ExpertLabel id={id} avatar /></li>)}</ul>
                   </div>
                   <p className="report-body">{section.body}</p>

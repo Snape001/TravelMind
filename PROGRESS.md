@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## Phase 4 · D 线桌面调研工作台（2026-11-15）
+
+- 首页使用「山海寻踪，知行有据」与单目的地入口，接入 POI 确认、研究问卷和可选出行轮次。桌面工作台采用可拖拽三栏，保留任务控制、AgentEvent v1、任务依赖、历史与报告入口。公会、工作台和报告共用身份映射，Writer 与 Reviewer 独立展示。
+- Research Browser 接入独立 SSE、断点续传和来源正文接口。工具动作展示可展开的技术详情，Hover 只使用扩展流提供的脱敏 Prompt 和供应商 Usage。Phase 3 服务仍可创建默认深度的调研，旧任务继续展示文本澄清、已入库证据和章节引用。 [桌面 UI 与接入说明](docs/phase-4-desktop-ui.md)
+- 34 项前端测试、ESLint、TypeScript 和 Next.js 生产构建通过。Chrome 在 1440 与 1024 像素下通过共享 Fixture 验证三轮问卷、栏宽拖拽、双流、来源列表位置恢复、正文与外链、Usage Hover 及报告署名与争议。扩展流在第 3 条断开后从该游标回放。
+- 新版生产界面通过本地 OIDC 读取已有任务，验证真实 AgentEvent 和旧证据摘录。FastAPI 任务、报告和证据读回为 200。AgentEvent 共 66 条，从第 5 条继续重放 61 条。当前环境的 Phase 4 Intake 和 Research Browser 扩展端点未挂载。新问卷与来源流已按冻结契约接线，待集成环境核对真实高德、来源生命周期与供应商 Usage。
+- **交付提交**　基于 `03d56a1` 的 `feat/research-browser-ui`，提交 `feat: build the desktop research workspace`。
+
 ## Phase 4 · Step 0 公共契约
 
 - 冻结目的地、动态问卷、路线偏好、专家档案与 Skills、Research Browser 事件、模型用量和社交证据。交付 Pydantic Schema、共享合成 Fixture 和独立类型导出。现有路由、AgentEvent v1、六态任务机及 Worker 仍走 Phase 3。 [公共接口](docs/phase-4-contract.md)

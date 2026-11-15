@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, readTask, subscribe } from "@/lib/task-client";
+import { ApiError, readTask, subscribe, subscribeResearch } from "@/lib/task-client";
 import { isTerminal, nextSnapshot } from "@/lib/task-lifecycle";
 import type { AgentEvent, TaskRead } from "@/lib/research";
+import type { ResearchEvent } from "@/lib/research-browser";
 
 export type Connection = "connecting" | "open" | "reconnecting" | "closed" | "unavailable";
 
@@ -11,6 +12,8 @@ export function useTaskSession(taskId: string | null, onAccessError: (error: unk
   const [task, setTask] = useState<TaskRead | null>(null);
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [connection, setConnection] = useState<Connection>("connecting");
+  const [research, setResearch] = useState<ResearchEvent[]>([]);
+  const [researchConnection, setResearchConnection] = useState<Connection>("connecting");
   const [error, setError] = useState("");
   const reload = useRef<(() => void) | null>(null);
 
@@ -24,6 +27,7 @@ export function useTaskSession(taskId: string | null, onAccessError: (error: unk
     let disposed = false;
     let pending: AbortController | undefined;
     let close: (() => void) | undefined;
+    let closeResearch: (() => void) | undefined;
     let ended = false;
     let refreshAgain = false;
 
@@ -39,6 +43,11 @@ export function useTaskSession(taskId: string | null, onAccessError: (error: unk
         if (controller.signal.aborted) return;
         accept(record);
         setError("");
+        closeResearch ??= subscribeResearch(record, (event) => setResearch((current) => [...current, event]),
+          setResearchConnection, (problem) => {
+            onAccessError(problem);
+            refresh();
+          });
         if (!close && !ended) {
           close = subscribe(record, 0, (event) => {
             setEvents((current) => [...current, event]);
@@ -59,9 +68,11 @@ export function useTaskSession(taskId: string | null, onAccessError: (error: unk
         onAccessError(problem);
         if (problem instanceof ApiError && [401, 403, 404].includes(problem.status)) {
           close?.();
+          closeResearch?.();
           refreshAgain = false;
           setTask(null);
           setEvents([]);
+          setResearch([]);
           ended = true;
           setConnection("unavailable");
         }
@@ -81,9 +92,10 @@ export function useTaskSession(taskId: string | null, onAccessError: (error: unk
       disposed = true;
       pending?.abort();
       close?.();
+      closeResearch?.();
       reload.current = null;
     };
   }, [taskId, accept, onAccessError]);
 
-  return { task, events, connection, error, accept, refresh: () => reload.current?.() };
+  return { task, events, connection, research, researchConnection, error, accept, refresh: () => reload.current?.() };
 }

@@ -13,7 +13,7 @@ export default function Guild() {
       <header className="guild-banner">
         <div className="guild-banner-content">
           <h1>专家公会</h1>
-          <p>从研究设计、专题取证到独立审议，认识参与 TravelMind 调研的九位专家。</p>
+          <p>从研究设计、专题取证到独立审议，查看 TravelMind 的专家分工。</p>
           <nav aria-label="公会分组">
             {tiers.map(({ id, title }) => <a href={`#${id}`} key={id}>{title}<ArrowRight size={14} aria-hidden /></a>)}
           </nav>
@@ -32,7 +32,7 @@ export default function Guild() {
                 <ExpertPortrait expert={expert} />
                 <div className="expert-card-copy">
                   <div className="expert-card-heading">
-                    <div><p className="expert-role">{expert.title}</p><h3>{expert.name}</h3></div>
+                    <div>{expert.name && <p className="expert-role">{expert.title}</p>}<h3>{expert.name ?? expert.title}</h3></div>
                     <span className="expert-card-arrow"><ArrowUpRight size={18} aria-hidden /></span>
                   </div>
                   <p className="expert-summary">{expert.description}</p>

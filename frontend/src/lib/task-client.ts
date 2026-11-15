@@ -1,6 +1,9 @@
 import { eventCursor, eventTypes, readEvent } from "./agent-events";
 import type { AgentEvent, CurrentUser, EvidenceRead, ReportRead, ResearchBrief, TaskRead } from "./research";
 import type { TaskCommand } from "./task-lifecycle";
+import { isTerminal } from "./task-lifecycle";
+import { readResearchEvent, type ResearchEvent, type ResearchSource } from "./research-browser";
+import type { components } from "./phase4.generated";
 
 const collection = "/api/v1/tasks";
 const taskUrl = (taskId: string) => `${collection}/${encodeURIComponent(taskId)}`;
@@ -13,6 +16,8 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
+
+export const missingEndpoint = (error: unknown) => error instanceof ApiError && !error.code && [404, 405].includes(error.status);
 
 async function request(url: string, options: RequestInit = {}): Promise<Response> {
   const response = await fetch(url, { ...options, cache: "no-store" });
@@ -41,9 +46,18 @@ export const readSession = (signal?: AbortSignal) => json<CurrentUser>(`${auth}/
 export const logout = (csrf: string) => request(`${auth}/logout`, write(csrf));
 export const createTask = (brief: ResearchBrief, key: string, csrf: string, signal?: AbortSignal) =>
   json<TaskRead>(collection, write(csrf, key, brief, signal));
+export const createDestinationTask = (body: components["schemas"]["DestinationTaskCreate"], key: string, csrf: string, signal: AbortSignal) =>
+  json<TaskRead>(`${collection}/from-destination`, write(csrf, key, body, signal));
+export const readIntake = (taskId: string, signal: AbortSignal) =>
+  json<components["schemas"]["ResearchIntakeRead"]>(`${taskUrl(taskId)}/intake`, { signal });
+export const readResearchSource = (taskId: string, id: string, signal: AbortSignal) =>
+  json<ResearchSource>(`${taskUrl(taskId)}/research-sources/${encodeURIComponent(id)}`, { signal });
 export function sendCommand(taskId: string, command: TaskCommand, key: string, csrf: string, signal?: AbortSignal) {
-  const path = command.operation === "answer" ? `clarifications/${encodeURIComponent(command.roundId)}/answer` : command.operation;
-  return json<TaskRead>(`${taskUrl(taskId)}/${path}`, write(csrf, key, command.operation === "answer" ? command.body : undefined, signal));
+  const answer = "roundId" in command;
+  const path = answer ?
+    `${command.operation === "answer" ? "clarifications" : "questionnaires"}/${encodeURIComponent(command.roundId)}/answer` :
+    command.operation;
+  return json<TaskRead>(`${taskUrl(taskId)}/${path}`, write(csrf, key, answer ? command.body : undefined, signal));
 }
 export const readTask = (taskId: string, signal: AbortSignal) => json<TaskRead>(taskUrl(taskId), { signal });
 export const readReport = (taskId: string, reportId: string, signal: AbortSignal) =>
@@ -92,4 +106,96 @@ export function subscribe(
     source?.close();
     source = undefined;
   };
+}
+
+export type ResearchConnection = "connecting" | "open" | "reconnecting" | "closed" | "unavailable";
+
+export function subscribeResearch(
+  task: TaskRead, onEvent: (event: ResearchEvent) => void,
+  onConnection: (state: ResearchConnection) => void, onAccessError: (error: ApiError) => void,
+): () => void {
+  const controller = new AbortController();
+  const { signal } = controller;
+  const cursor = eventCursor(task, 0);
+  let terminalReplay = isTerminal(task.status);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let delay = 500;
+
+  async function connect() {
+    if (signal.aborted) return;
+    try {
+      const response = await request(`${taskUrl(task.task_id)}/research-events?after=${cursor.sequence}`, {
+        signal, headers: { Accept: "text/event-stream" },
+      });
+      if (signal.aborted) return;
+      if (!response.headers.get("Content-Type")?.startsWith("text/event-stream") || !response.body) {
+        throw new Error("来源事件响应格式不正确。");
+      }
+      onConnection("open");
+      await consumeResearchStream(response.body, (event) => {
+        if (!signal.aborted && cursor.accept(event)) {
+          delay = 500;
+          onEvent(event);
+        }
+      });
+      if (signal.aborted) return;
+      // Drain the independent stream after terminal status, including records published after the core stream closed.
+      const snapshot = await readTask(task.task_id, signal);
+      if (signal.aborted) return;
+      if (isTerminal(snapshot.status)) {
+        if (terminalReplay) {
+          onConnection("closed");
+          return;
+        }
+        terminalReplay = true;
+        void connect();
+        return;
+      }
+    } catch (error) {
+      if (signal.aborted) return;
+      if (error instanceof ApiError && [401, 403, 404, 405].includes(error.status)) {
+        if (!missingEndpoint(error)) onAccessError(error);
+        onConnection("unavailable");
+        return;
+      }
+    }
+    onConnection("reconnecting");
+    timer = setTimeout(connect, delay);
+    delay = Math.min(delay * 2, 10000);
+  }
+  void connect();
+  return () => {
+    controller.abort();
+    clearTimeout(timer);
+  };
+}
+
+async function consumeResearchStream(body: ReadableStream<Uint8Array>, accept: (event: ResearchEvent) => void) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let pending = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) return;
+      pending += decoder.decode(value, { stream: true });
+      const frames = pending.split(/\r?\n\r?\n/u);
+      pending = frames.pop() ?? "";
+      for (const frame of frames) {
+        let id = "";
+        let name = "";
+        const data: string[] = [];
+        for (const line of frame.split(/\r?\n/u)) {
+          if (line.startsWith("id:")) id = line.slice(3).replace(/^ /u, "");
+          else if (line.startsWith("event:")) name = line.slice(6).replace(/^ /u, "");
+          else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /u, ""));
+        }
+        if (!data.length) continue;
+        const event = readResearchEvent(data.join("\n"), name, id);
+        if (event) accept(event);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }

@@ -2,9 +2,11 @@
 
 import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ApiError, sendCommand } from "@/lib/task-client";
+import { ApiError, missingEndpoint, readIntake, sendCommand } from "@/lib/task-client";
 import { makeAnswers, taskControls, type TaskCommand } from "@/lib/task-lifecycle";
 import type { CurrentUser, PendingClarification, TaskRead } from "@/lib/research";
+import type { Questionnaire } from "@/lib/questionnaire";
+import { QuestionnaireForm } from "./questionnaire-form";
 
 export function TaskControls({ task, user, accept, refresh, onError }: {
   task: TaskRead;
@@ -15,6 +17,7 @@ export function TaskControls({ task, user, accept, refresh, onError }: {
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [intakeAttempt, setIntakeAttempt] = useState(0);
   const pending = useRef<AbortController | null>(null);
   const last = useRef<{ fingerprint: string; key: string } | null>(null);
   const { pause, resume, pausing, round } = taskControls(task);
@@ -42,6 +45,7 @@ export function TaskControls({ task, user, accept, refresh, onError }: {
       if (problem instanceof ApiError && (problem.status === 409 || problem.status === 422)) {
         last.current = null;
         refresh();
+        if (problem.status === 409) setIntakeAttempt((attempt) => attempt + 1);
       }
       setError(problem instanceof Error ? problem.message : "操作失败，请重试。");
     } finally {
@@ -50,17 +54,60 @@ export function TaskControls({ task, user, accept, refresh, onError }: {
     }
   }
 
+  if (!pause && !resume && !pausing && task.status !== "needs_clarification" && !error) return null;
+
   return <div className="task-controls">
     <div className="task-actions">
       {pause && <button className="button secondary" type="button" disabled={busy} onClick={() => void command({ operation: "pause" })}><Pause size={16} aria-hidden /> 暂停调研</button>}
       {resume && <button className="button primary" type="button" disabled={busy} onClick={() => void command({ operation: "resume" })}><Play size={16} aria-hidden /> 恢复调研</button>}
       {pausing && <p className="notice" role="status">已请求暂停，正在等待当前步骤完成。</p>}
     </div>
-    {round && <ClarificationForm key={round.clarification_id} round={round} busy={busy}
-      onSubmit={(body) => void command({ operation: "answer", roundId: round.clarification_id, body })} />}
-    {task.status === "needs_clarification" && !round && <div className="notice"><p>正在读取当前澄清问题。</p>
-      <button className="text-link" type="button" onClick={refresh}>重新读取</button></div>}
+    {task.status === "needs_clarification" && <IntakeRound key={round?.clarification_id ?? "pending"}
+      taskId={task.task_id} legacy={round} busy={busy} command={command} refresh={refresh} onError={onError} attempt={intakeAttempt} />}
     {error && <p className="error-text" role="alert">{error}</p>}
+  </div>;
+}
+
+function IntakeRound({ taskId, legacy, busy, command, refresh, onError, attempt }: {
+  taskId: string;
+  legacy: PendingClarification | null;
+  busy: boolean;
+  command: (action: TaskCommand) => void;
+  refresh: () => void;
+  onError: (error: unknown) => void;
+  attempt: number;
+}) {
+  const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>();
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    readIntake(taskId, controller.signal).then(({ questionnaire }) => {
+      if (!controller.signal.aborted) { setQuestionnaire(questionnaire); setError(""); }
+    }).catch((problem: unknown) => {
+      if (controller.signal.aborted) return;
+      if (missingEndpoint(problem)) { setQuestionnaire(null); setError(""); }
+      else {
+        onError(problem);
+        setError(problem instanceof Error ? problem.message : "无法读取调研问卷。");
+      }
+    });
+    return () => controller.abort();
+  }, [taskId, onError, retry, attempt]);
+
+  if (error) return <div className="notice"><p role="alert" className="error-text">{error}</p>
+    <button className="text-link" type="button" onClick={() => setRetry((value) => value + 1)}>重新读取</button>
+  </div>;
+  if (questionnaire && (!legacy || questionnaire.questionnaire_id === legacy.clarification_id)) {
+    return <QuestionnaireForm key={questionnaire.questionnaire_id} round={questionnaire} busy={busy}
+      onSubmit={(body) => command({ operation: "answer-questionnaire", roundId: questionnaire.questionnaire_id, body })} />;
+  }
+  if (questionnaire === null && legacy) {
+    return <ClarificationForm round={legacy} busy={busy} onSubmit={(body) => command({ operation: "answer", roundId: legacy.clarification_id, body })} />;
+  }
+  return <div className="notice"><p role="status">正在读取当前调研问题…</p>
+    <button className="text-link" type="button" onClick={() => { refresh(); setRetry((value) => value + 1); }}>重新读取</button>
   </div>;
 }
 
