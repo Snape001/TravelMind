@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     bocha_api_key: SecretStr | None = None
     firecrawl_api_key: SecretStr | None = None
     openalex_api_key: SecretStr | None = None
+    amap_web_api_key: SecretStr | None = None
+    next_public_amap_js_api_key: SecretStr | None = None
+    amap_security_js_code: SecretStr | None = None
     research_timeout_seconds: Annotated[float, Field(gt=0, le=120)] = 35
     social_research_provider: Literal["disabled", "mediacrawler_export"] = "disabled"
     social_research_url: HttpUrl = HttpUrl("http://127.0.0.1:18764")

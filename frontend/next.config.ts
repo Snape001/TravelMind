@@ -6,9 +6,11 @@ const config: NextConfig = {
   agentRules: false,
   // Compression buffers small SSE frames before EventSource can dispatch them.
   compress: false,
+  logging: { incomingRequests: { ignore: [/^\/_AMapService(?:\/|$)/] } },
   async rewrites() {
     return [
       { source: "/api/v1/:path*", destination: `${apiOrigin}/api/v1/:path*` },
+      { source: "/_AMapService/:path*", destination: `${apiOrigin}/_AMapService/:path*` },
     ];
   },
 };

@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from travelmind.db.models import CommandRow
+from travelmind.db.models import CommandRow, QuestionnaireRow
 from travelmind.db.tasks import (
     IdempotencyConflict,
     append_event,
@@ -87,6 +87,8 @@ async def apply_command(
                 or pending is None
                 or pending.clarification_id != clarification_id
             ):
+                raise ClarificationStale
+            if await session.get(QuestionnaireRow, (task_id, clarification_id)) is not None:
                 raise ClarificationStale
             if {item["question_id"] for item in pending.questions} != {
                 item["question_id"] for item in body["answers"]

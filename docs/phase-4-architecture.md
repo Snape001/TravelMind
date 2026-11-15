@@ -58,8 +58,8 @@ Reviewer 在 Writer 产出完整草稿后独立审核。Reviewer 权限和预算
 | 项目 | 配置所有者 | 约定 |
 | --- | --- | --- |
 | `AMAP_WEB_API_KEY` | A | 服务端 Web 服务类型 Key，B 复用。申请 POI、地理编码、详情和路径规划权限，检查额度及出口 IP 限制 |
-| `NEXT_PUBLIC_AMAP_JS_KEY` | D | Web 端 JS API 类型 Key，限制为已配置的开发和部署域名 |
-| `AMAP_JS_SECURITY_CODE` | D | 仅保存在服务端，从同源 `/_AMapService` 固定代理注入，浏览器设置 `serviceHost` |
+| `NEXT_PUBLIC_AMAP_JS_API_KEY` | 服务端配置 | Web 端 JS API 类型 Key，限制到实际开发和部署域名，由同源配置接口交给地图 |
+| `AMAP_SECURITY_JS_CODE` | 服务端配置 | 仅保存在 `backend/.env` 或部署环境，由同源 `/_AMapService` 固定代理注入，浏览器设置 `serviceHost` |
 
 高德控制台分别配置 Web 服务和 JS API 的应用凭据。代理限定高德官方上游和允许的路径，禁止任意转发并屏蔽凭据日志。缺少 JS 配置时可展示已有路线文本。缺少服务端 Key 或配额时按配置、限流或临时错误处理，不生成推测坐标、距离或时间。公交模式使用已核实的起点与终点城市码。 [高德 Web 服务](https://lbs.amap.com/api/webservice/summary) · [路径规划 2.0](https://lbs.amap.com/api/webservice/guide/api/newroute) · [JS API 安全密钥](https://lbs.amap.com/api/javascript-api-v2/guide/abc/jscode)
 

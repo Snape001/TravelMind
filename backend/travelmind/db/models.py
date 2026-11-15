@@ -63,7 +63,9 @@ class TaskRow(Base):
             name="ck_research_tasks_status",
         ),
         UniqueConstraint("task_id", "trace_id", name="uq_research_tasks_task_trace"),
-        UniqueConstraint("owner_id", "idempotency_key", name="uq_research_tasks_owner_key"),
+        UniqueConstraint(
+            "owner_id", "create_operation", "idempotency_key", name="uq_research_tasks_owner_key"
+        ),
         CheckConstraint(
             "lease_epoch >= 0 AND attempt_count >= 0 AND projected_index >= 0",
             name="ck_research_tasks_worker_counters",
@@ -99,6 +101,7 @@ class TaskRow(Base):
     trace_id: Mapped[UUID] = mapped_column(unique=True)
     owner_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.user_id"), index=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(128))
+    create_operation: Mapped[str] = mapped_column(String(24), server_default="create_task")
     brief: Mapped[dict] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(24), server_default="queued")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -144,7 +147,8 @@ class CommandRow(Base):
     __tablename__ = "task_commands"
     __table_args__ = (
         CheckConstraint(
-            "operation IN ('pause', 'resume', 'answer')", name="ck_task_commands_operation"
+            "operation IN ('pause', 'resume', 'answer', 'answer_questionnaire')",
+            name="ck_task_commands_operation",
         ),
     )
 
@@ -152,11 +156,38 @@ class CommandRow(Base):
     task_id: Mapped[UUID] = mapped_column(
         ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
     )
-    operation: Mapped[str] = mapped_column(String(8), primary_key=True)
+    operation: Mapped[str] = mapped_column(String(24), primary_key=True)
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
     digest: Mapped[bytes] = mapped_column(LargeBinary)
     status_code: Mapped[int]
     response: Mapped[dict] = mapped_column(JSONB)
+
+
+class IntakeRow(Base):
+    __tablename__ = "task_intake"
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
+    )
+    original_destination: Mapped[str] = mapped_column(String(80))
+    search_text: Mapped[str] = mapped_column(String(80))
+    destination: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    planner_context: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+
+
+class QuestionnaireRow(Base):
+    __tablename__ = "task_questionnaires"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "questionnaire_id"],
+            ["task_clarifications.task_id", "task_clarifications.clarification_id"],
+            ondelete="CASCADE",
+        ),
+    )
+
+    task_id: Mapped[UUID] = mapped_column(primary_key=True)
+    questionnaire_id: Mapped[UUID] = mapped_column(primary_key=True)
+    questionnaire: Mapped[dict] = mapped_column(JSONB)
 
 
 class ProjectionRow(Base):
@@ -259,4 +290,14 @@ class ReportRow(Base):
     task_id: Mapped[UUID] = mapped_column(ForeignKey("research_tasks.task_id", ondelete="CASCADE"))
     version: Mapped[int]
     content: Mapped[dict] = mapped_column(JSONB)
+    map_data: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TaskMapRow(Base):
+    __tablename__ = "task_map_data"
+
+    task_id: Mapped[UUID] = mapped_column(
+        ForeignKey("research_tasks.task_id", ondelete="CASCADE"), primary_key=True
+    )
+    data: Mapped[dict] = mapped_column(JSONB)

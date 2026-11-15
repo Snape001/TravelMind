@@ -13,7 +13,13 @@ from travelmind.schemas.events import (
     ReportReviewedEvent,
     TaskStatusEvent,
 )
-from travelmind.schemas.worker import ProjectedEvent, ProjectedRun, ProjectionBatch
+from travelmind.schemas.map_data import MapData
+from travelmind.schemas.worker import (
+    MapProjectionBatch,
+    ProjectedEvent,
+    ProjectedRun,
+    ProjectionBatch,
+)
 
 
 def batches(task_id: UUID, state: StateSnapshot) -> list[ProjectionBatch]:
@@ -80,18 +86,22 @@ def batches(task_id: UUID, state: StateSnapshot) -> list[ProjectionBatch]:
             elif status == "failed":
                 transition, error = "fail", values["failure"]
         consumed = values.get("consumed", ())
-        result.append(
-            ProjectionBatch(
-                checkpoint_id=checkpoint,
-                projection_index=index,
-                transition=transition,
-                error=error,
-                consumed_instruction_id=consumed[0] if consumed else None,
-                events=events,
-                runs=runs,
-                reports=reports,
-            )
+        payload = dict(
+            checkpoint_id=checkpoint,
+            projection_index=index,
+            transition=transition,
+            error=error,
+            consumed_instruction_id=consumed[0] if consumed else None,
+            events=events,
+            runs=runs,
+            reports=reports,
         )
+        if values.get("map_ready"):
+            result.append(
+                MapProjectionBatch(**payload, map_data=MapData.model_validate(values["map_data"]))
+            )
+        else:
+            result.append(ProjectionBatch(**payload))
     if state.interrupts:
         [halt] = state.interrupts
         clarifying = halt.value["kind"] == "clarification"

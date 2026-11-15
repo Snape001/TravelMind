@@ -21,7 +21,7 @@ from travelmind.db.control import (
     TaskNotFound,
     apply_command,
 )
-from travelmind.db.models import EvidenceRow, ReportRow, TaskRow
+from travelmind.db.models import EvidenceRow, ReportRow, TaskMapRow, TaskRow
 from travelmind.db.tasks import (
     IdempotencyConflict,
     create_task,
@@ -39,6 +39,8 @@ from travelmind.schemas.api import (
 )
 from travelmind.schemas.domain import ResearchBrief
 from travelmind.schemas.events import AgentEvent, EventCursor
+from travelmind.schemas.map_data import MapData, MapIssue
+from travelmind.schemas.phase4_sources import TravelRoutesRead
 from travelmind.schemas.task_control import InvalidTaskTransition
 
 logger = logging.getLogger(__name__)
@@ -321,3 +323,31 @@ async def read_report(task: ExistingTask, report_id: UUID, sessions: Sessions) -
     if report is None:
         raise api_error(404, "REPORT_NOT_FOUND", "未找到该任务的报告")
     return ReportRead.model_validate(report)
+
+
+@router.get("/{task_id}/routes", responses=not_found)
+async def read_routes(task: ExistingTask, sessions: Sessions) -> TravelRoutesRead:
+    async with sessions() as session:
+        row = await session.get(TaskMapRow, task.task_id)
+    routes = MapData.model_validate(row.data).selected_routes() if row is not None else []
+    return TravelRoutesRead(task_id=task.task_id, routes=routes)
+
+
+@router.get("/{task_id}/reports/{report_id}/map-data", responses=not_found)
+async def read_report_map(task: ExistingTask, report_id: UUID, sessions: Sessions) -> MapData:
+    async with sessions() as session:
+        report = await session.scalar(
+            select(ReportRow).where(
+                ReportRow.task_id == task.task_id, ReportRow.report_id == report_id
+            )
+        )
+    if report is None:
+        raise api_error(404, "REPORT_NOT_FOUND", "未找到该任务的报告")
+    if report.map_data is not None:
+        return MapData.model_validate(report.map_data)
+    return MapData(
+        task_id=task.task_id,
+        report_id=report_id,
+        status="unavailable",
+        issues=[MapIssue(code="MAP_DATA_UNAVAILABLE", message="该报告没有可用地图数据")],
+    )

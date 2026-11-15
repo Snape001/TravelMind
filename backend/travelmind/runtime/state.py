@@ -65,6 +65,8 @@ class ResearchState(ResearchInput, total=False):
     report_id: UUID
     review: Review
     review_round: int
+    map_data: dict
+    map_ready: Annotated[list[bool], Topic(bool)]
 
 
 def output_for(state: ResearchState, run_id: UUID) -> AgentOutput:

@@ -62,6 +62,9 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    env_file:
+      - path: ../../backend/.env
+        required: false
     environment:
       <<: *backend-environment
       OIDC_ISSUER: https://id.travelmind.localhost:18443/realms/travelmind-dev

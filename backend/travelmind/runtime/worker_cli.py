@@ -16,6 +16,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from travelmind.config import WAKE_CHANNEL, Settings, get_settings
 from travelmind.db.connection import create_database_engine
 from travelmind.db.worker import PostgresWorkerStore
+from travelmind.research.amap_client import AmapClient
+from travelmind.research.amap_poi import AmapPoi
+from travelmind.research.amap_routes import AmapRoutes
 from travelmind.research.engine import ResearchEngine
 from travelmind.research.quality import EvidenceQualityScorer
 from travelmind.runtime.checkpoints import (
@@ -24,9 +27,13 @@ from travelmind.runtime.checkpoints import (
     initialize_checkpoints,
 )
 from travelmind.runtime.durable_worker import DurableWorker
+from travelmind.runtime.intake.worker import IntakeWorker
 from travelmind.runtime.model import StructuredModel, open_structured_model
 from travelmind.runtime.reflection import ReflectionConfig
 from travelmind.runtime.retrieval import ResearchRetriever
+from travelmind.runtime.travel.map_cache import AmapResultCache
+from travelmind.runtime.travel.places import AmapPlaces
+from travelmind.runtime.travel.planner import TravelPlanner
 from travelmind.schemas.agents import AgentInput
 from travelmind.schemas.domain import Evidence
 from travelmind.schemas.research_quality import EvidenceQuality
@@ -96,6 +103,8 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
         if settings.social_research_provider != "disabled":
             social_client = await resources.enter_async_context(httpx.AsyncClient(trust_env=False))
         research = ResearchEngine(client, settings, social_client=social_client)
+        amap = AmapClient(client, settings.amap_web_api_key)
+        map_cache = AmapResultCache(amap)
         pool = await resources.enter_async_context(
             AsyncConnectionPool(
                 checkpoint_dsn(settings),
@@ -115,6 +124,10 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
                 social_search=research.search_social if research.social is not None else None,
             ),
             reflection=reflection_for(model, settings.deepseek_model),
+            intake=IntakeWorker(store, AmapPoi(amap), model),
+            travel_planner=TravelPlanner(
+                AmapPlaces(map_cache), AmapRoutes(map_cache), notices=research
+            ),
             lease_seconds=lease_seconds,
             poll_seconds=poll_seconds,
         )
