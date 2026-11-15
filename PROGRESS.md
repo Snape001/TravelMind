@@ -1,5 +1,11 @@
 # TravelMind 开发进度
 
+## 本地 Docker · QQ 邮箱发信（2026-11-15）
+
+- 新增 `stack.ps1 set-qq-smtp`，交互输入发件邮箱和 SMTP 授权码，在现有 Keycloak Realm 中保存 `smtp.qq.com:465` 的 TLS 发信设置。空 Realm 默认接入 Mailpit，`upgrade-auth` 保留已配置的邮件服务器。 [配置步骤](docs/account-auth-deployment.md#使用-qq-邮箱发送验证邮件)
+- Windows PowerShell 下 2 项 SMTP 配置测试通过。隔离 Keycloak 26.8.2 使用合成凭证保存配置，升级后 SMTP 设置和已有用户 ID 保持一致。本地完整 Docker 栈通过 HTTPS 就绪检查，Docker 容器能连接 QQ SMTP 的 465 端口。实际 QQ 认证和学校邮箱投递需由邮箱所有者配置授权码后验证。
+- **交付提交**　`feat: configure QQ SMTP for local Keycloak`。
+
 ## 本地 Docker · 启动复用镜像（2026-11-15）
 
 - 复现日常 `start` 即使已有镜像仍尝试重建，导致 `ghcr.io` 握手超时时启动失败。默认启动现在复用本机前后端镜像，缺少任一镜像时自动构建，更新源码或依赖时使用 `start -Build`。

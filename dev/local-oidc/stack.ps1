@@ -1,7 +1,7 @@
 # Run from any working directory with Windows PowerShell 5.1 or PowerShell 7.
 [CmdletBinding()]
 param(
-    [ValidateSet('init', 'start', 'stop', 'status', 'check', 'restart-worker', 'upgrade-auth')]
+    [ValidateSet('init', 'start', 'stop', 'status', 'check', 'restart-worker', 'upgrade-auth', 'set-qq-smtp')]
     [string]$Action = 'start',
     [string]$MkcertPath = 'mkcert',
     [string]$SocialCachePath,
@@ -132,7 +132,7 @@ function Update-LocalRealm {
         'duplicateEmailsAllowed', 'verifyEmail', 'resetPasswordAllowed', 'passwordPolicy',
         'bruteForceProtected', 'failureFactor', 'waitIncrementSeconds', 'maxFailureWaitSeconds',
         'ssoSessionIdleTimeout', 'ssoSessionMaxLifespan', 'clientSessionIdleTimeout',
-        'clientSessionMaxLifespan', 'actionTokenGeneratedByUserLifespan', 'smtpServer',
+        'clientSessionMaxLifespan', 'actionTokenGeneratedByUserLifespan',
         'resetCredentialsFlow'
     )
     $currentRealm = Invoke-RealmAdmin @('get', "realms/$realm") | ConvertFrom-Json
@@ -146,6 +146,11 @@ function Update-LocalRealm {
         $realmPatch.attributes[$property.Name] = $property.Value
     }
     foreach ($property in $properties) { $realmPatch[$property] = $template.$property }
+    if (-not $currentRealm.PSObject.Properties['smtpServer'] -or
+        -not $currentRealm.smtpServer -or -not $currentRealm.smtpServer.PSObject.Properties['host'] -or
+        -not $currentRealm.smtpServer.host) {
+        $realmPatch.smtpServer = $template.smtpServer
+    }
     Invoke-RealmAdmin @('update', "realms/$realm", '-n') $realmPatch | Out-Null
 
     $clients = @(Invoke-RealmAdmin @('get', 'clients', '-r', $realm, '-q', "clientId=$($client.clientId)") |
@@ -163,7 +168,9 @@ function Update-LocalRealm {
     Invoke-RealmAdmin @('update', "clients/$($clients[0].id)", '-r', $realm, '-n') $clientPatch | Out-Null
 }
 
-function Upgrade-LocalIdentity {
+function Invoke-LocalRealmAdmin {
+    param([scriptblock]$Update)
+
     if (-not (Test-Path -LiteralPath $envFile -PathType Leaf)) {
         throw 'Run stack.ps1 start to import a new local Realm.'
     }
@@ -196,8 +203,7 @@ function Upgrade-LocalIdentity {
             Start-Sleep -Seconds 2
         }
         try {
-            Update-LocalRealm
-            Write-Host 'Upgraded the local Realm and client in place.'
+            & $Update
         } finally {
             try {
                 $users = @(Invoke-RealmAdmin @('get', 'users', '-r', 'master', '-q', "username=$username", '--fields', 'id,username') |
@@ -211,6 +217,23 @@ function Upgrade-LocalIdentity {
     } finally {
         Remove-Item Env:TM_KEYCLOAK_UPGRADE_USERNAME, Env:TM_KEYCLOAK_UPGRADE_PASSWORD -ErrorAction SilentlyContinue
     }
+}
+
+function Update-LocalQqSmtp([string]$Address, [SecureString]$AuthorizationCode) {
+    $credential = [PSCredential]::new($Address, $AuthorizationCode)
+    Invoke-RealmAdmin @('update', 'realms/travelmind-dev', '-n') @{
+        smtpServer = @{
+            host = 'smtp.qq.com'
+            port = '465'
+            from = $Address
+            fromDisplayName = 'TravelMind'
+            auth = 'true'
+            user = $Address
+            password = $credential.GetNetworkCredential().Password
+            ssl = 'true'
+            starttls = 'false'
+        }
+    } 2>$null | Out-Null
 }
 
 function Read-LocalHttps([string]$Url, [switch]$Redirect) {
@@ -303,5 +326,22 @@ switch ($Action) {
     'status' { Invoke-Compose ps -a }
     'check' { Test-LocalStack }
     'restart-worker' { Invoke-Compose restart worker }
-    'upgrade-auth' { Upgrade-LocalIdentity }
+    'upgrade-auth' {
+        Invoke-LocalRealmAdmin { Update-LocalRealm }
+        Write-Host 'Upgraded the local Realm and client in place.'
+    }
+    'set-qq-smtp' {
+        $address = (Read-Host 'QQ mailbox address').Trim()
+        if ($address -notmatch '^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$') {
+            throw 'Enter the full address of the QQ mailbox used for SMTP.'
+        }
+        $authorizationCode = Read-Host 'QQ mailbox SMTP authorization code' -AsSecureString
+        try {
+            if (-not $authorizationCode.Length) { throw 'The SMTP authorization code is required.' }
+            Invoke-LocalRealmAdmin { Update-LocalQqSmtp $address $authorizationCode }
+            Write-Host 'QQ SMTP settings saved in the local Keycloak Realm. Verify by requesting a new email.'
+        } finally {
+            $authorizationCode.Dispose()
+        }
+    }
 }

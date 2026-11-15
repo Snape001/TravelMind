@@ -27,6 +27,20 @@
 
 密码要求 12 至 128 位，且不能等于用户名或邮箱。Keycloak 的默认姓名字段用于应用昵称，邮箱唯一且可用作登录名，原测试账号仍支持用户名。启用了登录失败锁定、原生验证邮件重发冷却和重置后重新认证。重置时选择 **Sign out from other devices** 可以让 Keycloak 吊销其它登录会话。
 
+### 使用 QQ 邮箱发送验证邮件
+
+登录 QQ 邮箱网页版，在「设置 → 账号与安全 → 安全设置」中开启 `POP3/SMTP` 或 `IMAP/SMTP` 服务并生成授权码。 [QQ 邮箱](https://mail.qq.com/)
+
+在项目根目录运行以下命令。
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\dev\local-oidc\stack.ps1 set-qq-smtp
+```
+
+根据提示输入发件用的完整 QQ 邮箱地址和 SMTP 授权码。授权码以隐藏输入读取，随 SMTP 设置保存在本地 Keycloak 数据卷中。命令短暂重启 Keycloak 并原地更新 `travelmind-dev`，使用 `smtp.qq.com:465` 和隐式 TLS。已有用户、任务和授权配置保留，后续 `start` 和 `upgrade-auth` 保留 SMTP 设置。 [腾讯云 SMTP 参数](https://cloud.tencent.com/document/product/1207/45117)
+
+切换后从 TravelMind 的验证页点「重新发送」，在注册邮箱查看新邮件。验证链接仍指向本地 HTTPS 域名，请在运行 TravelMind 的电脑上打开。命令成功代表设置已保存，实际送达以收件箱为准。
+
 ## 生产环境
 
 1. 启动生产模式的 Keycloak 26.8.2，使用持久数据库、独立身份域名和受信 HTTPS。复制 [环境模板](../dev/local-oidc/.env.example) 到 Git 忽略的环境文件。向 Keycloak 注入 `TM_SMTP_HOST`、`TM_SMTP_PORT`、`TM_SMTP_FROM`、`TM_SMTP_USER`、`TM_SMTP_PASSWORD`、`TM_SMTP_SSL` 和 `TM_SMTP_STARTTLS`。将 [生产 Realm 模板](../dev/local-oidc/realm.production.json) 挂载到 `/opt/keycloak/data/import`，空 Realm 使用 `start --import-realm`。生产模板无开发测试用户，主题和实际用户协议由部署方选用及配置。 [Keycloak 导入](https://www.keycloak.org/server/importExport)
