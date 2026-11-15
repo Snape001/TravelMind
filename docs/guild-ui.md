@@ -5,7 +5,7 @@
 ## 档案与肖像
 
 - [`experts.ts`](../frontend/src/lib/experts.ts) 提供公会、工作台、事件和报告共用的档案。`writer` 事件与 `report_writer` 档案对应，`planner` 使用研究规划角色的展示身份。文献与互联网研究档案用于展示，实际派发以 Runtime 名册为准。
-- 陆知行对应旅游规划 `travel_planning`，复用原肖像文件。旅游资源 `tourism_resources` 保留独立档案和角色图标。研究规划也使用角色图标，未知 Agent 显示原始 ID。 [肖像目录](../frontend/public/images/experts/)
+- 林景川（山海勘游使）是专业专家层的旅游资源专家，沿用 `tourism_resources`，使用 640 × 640 的 `lin-jingchuan.webp`。技能标签对应现有 `attraction_assessment@1` 的游览资源与现场条件评估。陆知行对应 `travel_planning`，继续使用原肖像 `tourism_resources.webp`。研究规划使用角色图标，未知 Agent 显示原始 ID。 [肖像目录](../frontend/public/images/experts/)
 
 ## 工作台与报告
 

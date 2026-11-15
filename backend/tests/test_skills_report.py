@@ -7,6 +7,7 @@ from test_runtime import Model, research_input, source
 
 from travelmind.runtime import editorial
 from travelmind.runtime.execution import InvalidOutput, RunError
+from travelmind.runtime.planning import plan_research
 from travelmind.runtime.skills import SkillRegistry
 from travelmind.runtime.skills.contracts import EvidenceSynthesis, ReportOutline
 from travelmind.runtime.skills.research import director_skill, research_skill
@@ -101,6 +102,38 @@ def agent(agent_id, *, objective=None):
         if objective
         else None,
     )
+
+
+def test_planner_can_select_lin_for_tourism_resources_without_route_planning():
+    request = agent("planner")
+    request.brief = ResearchBrief(destination="济南", topics=["景点取舍", "预约与开放条件"])
+
+    async def model(input, instructions, output):
+        assert input.brief.topics == ["景点取舍", "预约与开放条件"]
+        assert "tourism_resources：旅游资源专家" in instructions
+        assert "travel_planning" not in instructions
+        return output(
+            objective="核对景点与参观条件",
+            assignments=[
+                {"agent_id": "tourism_resources", "objective": "核对景点开放与预约条件"},
+                {"agent_id": "history_culture", "objective": "复核景点的历史价值"},
+                {"agent_id": "natural_geography", "objective": "核对景区的季节性限制"},
+            ],
+        )
+
+    result = asyncio.run(plan_research(model, request, travel_requested=False))
+    ids = [assignment.agent_id for assignment in result.plan.assignments]
+    assert ids == ["tourism_resources", "history_culture", "natural_geography"]
+    registry = SkillRegistry()
+    profiles = {profile.agent_id: profile for profile in registry.profiles().experts}
+    lin = profiles[ids[0]]
+    assert (lin.name, lin.title, lin.tier) == ("林景川", "旅游资源专家", "council")
+    assert "山海勘游使" in lin.description
+    assert lin.portrait == "/images/experts/lin-jingchuan.webp"
+    lu = profiles["travel_planning"]
+    assert (lu.name, lu.portrait) == ("陆知行", "/images/experts/tourism_resources.webp")
+    skill = registry.select(lin.agent_id, "research")
+    assert (skill.skill_id, skill.version) == ("attraction_assessment", 1)
 
 
 def test_director_and_expert_use_own_schema_and_task_tools():

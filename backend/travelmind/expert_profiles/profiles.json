@@ -63,14 +63,15 @@
     },
     {
       "agent_id": "tourism_resources",
-      "name": null,
+      "name": "林景川",
       "title": "旅游资源专家",
       "tier": "council",
-      "description": "按游览目的、可观赏的细节及可达条件比较景点。",
-      "portrait": null,
+      "description": "号「山海勘游使」。长期考察名山古迹与地方风物，比较景区、场馆和公共文化空间的游览价值，核对开放、预约、季节限制及无障碍条件。",
+      "portrait": "/images/experts/lin-jingchuan.webp",
       "fields": [
-        "景点",
-        "参观条件"
+        "山岳景区与古迹",
+        "地方风物",
+        "公共文化空间"
       ],
       "tools": [
         "证据检索"

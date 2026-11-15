@@ -119,6 +119,7 @@
 .profile-description { margin-top: 15px; color: var(--muted); font-size: 16px; line-height: 1.8; }
 .profile-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 23px; padding: 24px clamp(17px, 4vw, 46px) 30px; border-top: 1px solid var(--line); }
 .profile-sections h2 { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 17px; }
+.profile-skills-heading { margin: 18px 0 8px; font-size: 14px; }
 .profile-sections svg { color: var(--forest); flex: 0 0 auto; }
 .profile-sections li { display: flex; align-items: center; gap: 8px; margin-block: 5px; color: var(--muted); }
 

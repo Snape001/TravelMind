@@ -15,11 +15,13 @@ type ExpertRole = {
 
 export type ExpertProfile = ExpertRole & {
   name?: string;
+  honorific?: string;
   portrait?: `/images/experts/${string}.webp`;
+  skills?: readonly string[];
 };
 
 // Stable profile IDs for routes, portraits and reports.
-const profiles = {
+const profiles: Record<string, Omit<ExpertProfile, "id">> = {
   research_director: {
     name: "程策远", title: "首席研究总监", tier: "leadership",
     description: "明确调研目标和边界，识别信息缺口，组建跨领域团队。研究过程中协调任务依赖，并决定哪些结论需要补充核验。",
@@ -39,13 +41,16 @@ const profiles = {
     tools: ["地图与地理资料", "气象公告", "生态保护资料"],
   },
   tourism_resources: {
-    title: "旅游资源专家", tier: "council",
-    description: "梳理景区与公共文化空间，核对开放、预约及可达条件，帮助读者比较游览选择。",
-    fields: ["景点分析", "游览体验", "服务设施"],
+    name: "林景川", honorific: "山海勘游使", title: "旅游资源专家", tier: "council",
+    portrait: "/images/experts/lin-jingchuan.webp",
+    description: "长期考察名山古迹与地方风物，比较景区、场馆和公共文化空间的游览价值，核对开放、预约、季节限制及无障碍条件。",
+    fields: ["山岳景区与古迹", "地方风物", "公共文化空间"],
     tools: ["景区与场馆公告", "公共服务网页检索"],
+    skills: ["游览资源与现场条件", "开放与预约核验", "可达性与服务设施核验"],
   },
   travel_planning: {
     name: "陆知行", title: "旅游规划专家", tier: "council",
+    portrait: "/images/experts/tourism_resources.webp",
     description: "结合行程天数、交通方式与预算，比较可执行的游览安排。",
     fields: ["交通", "住宿", "行程与消费"],
     tools: ["地图资料", "交通公告"],
@@ -80,11 +85,10 @@ const profiles = {
     fields: ["事实核验", "证据审核", "一致性"],
     tools: ["报告审阅", "引用与原始证据对照"],
   },
-} satisfies Record<string, Omit<ExpertProfile, "id" | "portrait">>;
+};
 
 export const guildExperts: ExpertProfile[] = Object.entries(profiles).map(([id, profile]) => ({
-  ...profile, id, portrait: id === "tourism_resources" ? undefined :
-    `/images/experts/${id === "travel_planning" ? "tourism_resources" : id}.webp`,
+  ...profile, id, portrait: profile.portrait ?? `/images/experts/${id}.webp`,
 }));
 
 const planner: ExpertRole = {

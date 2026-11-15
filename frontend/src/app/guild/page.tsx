@@ -32,7 +32,10 @@ export default function Guild() {
                 <ExpertPortrait expert={expert} />
                 <div className="expert-card-copy">
                   <div className="expert-card-heading">
-                    <div>{expert.name && <p className="expert-role">{expert.title}</p>}<h3>{expert.name ?? expert.title}</h3></div>
+                    <div>
+                      {expert.name && <p className="expert-role">{expert.title}{expert.honorific && ` · ${expert.honorific}`}</p>}
+                      <h3>{expert.name ?? expert.title}</h3>
+                    </div>
                     <span className="expert-card-arrow"><ArrowUpRight size={18} aria-hidden /></span>
                   </div>
                   <p className="expert-summary">{expert.description}</p>

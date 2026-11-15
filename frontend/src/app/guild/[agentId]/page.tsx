@@ -29,7 +29,7 @@ export default async function ExpertProfilePage({ params }: Props) {
           <div className="profile-intro">
             <p className="profile-tier">{tier?.title}</p>
             <h1>{expert.name ?? expert.title}</h1>
-            {expert.name && <p className="expert-role">{expert.title}</p>}
+            {expert.name && <p className="expert-role">{expert.title}{expert.honorific && ` · ${expert.honorific}`}</p>}
             <p className="profile-description">{expert.description}</p>
           </div>
         </header>
@@ -37,6 +37,10 @@ export default async function ExpertProfilePage({ params }: Props) {
           <section aria-labelledby="profile-fields">
             <h2 id="profile-fields"><BookOpenText size={20} aria-hidden />专业领域</h2>
             <div className="tag-list">{expert.fields.map((field) => <span className="chip" key={field}>{field}</span>)}</div>
+            {!!expert.skills?.length && <>
+              <h3 className="profile-skills-heading">技能标签</h3>
+              <div className="tag-list">{expert.skills.map((skill) => <span className="chip" key={skill}>{skill}</span>)}</div>
+            </>}
           </section>
           <section aria-labelledby="profile-tools">
             <h2 id="profile-tools"><Wrench size={20} aria-hidden />工具能力与资料来源</h2>

@@ -1,5 +1,12 @@
 # TravelMind 开发进度
 
+## 专家公会 · 林景川档案（2026-11-15）
+
+- 为已有 `tourism_resources` 档案加入林景川（山海勘游使）、专业领域、技能标签和 640 × 640 本地 WebP。公会、详情、工作台分工和 Agent 消息按该 ID 读取身份。陆知行沿用 `travel_planning` 及原肖像。 [公会档案与肖像](docs/guild-ui.md#档案与肖像)
+- 真实 DeepSeek Planner 以景点取舍、预约开放条件和无障碍设施为需求，选中 `tourism_resources`。调度回归验证现有 `attraction_assessment@1` 技能，公共 API、AgentEvent v1 与 Runtime 代码无变更。
+- 前端回归 31 项、Planner、技能及契约定向回归 25 项通过。ESLint、TypeScript、Ruff 和 Next.js 生产构建通过。Chrome 验证公会、详情页及 WebP 加载，并用 AgentEvent v1 Fixture 验证工作台分工和消息头像。
+- **交付提交**　`feat: complete Lin Jingchuan's expert profile`。
+
 ## Phase 4 · 测试体系精简（2026-11-15）
 
 - 后端从 325 项精简到 272 项，前端从 45 项精简到 29 项，共减少 69 项。删除 4 份独立测试文件和 3 份旧前端 Mock。问卷、地图快照、任务契约和并发建单的有效断言集中到对应功能测试。
