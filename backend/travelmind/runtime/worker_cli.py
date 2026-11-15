@@ -3,6 +3,8 @@ import asyncio
 import logging
 import sys
 from contextlib import AsyncExitStack
+from datetime import datetime
+from importlib.util import find_spec
 from uuid import UUID
 
 import httpx
@@ -22,10 +24,38 @@ from travelmind.runtime.checkpoints import (
     initialize_checkpoints,
 )
 from travelmind.runtime.durable_worker import DurableWorker
-from travelmind.runtime.model import open_structured_model
+from travelmind.runtime.model import StructuredModel, open_structured_model
+from travelmind.runtime.reflection import ReflectionConfig
 from travelmind.runtime.retrieval import ResearchRetriever
+from travelmind.schemas.agents import AgentInput
+from travelmind.schemas.research_quality import EvidenceQuality
 
 logger = logging.getLogger(__name__)
+
+
+def reflection_for(model: StructuredModel, model_id: str) -> ReflectionConfig | None:
+    # The scoring module is delivered on the independent Evidence Quality branch.
+    if find_spec("travelmind.research.quality") is None:
+        return None
+    from travelmind.research.quality import EvidenceQualityScorer
+
+    scorer = EvidenceQualityScorer(model=model, model_id=model_id)
+
+    async def score(
+        request: AgentInput, *, as_of: datetime, max_age_days: int | None
+    ) -> list[EvidenceQuality]:
+        # Reflection sends at most one semantic batch and owns its retry allowance.
+        budget = request.budget.model_copy(update={"max_attempts": 1})
+        items = await scorer.assess(
+            request.model_copy(update={"budget": budget}),
+            request.evidence,
+            as_of=as_of,
+            max_age_days=max_age_days,
+            require_contract_cards=True,
+        )
+        return [item.quality for item in items if item.quality is not None]
+
+    return ReflectionConfig(model_id=model_id, score=score)
 
 
 async def listen(redis: Redis, wake: asyncio.Event) -> None:
@@ -71,6 +101,7 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
             model,
             lambda lease: FencedPostgresSaver(pool, store, lease),
             retrieve=lambda lease: ResearchRetriever(research, sessions, store=store, lease=lease),
+            reflection=reflection_for(model, settings.deepseek_model),
             lease_seconds=lease_seconds,
             poll_seconds=poll_seconds,
         )

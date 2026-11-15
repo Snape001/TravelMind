@@ -16,6 +16,12 @@ from travelmind.schemas.worker import LeaseLost, LeaseRef, WorkerStore
 logger = logging.getLogger(__name__)
 
 
+def research_query(request: AgentInput) -> str:
+    brief = request.brief
+    objective = request.assignment.objective if request.assignment else ""
+    return " ".join((brief.destination, *brief.topics[:3], objective)).strip()[:1000]
+
+
 class ResearchRetriever:
     def __init__(
         self,
@@ -53,8 +59,7 @@ class ResearchRetriever:
         if request.task_id != self.lease.task_id:
             raise LeaseLost("evidence task does not match the lease")
         brief = request.brief
-        objective = request.assignment.objective if request.assignment else ""
-        query = f"{brief.destination} {' '.join(brief.topics[:3])} {objective}".strip()[:1000]
+        query = research_query(request)
         sources = ("bocha", "openalex") if brief.depth == "academic" else ("bocha",)
         search = await self.engine.search(query, sources=sources, limit=3)
         if not search.evidence and "openalex" not in sources:

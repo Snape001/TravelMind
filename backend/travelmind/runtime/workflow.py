@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Literal
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
@@ -10,6 +10,8 @@ from travelmind.runtime import controls, editorial, experts, planning
 from travelmind.runtime.execution import RunError, emit, result_identity, run_agent
 from travelmind.runtime.journal import ControlContext, control_node, journal_node
 from travelmind.runtime.model import StructuredModel
+from travelmind.runtime.reflection import ReflectionConfig
+from travelmind.runtime.reflection_workflow import ReflectionWorkflow, initial_work
 from travelmind.runtime.state import (
     ResearchInput,
     ResearchState,
@@ -98,18 +100,20 @@ def build_research_graph(
     budget: RunBudget | None = None,
     max_revision_rounds: int = 1,
     checkpointer: BaseCheckpointSaver | None = None,
+    reflection: ReflectionConfig | None = None,
 ):
     """Compile the research workflow. Custom stream items are AgentEvent payloads."""
     if not 0 <= max_revision_rounds <= 2:
         raise ValueError("max_revision_rounds must be between 0 and 2")
     run_budget = budget or RunBudget()
     durable = checkpointer is not None
+    reflection_flow = ReflectionWorkflow(reflection, model, retrieve) if reflection else None
 
-    def request_for(state: ResearchState, agent_id: str, **context) -> AgentInput:
+    def request_for(state: ResearchState, agent_id: str, *, run_id=None, **context) -> AgentInput:
         return AgentInput(
             task_id=state["task_id"],
             trace_id=state["trace_id"],
-            run_id=uuid4(),
+            run_id=run_id or uuid4(),
             agent_id=agent_id,
             brief=state["brief"],
             budget=run_budget,
@@ -191,7 +195,7 @@ def build_research_graph(
             return updates | publish_status("failed", error=error)
         return updates
 
-    def expert_request(state: ResearchState, assignment: Assignment) -> ExpertRun:
+    def expert_request(state: ResearchState, assignment: Assignment) -> tuple[AgentInput, bool]:
         assigned = run_mapping(state["assignment_runs"])
         dependencies = [assigned[parent] for parent in assignment.depends_on]
         available = set(state["usable_research"])
@@ -204,25 +208,37 @@ def build_research_graph(
         request = request_for(
             state,
             assignment.agent_id,
+            run_id=(
+                uuid5(UUID(str(state["task_id"])), f"expert:{assignment.assignment_id}")
+                if reflection
+                else None
+            ),
             assignment=assignment,
             prior_findings=findings,
             evidence=evidence_for(state, findings),
         )
-        return ExpertRun(
-            request.model_dump(mode="json"),
-            bool(set(dependencies) - available),
-        )
+        return request, bool(set(dependencies) - available)
 
     def dispatch(state: ResearchState) -> list[Send] | Literal["write", "__end__"]:
         if state["status"] == "failed":
             return END
         if state["wave"]:
             ready = set(state["wave"])
-            return [
-                Send("expert", expert_request(state, assignment))
+            work = [
+                expert_request(state, assignment)
                 for assignment in state["plan"].assignments
                 if assignment.assignment_id in ready
             ]
+            if reflection_flow:
+                return [
+                    initial_work(request, missing_dependencies=missing) for request, missing in work
+                ]
+            return [
+                Send("expert", ExpertRun(request.model_dump(mode="json"), missing))
+                for request, missing in work
+            ]
+        if reflection_flow:
+            return "write"
         successful = contributions(state)
         if len(successful) < 2:
             return "write"
@@ -357,19 +373,52 @@ def build_research_graph(
         )
 
     builder = StateGraph(ResearchState, input_schema=ResearchInput, context_schema=ControlContext)
-    for name, node in {
+    nodes = {
         "director": director,
         "planner": planner,
         "schedule": schedule,
-        "expert": expert,
-        "cross_examine": cross_examine,
         "write": write,
         "review": review,
-    }.items():
+    }
+    if reflection_flow is None:
+        nodes.update(expert=expert, cross_examine=cross_examine)
+    for name, node in nodes.items():
         builder.add_node(name, journal_node(node) if durable else node)
 
-    builder.add_edge("expert", "schedule")
+    if reflection_flow is None:
+        builder.add_edge("expert", "schedule")
     running_edges("planner", "schedule")
+
+    if reflection_flow:
+
+        async def reflection_director(state: ResearchState) -> dict:
+            return await reflection_flow.director(
+                state, lambda current, assignment: expert_request(current, assignment)[0]
+            )
+
+        def remaining_checks(state: ResearchState) -> list[Send]:
+            return [Send("reflect_expert", item) for item in state["reflection_next"]]
+
+        builder.add_node(
+            "reflect_expert",
+            journal_node(reflection_flow.expert) if durable else reflection_flow.expert,
+        )
+        builder.add_node(
+            "reflection_director",
+            journal_node(reflection_director) if durable else reflection_director,
+        )
+        builder.add_edge("reflect_expert", "reflection_director")
+        next_step = "before_reflection" if durable else "dispatch_reflection"
+        if durable:
+            builder.add_node(next_step, control_node(controls.pause_gate))
+        else:
+            builder.add_node(next_step, lambda _: {})
+        builder.add_conditional_edges(
+            "reflection_director",
+            lambda state: bool(state["reflection_next"]),
+            {False: "schedule", True: next_step},
+        )
+        builder.add_conditional_edges(next_step, remaining_checks, ["reflect_expert"])
 
     if durable:
 
@@ -411,7 +460,8 @@ def build_research_graph(
                 END: END,
             },
         )
-        builder.add_edge("cross_examine", "before_write")
+        if reflection_flow is None:
+            builder.add_edge("cross_examine", "before_write")
         running_edges("write", "before_review")
         running_edges("review", "before_write")
         return builder.compile(checkpointer=checkpointer)
@@ -420,6 +470,15 @@ def build_research_graph(
     running_edges("director", "planner")
     running_edges("write", "review")
     running_edges("review", "write")
-    builder.add_conditional_edges("schedule", dispatch, ["expert", "cross_examine", "write", END])
-    builder.add_edge("cross_examine", "write")
-    return builder.compile()
+    targets = (
+        ["reflect_expert", "write", END]
+        if reflection_flow
+        else ["expert", "cross_examine", "write", END]
+    )
+    builder.add_conditional_edges("schedule", dispatch, targets)
+    if reflection_flow is None:
+        builder.add_edge("cross_examine", "write")
+    graph = builder.compile()
+    if reflection_flow:
+        graph.config = {"recursion_limit": 100}
+    return graph

@@ -20,7 +20,9 @@ Record = TypeVar("Record")
 agent_output = TypeAdapter(AgentOutput)
 
 
-def merge_records(left: dict[UUID, Record], right: dict[UUID, Record]) -> dict[UUID, Record]:
+def merge_records(
+    left: dict[UUID | str, Record], right: dict[UUID | str, Record]
+) -> dict[UUID | str, Record]:
     """Merge immutable, ID-keyed records from parallel nodes and checkpoint replays."""
     merged = left.copy()
     for record_id, record in right.items():
@@ -51,6 +53,11 @@ class ResearchState(ResearchInput, total=False):
     evidence: Annotated[dict[UUID | str, Evidence | dict], merge_records]
     assignment_runs: Annotated[dict[UUID | str, UUID], merge_records]
     challenge_runs: Annotated[dict[UUID | str, UUID], merge_records]
+    expert_research: Annotated[dict[str, dict], merge_records]
+    reflection_rounds: Annotated[dict[str, dict], merge_records]
+    reflection_decisions: Annotated[dict[str, dict], merge_records]
+    reflection_next: list[dict]
+    reflection_exchange_used: bool
     wave: list[UUID]
     usable_research: list[UUID]
     draft: ReportDraft

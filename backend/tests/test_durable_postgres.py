@@ -9,6 +9,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from test_expert_reflection import Scenario
 from test_runtime import Model, source
 
 from travelmind.config import Settings
@@ -31,7 +32,8 @@ from travelmind.schemas.worker import LeaseLost, ProjectionBatch
 pytestmark = pytest.mark.postgres
 
 
-def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
+@pytest.mark.parametrize("enable_reflection", [False, True])
+def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes(enable_reflection):
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:
         pytest.skip("set TEST_DATABASE_URL to a dedicated migrated test database")
@@ -57,7 +59,9 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
         task_id, owner_id, trace_id = uuid4(), uuid4(), uuid4()
         now = datetime.now(UTC)
         item = source()
-        model = Model(item)
+        scenario = Scenario(item)
+        model = scenario.model if enable_reflection else Model(item)
+        reflection = scenario.config() if enable_reflection else None
         try:
             async with sessions.begin() as session:
                 session.add(
@@ -113,7 +117,9 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
 
                 stale = FencedPostgresSaver(pool, store, claim.lease)
                 try:
-                    worker = DurableWorker(store, model, lambda _: stale, retrieve=retrieve_for)
+                    worker = DurableWorker(
+                        store, model, lambda _: stale, retrieve=retrieve_for, reflection=reflection
+                    )
                     with pytest.raises(SimulatedCrash):
                         await worker.run_claim(claim)
                     assert store.dropped.reports
@@ -140,6 +146,16 @@ def test_real_worker_store_reclaims_terminal_checkpoint_and_fences_old_writes():
                             "checkpoint_id": store.dropped.checkpoint_id,
                         }
                     }
+                    saved = await stale.aget_tuple(config)
+                    assert saved.metadata["graph_version"] == (
+                        "durable-v2" if enable_reflection else "durable-v1"
+                    )
+                    if enable_reflection:
+                        exports = saved.checkpoint["channel_values"]["expert_research"]
+                        assert len(exports) == 3
+                        assert all(
+                            item["reflection"]["state"] == "sufficient" for item in exports.values()
+                        )
                     with pytest.raises(LeaseLost):
                         await stale.aput(config, empty_checkpoint(), {"source": "loop"}, {})
                     with pytest.raises(LeaseLost):
