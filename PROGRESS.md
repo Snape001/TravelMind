@@ -1,5 +1,14 @@
 # TravelMind 开发进度
 
+## Phase 3 · 发布验收（2026-11-15）
+
+- 删除对旧提交有硬性依赖的基线采集脚本，保留可重算的候选快照、独立判读、基线报告和复现测试。离线评测与 Runtime 共用反思轮数及独立来源判定，补充同域名不同网页的冲突回归。
+- 删除重复的专家反思文档、前端样式覆盖、测试包装和本地 Compose 环境变量覆写。更新产品及开发说明，确认桌面端 Web 范围，现有检索预算和数据源沿用至本版。 [产品范围](PRD.md) · [运行与升级](docs/agent-runtime.md) · [评测复现](docs/research-evaluation.md)
+- 临时 PostgreSQL 17 从空库迁移到最新版本，182 项后端测试通过，含 Worker 租约与 Checkpoint 恢复、OIDC、CSRF 和用户隔离。Checkpoint 初始化及 Alembic 一致性检查通过。前端 27 项通过，OpenAPI 类型重新生成后与仓库一致。Ruff、ESLint、TypeScript、Next.js 生产构建、基础 Compose、本地 OIDC Compose 和 Caddy 配置通过。
+- Python 锁文件和实际安装校验通过。Python 与 npm 依赖审计未报告已知漏洞，当前 Windows 安装中的两个多余 npm 包已清理。Git 扫描覆盖本地配置值、常见凭据格式和敏感文件路径。
+- 本次发布回归使用隔离数据库、自动化测试和既有真实调研验收记录。离线评测题集仍待人工签核。Research Browser、Agent Hover 指标和研究监控可视化归入 Phase 4。
+- **发布标签**　`v0.3.0`。**交付提交**　`refactor: clean up TravelMind Phase 3 for release`。
+
 ## 本地 OIDC 与 HTTPS 验收（2026-11-15）
 
 - 加入独立的 Keycloak 与 Caddy 开发栈。mkcert 使用工作区专属 CA，Caddy 只监听回环 HTTPS。在 `travelmind-dev` 导入两位开发用户和要求 PKCE S256 的授权码客户端。浏览器与 FastAPI 共用 HTTPS Issuer，开发凭据和证书保存在 Git 忽略目录。 [Windows 启停与排查](README.md#windows-本地-oidc-与-https)
@@ -32,7 +41,7 @@
 
 ## Phase 3 · Expert Reflection（2026-11-15）
 
-- 各专家独立判断证据覆盖、评级、独立佐证与关键冲突。Research Director 负责分工补查、轮次与预算、全任务最多一次的定向质询。终态保存结构化判断与未解决问题，Writer 和 Reviewer 延续独立职责。[运行说明](docs/expert-reflection.md)
+- 各专家独立判断证据覆盖、评级、独立佐证与关键冲突。Research Director 负责分工补查、轮次与预算、全任务最多一次的定向质询。终态保存结构化判断与未解决问题，Writer 和 Reviewer 延续独立职责。 [运行说明](docs/agent-runtime.md#专家反思)
 - Worker 在可用时对接 A 线评分器，启动 `durable-v2`。已保存的 `durable-v1` 任务按旧图续跑。已验证暂停后继续、已提交轮次恢复、仅投影租约补齐结果和旧 epoch 拒写。
 - 临时 PostgreSQL 14 上独立分支 138 项通过，1 项联调随 A 线提供。接入 A 线提交 `8b90fa3` 后 167 项通过，含真实评分器代码及固定语义响应。Ruff 通过，外部模型和检索供应商留待真实任务验收。
 - **交付提交**　`feat: add bounded expert reflection workflow`。

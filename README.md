@@ -1,6 +1,6 @@
 # TravelMind
 
-面向中国旅游目的地的多智能体调研平台。Next.js 工作台通过 FastAPI 启动真实调研。LangGraph 编排专家并行检索、证据评分与反思，Research Director 决定定向补查和质询。Writer 撰写报告，Reviewer 独立核验事实与引用。工作台通过 SSE 展示进度，报告可以跳转到入库的来源证据。
+面向中国旅游目的地的桌面端 Web 调研平台。LangGraph 编排专家并行检索、证据评分与反思，Research Director 决定定向补查和质询。Writer 撰写报告，Reviewer 独立核验事实与引用。工作台通过 AgentEvent v1 SSE 展示进度，报告可跳转至来源证据。 [产品范围](PRD.md)
 
 专家公会 `/guild` 提供九份带本地肖像的专家档案。调研工作台、事件和报告署名使用同一组身份资料。[公会与档案](docs/guild-ui.md)
 
@@ -97,7 +97,7 @@ OIDC_TOKEN_AUTH_METHOD=client_secret_basic
 
 把 `OIDC_PUBLIC_ORIGIN` 对应的 HTTPS 反向代理指向 Next.js，并在身份提供方登记回调 `https://travelmind.example/api/v1/auth/callback`。Next.js 将包括 SSE 在内的同源 `/api/v1/*` 转发至 FastAPI。代理需允许 SSE 长连接、关闭响应缓冲，并配置访问日志仅记录路径，避免记录 OIDC 回调参数。使用浏览器打开配置的 HTTPS 入口，以便发送安全会话 Cookie。
 
-升级现有环境时，在后端目录安装锁定依赖、升级业务迁移并初始化 LangGraph Checkpoint，再启动 API。启用 Phase 3 前须替换所有旧 Worker。新版 Worker 默认用 `durable-v2` 启动新任务，已有 `durable-v1` Checkpoint 按旧图恢复。历史无主任务仍需由管理员显式关联到用户。 [Phase 2 公共契约](docs/phase-2-contract.md) · [专家反思与部署](docs/expert-reflection.md)
+升级现有环境时，在后端目录安装锁定依赖、升级业务迁移并初始化 LangGraph Checkpoint，再启动 API。启用 Phase 3 前须替换所有旧 Worker。新版 Worker 默认用 `durable-v2` 启动新任务，已有 `durable-v1` Checkpoint 按旧图恢复。历史无主任务仍需由管理员显式关联到用户。 [Phase 2 公共契约](docs/phase-2-contract.md) · [专家反思与部署](docs/agent-runtime.md#专家反思)
 
 ```powershell
 Set-Location backend
@@ -136,7 +136,7 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 
 在后端的 `.env` 中设置 `BOCHA_API_KEY` 和 `FIRECRAWL_API_KEY`。OpenAlex 支持匿名查询，也可用 `OPENALEX_API_KEY` 提高额度。调用示例、错误处理及证据写入约定见 [Research Engine 接入说明](docs/research-engine.md)。
 
-持久化确认的证据先按规则筛选并排定语义评分顺序，再供专家依据分工目标判断是否补查。查看评分依据、等级及运行预算。 [Evidence Quality](docs/evidence-quality.md) · [专家反思](docs/expert-reflection.md)
+入库证据先经规则筛选，再由专家结合评分和任务目标判断是否补查。 [Evidence Quality](docs/evidence-quality.md) · [专家反思与预算](docs/agent-runtime.md#专家反思)
 
 ## 开发验证
 
@@ -148,3 +148,5 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 任务状态机、API、数据模型与身份边界见 [Phase 2 公共契约](docs/phase-2-contract.md)。图状态与 Worker 事务边界见 [Agent Runtime](docs/agent-runtime.md) 和 [持久化 Worker](docs/durable-runtime.md)。
 
 证据评分、专家反思和离线评测的共享 Schema 与接入约定见 [Phase 3 公共接口](docs/phase-3-contract.md)。
+
+Research Browser、Agent Hover 指标和研究监控可视化列入 Phase 4。 [产品范围](PRD.md#phase-4)

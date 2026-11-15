@@ -1,4 +1,3 @@
-from typing import Literal
 from uuid import UUID
 
 from pydantic import Field
@@ -23,9 +22,7 @@ class TaskArchive(Contract):
     expert_research: list[ExpertResearchResult] | None = None
     usage: Usage = Field(default_factory=Usage)
 
-    def candidate(
-        self, case_key: str, source: str, *, origin: Literal["recorded", "demo"] = "recorded"
-    ) -> CandidateRun:
+    def candidate(self, case_key: str, source: str) -> CandidateRun:
         task_id = self.task.task_id
         if any(item.task_id != task_id for item in [*self.evidence, *self.reports]):
             raise ValueError("archive reports and evidence must belong to the requested task")
@@ -40,14 +37,14 @@ class TaskArchive(Contract):
         failure_code = None
         for event in reversed(self.events or []):
             payload = event.payload
-            if event.task_id == task_id and payload.type == "task.status":
+            if payload.type == "task.status":
                 if payload.status == "failed" and payload.error is not None:
                     failure_code = payload.error.code
                 break
         return CandidateRun(
             case_key=case_key,
             task_id=task_id,
-            origin=origin,
+            origin="recorded",
             source=source,
             status=self.task.status,
             failure_code=failure_code,

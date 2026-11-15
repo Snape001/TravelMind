@@ -209,6 +209,70 @@ def test_optional_phase_three_reflection_is_checked_against_case_depth(dataset, 
     assert "reflection limit differs from depth" in reflection["violations"][0]
 
 
+def test_reflection_audit_uses_the_same_source_identity_as_runtime(dataset, case, candidate):
+    items = [
+        Evidence.model_validate(
+            candidate.evidence[0].model_dump()
+            | {
+                "evidence_id": uuid4(),
+                "source_url": f"https://archive.example.org/{index}",
+                "excerpt": excerpt,
+            }
+        )
+        for index, excerpt in enumerate(("古城开放。", "古城关闭。"))
+    ]
+    ids = [item.evidence_id for item in items]
+    assignment_id = uuid4()
+    reviewed_at = dataset.reference(case).as_of
+    assessments = []
+    for item in items:
+        rule = {"score": 2, "reason": "已核验"}
+        semantic = rule | {"quote": item.excerpt}
+        assessments.append(
+            {
+                "evidence_id": item.evidence_id,
+                "assignment_id": assignment_id,
+                "as_of": reviewed_at,
+                "max_age_days": None,
+                "traceability": rule,
+                "authority": rule,
+                "freshness": rule,
+                "relevance": semantic,
+                "directness": semantic,
+                "model_id": "test-model",
+                "total_score": 10,
+                "level": "high",
+            }
+        )
+    export = {
+        "assignment_id": assignment_id,
+        "research": {
+            "run_id": uuid4(),
+            "agent_id": "history_culture",
+            "kind": "research",
+            "evidence": items,
+            "findings": [
+                {"statement": "开放状态有分歧", "support": "disputed", "evidence_ids": ids}
+            ],
+        },
+        "quality": assessments,
+        "reflection": {
+            "state": "conflicting",
+            "strategy": "stop",
+            "round": 0,
+            "max_rounds": 0,
+            "stop_reason": "budget_exhausted",
+            "reason": "来源存在分歧",
+            "evidence_ids": ids,
+            "model_id": "test-model",
+        },
+        "unresolved_questions": ["是否开放？"],
+    }
+    snapshot = CandidateRun.model_validate(candidate.model_dump() | {"expert_research": [export]})
+    audit = score_run(dataset, case, snapshot, [1])["evidence"]["reflection"]
+    assert any("conflicting evidence shares a source" in note for note in audit["violations"])
+
+
 def test_main_baseline_scores_real_graph_events_and_detects_missing_final_review(dataset):
     batch = RunBatch.model_validate_json((DATA / "main-runs.json").read_bytes())
     judgments = TypeAdapter(list[Judgment]).validate_json(

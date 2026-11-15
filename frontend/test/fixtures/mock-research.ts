@@ -1,5 +1,5 @@
 import { expertName } from "../../src/lib/experts";
-import type { AgentEvent, Assignment, EventPayload, EvidenceRead, ReportRead, ResearchBrief, TaskRead } from "../../src/lib/research";
+import type { AgentEvent, EventPayload, EvidenceRead, ReportRead, ResearchBrief, ResearchPlan, TaskRead } from "../../src/lib/research";
 
 export function encodeEvent(event: AgentEvent): string {
   return `id: ${event.sequence}\nevent: ${event.payload.type}\ndata: ${JSON.stringify(event)}\n\n`;
@@ -39,7 +39,7 @@ export function buildResearch(brief: ResearchBrief, start = Date.now()): MockRes
   };
   const { destination, topics, requirements } = brief;
   const specialists = selectSpecialists(brief);
-  const assignments: Assignment[] = specialists.map((agent_id) => ({
+  const assignments: ResearchPlan["assignments"] = specialists.map((agent_id) => ({
     assignment_id: id(), agent_id,
     objective: `从${expertName(agent_id).replace("专家", "")}角度梳理${destination}的相关资料与待核信息。`,
   }));

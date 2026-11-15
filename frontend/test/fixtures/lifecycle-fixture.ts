@@ -1,5 +1,5 @@
-import { buildResearch, type MockResearch } from "./mock-research";
-import { uuidPattern, type AgentEvent, type EventPayload, type PendingClarification, type ResearchBrief, type TaskRead } from "../../src/lib/research";
+import type { MockResearch } from "./mock-research";
+import { uuidPattern, type AgentEvent, type EventPayload, type PendingClarification, type TaskRead } from "../../src/lib/research";
 
 type Operation = "pause" | "resume" | "answer";
 type Failure = "IDEMPOTENCY_CONFLICT" | "TASK_STATE_CONFLICT" | "CLARIFICATION_STALE" | "VALIDATION_ERROR";
@@ -7,8 +7,6 @@ type Result =
   | { status: 200 | 202; task: TaskRead; error?: never }
   | { status: 409 | 422; error: Failure; task?: never };
 type Step = { at: number; payload: EventPayload; round?: PendingClarification };
-
-export const fixtureResearch = (brief: ResearchBrief, now = Date.now()) => buildResearch(brief, now);
 
 export class FixtureTask {
   private task: TaskRead;

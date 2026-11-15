@@ -9,7 +9,6 @@ export type PendingClarification = Schemas["PendingClarification"];
 export type ClarificationAnswers = Schemas["ClarificationAnswers"];
 export type AgentEvent = paths["/api/v1/tasks/{task_id}/events"]["get"]["responses"][200]["content"]["text/event-stream"];
 export type EventPayload = AgentEvent["payload"];
-export type Assignment = Schemas["Assignment"];
 export type ResearchPlan = Schemas["ResearchPlan"];
 export type ErrorInfo = Schemas["ErrorInfo"];
 export type EvidenceRead = Schemas["EvidenceRead"];

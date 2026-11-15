@@ -140,13 +140,6 @@
 .expert-identity-copy strong { color: var(--forest-dark); }
 .expert-identity-copy small { color: var(--bronze); font-size: 11px; }
 a.expert-identity:hover strong { text-decoration: underline; text-underline-offset: 3px; }
-.workbench .panel-heading { min-height: 62px; }
-.workbench .team-graph, .workbench .tier-key { background: var(--canvas); }
-.workbench .team-node .react-flow__handle { background: var(--node-edge); }
-.workbench .event-list { scrollbar-color: var(--node-edge) transparent; }
-.workbench .message .event-content > p, .workbench .segmented button[aria-pressed="true"] { background: var(--mint); }
-
-.report-page .report-masthead { background: #eef0ea; border-color: var(--line); }
 .byline { margin-top: 9px; gap: 7px 11px; }
 .byline ul { display: flex; flex-wrap: wrap; gap: 6px; }
 .byline .expert-identity { padding: 3px 8px 3px 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }

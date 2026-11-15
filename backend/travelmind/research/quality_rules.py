@@ -165,6 +165,12 @@ def origin_signals(item: Evidence, verified_origin: str | None) -> set[tuple[str
     return identity
 
 
+def distinct_origins(left: Evidence, right: Evidence) -> bool:
+    return left.excerpt != right.excerpt and origin_signals(left, None).isdisjoint(
+        origin_signals(right, None)
+    )
+
+
 def independence(
     items: Sequence[Evidence], origins: Mapping[UUID, str], eligible_ids: set[UUID]
 ) -> list[QualityScore]:

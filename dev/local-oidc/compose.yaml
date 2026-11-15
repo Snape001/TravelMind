@@ -95,8 +95,6 @@ services:
     build:
       context: ../..
       dockerfile: dev/local-oidc/frontend.Dockerfile
-    environment:
-      API_ORIGIN: http://api:8000
 
   caddy:
     image: caddy:2.11.9-alpine

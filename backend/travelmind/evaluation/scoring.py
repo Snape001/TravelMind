@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 from collections.abc import Iterable
+from itertools import combinations
 from statistics import mean
 from uuid import UUID
 
@@ -11,12 +12,12 @@ from travelmind.evaluation.contracts import (
     RunBatch,
     fingerprint,
 )
+from travelmind.research.quality_rules import distinct_origins
 from travelmind.research.sources import source_key
 from travelmind.schemas.domain import Evidence
-from travelmind.schemas.research_quality import EvaluationCase
+from travelmind.schemas.research_quality import REFLECTION_ROUND_LIMITS, EvaluationCase
 
 SCORER_VERSION = "v1"
-REFLECTION_LIMIT = {"quick": 0, "deep": 1, "academic": 2}
 
 
 def ratio(numerator: int, denominator: int | None, judged: int | None = None) -> dict:
@@ -189,13 +190,19 @@ def evidence_metrics(
         violations = []
         for expert in experts:
             action = expert.reflection
-            if action.max_rounds != REFLECTION_LIMIT[reference.brief.depth]:
+            if action.max_rounds != REFLECTION_ROUND_LIMITS[reference.brief.depth]:
                 violations.append(f"{expert.assignment_id}: reflection limit differs from depth")
-            by_id = {item.evidence_id: item for item in expert.research.evidence}
-            usable = {entry.evidence_id for entry in expert.quality if entry.level != "low"}
-            sources = {source_key(by_id[item]) for item in action.evidence_ids if item in usable}
-            if action.state == "conflicting" and len(sources) < 2:
-                violations.append(f"{expert.assignment_id}: conflicting evidence shares a source")
+            if action.state == "conflicting":
+                cited = set(action.evidence_ids) & {
+                    card.evidence_id for card in expert.quality if card.level != "low"
+                }
+                sources = [item for item in expert.research.evidence if item.evidence_id in cited]
+                if not any(
+                    distinct_origins(left, right) for left, right in combinations(sources, 2)
+                ):
+                    violations.append(
+                        f"{expert.assignment_id}: conflicting evidence shares a source"
+                    )
         reflection = {
             "assignments": len(experts),
             "stops": dict(Counter(expert.reflection.stop_reason for expert in experts)),

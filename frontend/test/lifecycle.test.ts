@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fixtureResearch, FixtureTask } from "./fixtures/lifecycle-fixture";
+import { FixtureTask } from "./fixtures/lifecycle-fixture";
+import { buildResearch } from "./fixtures/mock-research";
 import { makeAnswers, nextSnapshot, taskControls } from "../src/lib/task-lifecycle";
 import { ApiError, createTask, readSession, sendCommand, subscribe } from "../src/lib/task-client";
 import { readTaskHistory, rememberTask } from "../src/lib/task-history";
@@ -9,7 +10,7 @@ import { checkFixtureWrite, fixtureCallback, fixtureLogout, fixtureSession } fro
 
 const brief = { destination: "泉州", topics: ["文化"], requirements: "", depth: "deep" } as const;
 const now = Date.parse("2026-11-14T09:00:00Z");
-const makeFixture = () => new FixtureTask(fixtureResearch({ ...brief, topics: [...brief.topics] }, now));
+const makeFixture = () => new FixtureTask(buildResearch({ ...brief, topics: [...brief.topics] }, now));
 const read = (fixture: FixtureTask, time: number) => fixture.snapshot(time);
 
 test("only paused tasks may resume and a running pause request is shown as pending", () => {

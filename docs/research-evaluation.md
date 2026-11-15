@@ -1,6 +1,6 @@
 # Research Evaluation
 
-离线评测读取文件，复用公共 `EvaluationCase`、`Evidence`、`ReportDraft`、`ResearchResult`、`ExpertResearchResult` 和 AgentEvent v1。评测入口无需启动 API、Worker 或数据库，也无需配置模型密钥。基线采集脚本通过当前工作流的注入入口替换模型与检索，仅用于生成候选快照。
+离线评测读取文件，复用公共 `EvaluationCase`、`Evidence`、`ReportDraft`、`ResearchResult`、`ExpertResearchResult` 和 AgentEvent v1。评测入口无需启动 API、Worker 或数据库，也无需配置模型密钥。
 
 ## 数据集与人工核验
 
@@ -23,13 +23,7 @@ uv run --locked python -X utf8 -m travelmind.evaluation score \
   --json evaluation-baseline.json --markdown ../docs/evaluation-baseline.md
 ```
 
-[`evaluation-baseline.md`](evaluation-baseline.md) 由上述命令生成。候选批次固定在本任务开始时的本地 `main`，即 `aedb2b7e2598e2a4e444600e2f7d62f6141d3013`。采集包含三个运行于该提交的固定输入工作流，分别覆盖敦煌遗产问答、泉州审核返工和敦煌检索超时。另从仓库的泉州只读演示抽取既有报告、引用和事件，事后检查遗产题覆盖。示例原本的任务范围更宽。固定输入回放记录本地调用次数与耗时，没有真实模型 Token，也没有真实检索排名。仓库中可访问的真实联调记录只有验收摘要，基线暂时没有可以逐题重放的真实服务快照。
-
-同一批次、参考数据和判读可重算出相同报告。要重新执行固定输入工作流，运行下列命令。新快照会包含新的任务 ID、时间和本地耗时，需要使用新快照生成判读。
-
-```bash
-uv run --locked python -X utf8 -m evaluation_data.capture_main --output main-runs-new.json
-```
+[`evaluation-baseline.md`](evaluation-baseline.md) 由上述命令重算。仓库保留 `aedb2b7` 的固定响应快照及其判读，覆盖遗产问答、审核返工和检索超时，另有一份泉州只读示例。回放中的排名来自固定工具响应，耗时和调用次数为本地观测。当前任务的真实记录可以按下节导入。
 
 ## 接入已有调研任务
 

@@ -4,7 +4,15 @@ from uuid import UUID
 from pydantic import AwareDatetime, Field, model_validator
 
 from travelmind.schemas.agents import ResearchResult
-from travelmind.schemas.domain import Contract, Evidence, Finding, ResearchBrief, ShortText, Text
+from travelmind.schemas.domain import (
+    Contract,
+    Evidence,
+    Finding,
+    ResearchBrief,
+    ResearchDepth,
+    ShortText,
+    Text,
+)
 
 QualityLevel = Literal["high", "medium", "low"]
 ReflectionState = Literal["sufficient", "insufficient", "low_quality", "conflicting"]
@@ -17,6 +25,7 @@ ReflectionStopReason = Literal[
 DimensionScore = Annotated[int, Field(strict=True, ge=0, le=2)]
 ReflectionRound = Annotated[int, Field(strict=True, ge=0, le=2)]
 
+REFLECTION_ROUND_LIMITS: dict[ResearchDepth, int] = {"quick": 0, "deep": 1, "academic": 2}
 FOLLOW_UP: dict[ReflectionState, ReflectionStrategy] = {
     "insufficient": "expand_search",
     "low_quality": "replace_sources",

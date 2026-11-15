@@ -6,7 +6,7 @@ from uuid import UUID, uuid5
 
 from pydantic import AwareDatetime, Field, TypeAdapter
 
-from travelmind.research.quality_rules import origin_signals
+from travelmind.research.quality_rules import distinct_origins
 from travelmind.runtime.execution import InvalidOutput, with_budget
 from travelmind.runtime.model import StructuredModel
 from travelmind.schemas.agents import AgentInput, RunBudget
@@ -19,7 +19,6 @@ from travelmind.schemas.research_quality import (
     ReflectionStopReason,
 )
 
-MAX_ROUNDS = {"quick": 0, "deep": 1, "academic": 2}
 STATE_ORDER: tuple[ReflectionState, ...] = ("conflicting", "low_quality", "insufficient")
 AGE_SENSITIVE = ("开放时间", "营业时间", "票价", "预约", "交通", "时刻表", "限流", "住宿", "天气")
 QUALITY_BATCH_SIZE = 4
@@ -147,9 +146,7 @@ def independent_pair(ids: list[UUID], evidence: dict[UUID, Evidence]) -> bool:
     if len(ids) != 2 or not all(item in evidence for item in ids):
         return False
     left, right = (evidence[item] for item in ids)
-    return left.excerpt != right.excerpt and origin_signals(left, None).isdisjoint(
-        origin_signals(right, None)
-    )
+    return distinct_origins(left, right)
 
 
 def judge_question(

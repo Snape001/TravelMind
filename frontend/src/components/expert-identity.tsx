@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { expertName, expertTitle, findExpert, type ExpertProfile } from "@/lib/experts";
+import { findExpert, type ExpertProfile } from "@/lib/experts";
 import { ExpertIcon } from "./expert-icon";
 
 export function ExpertPortrait({ expert }: {
@@ -20,8 +20,8 @@ export function ExpertAvatar({ id }: { id: string }) {
 
 export function ExpertLabel({ id, avatar = false }: { id: string; avatar?: boolean }) {
   const profile = findExpert(id);
-  const name = expertName(id);
-  const title = expertTitle(id);
+  const name = profile?.name ?? profile?.title ?? id;
+  const title = profile?.name ? profile.title : undefined;
   const contents = <>
     {avatar && <ExpertAvatar id={id} />}
     <span className="expert-identity-copy"><strong>{name}</strong>{title && <small>{title}</small>}</span>

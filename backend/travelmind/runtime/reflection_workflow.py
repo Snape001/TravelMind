@@ -16,7 +16,11 @@ from travelmind.runtime.state import ResearchState, run_mapping
 from travelmind.schemas.agents import AgentFailure, AgentInput, ResearchResult
 from travelmind.schemas.domain import Assignment
 from travelmind.schemas.events import AgentFinishedEvent, AgentMessageEvent, AgentStartedEvent
-from travelmind.schemas.research_quality import ExpertResearchResult, ReflectionAction
+from travelmind.schemas.research_quality import (
+    REFLECTION_ROUND_LIMITS,
+    ExpertResearchResult,
+    ReflectionAction,
+)
 
 SEARCH_HINT = {
     "expand_search": "",
@@ -296,7 +300,7 @@ class ReflectionWorkflow:
         """Authorize only bounded, targeted work after all experts in this wave report."""
         assigned = run_mapping(state["assignment_runs"])
         rounds = state.get("reflection_rounds", {})
-        max_rounds = reflection.MAX_ROUNDS[state["brief"].depth]
+        max_rounds = REFLECTION_ROUND_LIMITS[state["brief"].depth]
         decisions, completed, exports, additional = {}, {}, {}, []
         exchange = state.get("reflection_exchange_used", False)
         wave = set(state["wave"])
