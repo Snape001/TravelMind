@@ -187,14 +187,42 @@ def _concat(sources: list[Path], target: Path) -> None:
                     output.write(chunk)
 
 
-def stage_outputs(run_dir: Path, batch: Path, platform_key: str, mode: Mode) -> None:
+def _backfill_keyword(path: Path, keyword: str | None) -> None:
+    """Stamp the requested keyword on rows whose `source_keyword` is empty.
+
+    Detail-mode exports from some platforms (notably Zhihu) leave
+    `source_keyword` blank because the crawler only sets it while searching,
+    which the importer rejects as a row without a search term.
+    """
+    if not keyword:
+        return
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if isinstance(row, dict) and not str(row.get("source_keyword") or "").strip():
+            row["source_keyword"] = keyword
+        rows.append(json.dumps(row, ensure_ascii=False))
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def stage_outputs(
+    run_dir: Path,
+    batch: Path,
+    platform_key: str,
+    mode: Mode,
+    keyword: str | None = None,
+) -> None:
     """Concatenate the crawler's dated JSONL exports into one import batch."""
     export = run_dir / platform_key / "jsonl"
     contents = sorted(export.glob(f"{mode}_contents_*.jsonl"))
     if not contents:
         raise MediacrawlerError(6, "NO_CONTENTS")
     batch.mkdir(parents=True, exist_ok=False)
-    _concat(contents, batch / "contents.jsonl")
+    target = batch / "contents.jsonl"
+    _concat(contents, target)
+    _backfill_keyword(target, keyword)
     comments = sorted(export.glob(f"{mode}_comments_*.jsonl"))
     if comments:
         _concat(comments, batch / "comments.jsonl")
@@ -229,7 +257,13 @@ def collect(
         collected_at=collected,
         format="mediacrawler",
     )
-    stage_outputs(run_dir, data / "inbox" / str(batch_id), PLATFORM_KEYS[platform], mode)
+    stage_outputs(
+        run_dir,
+        data / "inbox" / str(batch_id),
+        PLATFORM_KEYS[platform],
+        mode,
+        keyword=keyword,
+    )
     return request
 
 

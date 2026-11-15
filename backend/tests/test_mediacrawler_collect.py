@@ -180,6 +180,25 @@ def test_stage_outputs_concatenates_dated_exports_in_order(tmp_path):
     assert (batch2 / "comments.jsonl").read_text(encoding="utf-8") == '{"c":3}\n'
 
 
+def test_stage_outputs_backfills_blank_source_keyword(tmp_path):
+    run_dir = tmp_path / "run"
+    batch = tmp_path / "inbox" / "batch"
+    export = run_dir / "zhihu" / "jsonl"
+    export.mkdir(parents=True)
+    (export / "detail_contents_2026-11-15.jsonl").write_text(
+        '{"content_id":"1","source_keyword":"","title":"t"}\n'
+        '{"content_id":"2","source_keyword":"keep","title":"u"}\n',
+        encoding="utf-8",
+    )
+    stage_outputs(run_dir, batch, "zhihu", "detail", keyword=KEYWORD)
+    rows = [
+        json.loads(line)
+        for line in (batch / "contents.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert rows[0]["source_keyword"] == KEYWORD
+    assert rows[1]["source_keyword"] == "keep"
+
+
 def test_stage_outputs_requires_contents(tmp_path):
     run_dir = tmp_path / "run"
     (run_dir / "xhs" / "jsonl").mkdir(parents=True)

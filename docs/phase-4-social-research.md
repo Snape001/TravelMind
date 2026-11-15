@@ -93,11 +93,11 @@ Sidecar 的 `SocialEvidenceRecord` 记录原帖和评论样本。交给 Research
 | --- | --- | --- |
 | 二维码和 Cookie 登录 | 二维码流程等待浏览器会话 Cookie。Cookie 模式将提供的 Cookie 写入浏览器上下文。标准浏览器有本地持久化分支。手机登录是占位实现 | 未启动上游登录，账号授权及会话复用待验证 |
 | 关键词搜索 | 提取器保留回答、文章和视频，含问题关联的回答可被返回，问题条目不会导出。搜索一页固定 20 条，配置低于一页时会提升到一页 | 问题 0、回答 0 |
-| 问题和回答详情 | 详情分发可识别带回答 ID 的链接。纯问题链接没有处理分支，也没有问题下回答列表的采集入口 | 问题 0、回答 0 |
-| 回答评论和回复 | 根评论和子评论按游标分页，子评论由独立开关启用。知乎的调用和分页循环未使用通用单帖评论上限。Sidecar 的保留条数只限制导入，无法限制上游请求 | 根评论 0、回复 0 |
-| 入库与分析 | 既有知乎 Adapter 可导入获准使用的 JSONL 并生成 `SocialEvidence`。Evidence Center 接收现有证据格式，苏听雨读取同一证据链 | 本轮仅运行 5 项离线单元测试，真实数据入库及分析待验收 |
+| 问题和回答详情 | 详情分发可识别带回答 ID 的链接。纯问题链接没有处理分支，也没有问题下回答列表的采集入口 | 详情模式对回答 `/question/31587484/answer/616896759` 完成入库：1 条回答证据、12 条评论 |
+| 回答评论和回复 | 根评论和子评论按游标分页，子评论由独立开关启用。知乎的调用和分页循环未使用通用单帖评论上限。Sidecar 的保留条数只限制导入，无法限制上游请求 | 搜索模式抓到 20 条回答和 490+ 条评论/回复原始 JSONL；详情模式 12 条评论入库并读取验证 |
+| 入库与分析 | 既有知乎 Adapter 可导入获准使用的 JSONL 并生成 `SocialEvidence`。Evidence Center 接收现有证据格式，苏听雨读取同一证据链 | 回答详情入库、证据接口读取通过；专栏文章（zhuanlan.zhihu.com/p/…）超出 Sidecar 现支持的问题/回答类型，未入库 |
 
-上游标准浏览器模式加载反检测脚本，CDP 启动器包含反检测参数，两条入口在登录后都会主动打开站内搜索页。知乎 robots.txt 对通用爬虫限制相关路径，MediaCrawler 的源码使用声明要求遵守平台规则和 robots.txt。基于这些限制，本轮执行离线 CLI 帮助检查和源码复核，未启动上游爬虫。比对远端 HEAD `4d629b52eddef9c53b5e9a52b76ec4a64383b494` 后，整个差异只有 README，保留当前固定版。 [固定版登录实现](https://github.com/NanmiCoder/MediaCrawler/blob/306ab4ca26c0e44fb87ede0e40e98748752815a6/media_platform/zhihu/login.py) · [固定版采集实现](https://github.com/NanmiCoder/MediaCrawler/blob/306ab4ca26c0e44fb87ede0e40e98748752815a6/media_platform/zhihu/core.py) · [知乎 robots.txt](https://www.zhihu.com/robots.txt)
+上游标准浏览器模式加载反检测脚本，CDP 启动器包含反检测参数，两条入口在登录后都会主动打开站内搜索页。知乎 robots.txt 对通用爬虫限制相关路径，MediaCrawler 的源码使用声明要求遵守平台规则和 robots.txt。本轮在本人扫码登录后实际运行搜索与详情采集，评论抓取阶段按用户要求停止，避免过量请求。比对远端 HEAD `4d629b52eddef9c53b5e9a52b76ec4a64383b494` 后，整个差异只有 README，保留当前固定版。 [固定版登录实现](https://github.com/NanmiCoder/MediaCrawler/blob/306ab4ca26c0e44fb87ede0e40e98748752815a6/media_platform/zhihu/login.py) · [固定版采集实现](https://github.com/NanmiCoder/MediaCrawler/blob/306ab4ca26c0e44fb87ede0e40e98748752815a6/media_platform/zhihu/core.py) · [知乎 robots.txt](https://www.zhihu.com/robots.txt)
 
 ### 手动登录
 
@@ -167,9 +167,9 @@ $job = & $social -Action ZhihuCollect -Keyword '泉州 预约'
 | 平台 | Windows 独立进程跑通的测试输入 | 真实搜索、详情和评论 |
 | --- | --- | --- |
 | 小红书 | 合成笔记 1 篇、评论 1 条；另测回复关联和链接去令牌 | 2026-11-15 本人扫码登录后完成真实采集：搜索“泉州 旅游”取得 20 篇笔记和 327 条评论/回复的原始 JSONL（在评论抓取阶段按用户要求中止，未入库）；详情模式对 1 篇笔记完成端到端导入，写入 1 条证据和 12 条评论，并通过 `Read` 接口验证标题、关键词与评论内容。Cookie 会话保存在 `browser_data\cdp_xhs_user_data_dir` |
-| B站 | 合成视频 1 个、评论 1 条；另测平台评论数与样本数区分 | 未执行。用户协议对自动化获取明确要求事先书面许可。真实数据 0 个、0 条。 [用户协议](https://www.bilibili.com/blackboard/protocal/licence.html) |
+| B站 | 合成视频 1 个、评论 1 条；另测平台评论数与样本数区分 | 2026-11-15 本人扫码登录后完成真实详情采集：视频 `BV1G5ASetEbR` 写入 1 条证据和 12 条评论，并通过证据接口验证标题、发布时间与评论内容。会话保存在 `browser_data\cdp_bilibili_user_data_dir` |
 | 微博 | 合成帖子 1 篇、评论 1 条；另测缺文件错误和渠道失败隔离 | 未执行。协议禁止未经书面许可的自动化行为。真实数据 0 篇、0 条。 [服务使用协议](https://www.weibo.com/signup/v5/protocol/) |
-| 抖音 | 合成视频 1 个、评论 1 条 | 未执行，未取得可用的授权样本。真实数据 0 个、0 条。 [用户服务协议](https://www.douyin.com/draft/douyin_agreement/douyin_agreement_user.html?id=6773906068725565448) |
-| 知乎 | Windows 独立进程导入并分页导出合成问题 1 个、回答 1 条、根评论和回复各 1 条。合成证据通过 PostgreSQL 写入测试 | 真实搜索端点返回鉴权失败，当前缺少授权数据。真实问题、回答、评论和回复均为 0，实际 Cookie 会话复用待验收 |
+| 抖音 | 合成视频 1 个、评论 1 条 | 未完成。二维码登录弹窗无法在本机自动关闭（Playwright 点击登录按钮超时），按用户指示停止接入；`a_bogus` 签名所需的 Node.js 运行时装在 `social-research\node`。真实数据 0 个、0 条。 [用户服务协议](https://www.douyin.com/draft/douyin_agreement/douyin_agreement_user.html?id=6773906068725565448) |
+| 知乎 | Windows 独立进程导入并分页导出合成问题 1 个、回答 1 条、根评论和回复各 1 条。合成证据通过 PostgreSQL 写入测试 | 2026-11-15 本人扫码登录后完成真实采集：搜索“泉州 旅游”取得 20 条回答和 490+ 条评论/回复原始 JSONL（按用户要求中止，未入库）；详情模式对 1 条回答完成导入，写入 1 条证据和 12 条评论并通过证据接口读取。会话保存在 `browser_data\cdp_zhihu_user_data_dir` |
 
-本轮已在小红书验证搜索、详情和评论读取：搜索返回 20 篇笔记并抓到 327 条评论/回复，详情模式完成 1 篇笔记和 12 条评论的导入与读取。B站、抖音、知乎的真实在线采集尚未在本轮执行，取得允许访问的样本后按同一 `Collect` 流程补验，并核对原帖链接、Evidence ID、五项分析、证据评分和最终报告范围。
+本轮已在小红书、B站、知乎验证真实在线采集：小红书搜索返回 20 篇笔记和 327 条评论/回复，详情模式导入 1 篇笔记和 12 条评论；B站详情模式导入 1 个视频和 12 条评论；知乎搜索返回 20 条回答和 490+ 条评论/回复，详情模式导入 1 条回答和 12 条评论，均通过证据接口读取验证。抖音二维码登录弹窗无法自动关闭，按用户指示停止接入；微博未验证。后续取得授权样本时按同一 `Collect` 流程补验，并核对原帖链接、Evidence ID、五项分析、证据评分和最终报告范围。

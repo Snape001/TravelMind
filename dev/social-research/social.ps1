@@ -48,6 +48,11 @@ function Invoke-Checked {
 
 function Invoke-SidecarCli {
     param([string]$Module, [string[]]$Options)
+    # Douyin a_bogus signs libs/douyin.js through execjs and needs the Node.js runtime.
+    $nodePath = Join-Path ([string]$script:rootPath) 'node'
+    if (Test-Path (Join-Path $nodePath 'node.exe')) {
+        $env:PATH = "$nodePath;$env:PATH"
+    }
     Push-Location $backend
     try {
         Invoke-Checked (Join-Path $venvPath 'Scripts\python.exe') (
