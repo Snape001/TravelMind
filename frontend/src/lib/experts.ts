@@ -45,7 +45,7 @@ const profiles: Record<string, Omit<ExpertProfile, "id">> = {
     portrait: "/images/experts/lin-jingchuan.webp",
     description: "长期考察名山古迹与地方风物，比较景区、场馆和公共文化空间的游览价值，核对开放、预约、季节限制及无障碍条件。",
     fields: ["山岳景区与古迹", "地方风物", "公共文化空间"],
-    tools: ["景区与场馆公告", "公共服务网页检索"],
+    tools: ["高德景点查询", "景区与场馆公告", "公共服务网页检索"],
     skills: ["游览资源与现场条件", "开放与预约核验", "可达性与服务设施核验"],
   },
   travel_planning: {

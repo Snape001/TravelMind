@@ -2,14 +2,19 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+import httpx
 import pytest
+from pydantic import SecretStr
 from sqlalchemy import func, select
 
 from travelmind.db.evidence import save_evidence
-from travelmind.db.models import EvidenceRow
+from travelmind.db.models import EvidenceRow, IntakeRow
 from travelmind.db.worker import PostgresWorkerStore
+from travelmind.research.amap_client import AmapClient
 from travelmind.research.engine import ToolResult
 from travelmind.runtime.retrieval import ResearchRetriever
+from travelmind.runtime.travel.map_cache import AmapResultCache
+from travelmind.runtime.travel.places import AmapPlaces
 from travelmind.schemas.agents import AgentInput
 from travelmind.schemas.domain import Evidence
 
@@ -137,3 +142,79 @@ def test_parallel_retrieval_shares_a_scrape_and_stores_one_evidence_id(client):
 
     assert client.portal.call(run) == [[page], [page]]
     assert len(scrape_calls) == 1
+
+
+def test_lin_retrieves_confirmed_amap_poi_and_preserves_other_sources(client):
+    created = client.post("/api/v1/tasks/from-destination", json={"destination": "开元寺"})
+    assert created.status_code == 201
+    task = created.json()
+    task_id = UUID(task["task_id"])
+    web = make_evidence("https://example.org/notice")
+    calls = []
+
+    class Engine:
+        async def search(self, *_args, **_options):
+            return ToolResult(evidence=[web])
+
+    def provider(request):
+        calls.append(request.url.path)
+        assert request.url.path == "/v5/place/detail"
+        assert request.url.params["id"] == "B_POI"
+        return httpx.Response(
+            200,
+            json={
+                "status": "1",
+                "pois": [
+                    {
+                        "id": "B_POI",
+                        "name": "开元寺",
+                        "cityname": "泉州市",
+                        "location": "118.582374,24.910773",
+                        "business": {"opentime_week": "08:00-18:00", "tel": "0595-12345678"},
+                    }
+                ],
+            },
+        )
+
+    async def run():
+        sessions = client.app.state.sessions
+        store = PostgresWorkerStore(sessions)
+        async with sessions.begin() as session:
+            intake = await session.get(IntakeRow, task_id)
+            intake.destination = {
+                "poi_id": "B_POI",
+                "name": "开元寺",
+                "coordinates": {"longitude": 118.582374, "latitude": 24.910773},
+                "administrative": {"city": "泉州市"},
+            }
+        claim = await store.claim(uuid4(), lease_seconds=30)
+        assert claim is not None and claim.lease.task_id == task_id
+        async with httpx.AsyncClient(transport=httpx.MockTransport(provider)) as http:
+            retrieve = ResearchRetriever(
+                Engine(),
+                sessions,
+                store=store,
+                lease=claim.lease,
+                attraction_places=AmapPlaces(AmapResultCache(AmapClient(http, SecretStr("test")))),
+            )
+            request = AgentInput(
+                task_id=task_id,
+                trace_id=task["trace_id"],
+                run_id=uuid4(),
+                agent_id="tourism_resources",
+                brief=task["brief"],
+            )
+            assert await retrieve(request.model_copy(update={"agent_id": "history_culture"})) == [
+                web
+            ]
+            source, website = await retrieve(request)
+            assert website == web
+            assert await retrieve(request) == [source, web]
+            return source
+
+    source = client.portal.call(run)
+    assert calls == ["/v5/place/detail"]
+    stored = client.get(f"{created.headers['location']}/evidence/{source.evidence_id}")
+    assert stored.status_code == 200
+    assert stored.json()["source_type"] == "map"
+    assert "08:00-18:00" in stored.json()["excerpt"]

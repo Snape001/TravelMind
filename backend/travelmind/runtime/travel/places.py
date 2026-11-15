@@ -26,6 +26,8 @@ class AmapPoiDetail(Contract):
     phone: str | None = None
     opening_hours: str | None = None
     opening_hours_today: str | None = None
+    entrance: Gcj02Point | None = None
+    exit: Gcj02Point | None = None
 
 
 def _text(value: Any) -> str | None:
@@ -104,6 +106,7 @@ def _detail_result(payload: dict, fetched_at: datetime, poi_id: str) -> AmapPoiD
         if raw.get("id") != poi_id or (place := _place(raw)) is None:
             continue
         business = raw["business"] if isinstance(raw.get("business"), dict) else {}
+        navi = raw["navi"] if isinstance(raw.get("navi"), dict) else {}
         return AmapPoiDetail(
             place=place,
             fetched_at=fetched_at,
@@ -111,6 +114,8 @@ def _detail_result(payload: dict, fetched_at: datetime, poi_id: str) -> AmapPoiD
             phone=_text(business.get("tel")),
             opening_hours=_text(business.get("opentime_week")),
             opening_hours_today=_text(business.get("opentime_today")),
+            entrance=parse_point(navi.get("entr_location")),
+            exit=parse_point(navi.get("exit_location")),
         )
     return None
 
@@ -187,7 +192,7 @@ class AmapPlaces:
             raise RunError("AMAP_INVALID_POI_ID", "请输入单个有效的高德 POI ID")
         return await self._cache.request(
             "/v5/place/detail",
-            {"id": poi_id, "show_fields": "business"},
+            {"id": poi_id, "show_fields": "business,navi"},
             ttl=POI_TTL,
             parse=lambda payload, fetched_at: _detail_result(payload, fetched_at, poi_id),
         )
