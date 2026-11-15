@@ -1,4 +1,4 @@
-from math import isfinite
+from datetime import UTC, datetime
 from urllib.parse import parse_qsl, quote_plus, urlencode, urlsplit, urlunsplit
 
 import httpx
@@ -39,6 +39,7 @@ class AuthSettings(BaseSettings):
     public_origin: str | None = None
     token_auth_method: str = "client_secret_basic"
     session_seconds: int = Field(default=28_800, ge=60, le=604_800)
+    account_enabled: bool = False
 
     @field_validator("public_origin")
     @classmethod
@@ -67,6 +68,16 @@ class AuthSettings(BaseSettings):
     def redirect_uri(self) -> str:
         return f"{self.public_origin}/api/v1/auth/callback"
 
+    @property
+    def logout_redirect_uri(self) -> str:
+        return f"{self.public_origin}/"
+
+    @property
+    def account_client(self) -> tuple[str, str] | None:
+        if self.account_enabled:
+            return (self.issuer or "", self.client_id or "")
+        return None
+
 
 class InvalidLogin(ValueError):
     pass
@@ -83,6 +94,27 @@ SUPPORTED_SIGNATURES = {
     "ES384",
     "ES512",
 }
+LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout"
+
+
+def oidc_identifier(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and 0 < len(value) <= 255
+        and value.isascii()
+        and value.isprintable()
+        and " " not in value
+    )
+
+
+def oidc_subject(value: object) -> bool:
+    return (
+        isinstance(value, str) and 0 < len(value) <= 255 and value.isascii() and "\0" not in value
+    )
+
+
+def numeric_date(value: object) -> bool:
+    return type(value) in (int, float) and 0 < value < 253402300799
 
 
 class OidcClient:
@@ -146,6 +178,39 @@ class OidcClient:
         token = token_reply.get("id_token")
         if not isinstance(token, str):
             raise InvalidLogin
+        claims = await self._verified_claims(
+            metadata, token, required=["iss", "sub", "aud", "exp", "iat", "nonce"]
+        )
+        if (
+            claims["aud"] not in (config.client_id, [config.client_id])
+            or ("azp" in claims and claims["azp"] != config.client_id)
+            or claims["nonce"] != nonce
+            or not oidc_subject(claims["sub"])
+            or "events" in claims
+        ):
+            raise InvalidLogin
+        return claims
+
+    async def verify_logout(self, token: str) -> dict:
+        metadata = await self.discover()
+        claims = await self._verified_claims(
+            metadata, token, required=["iss", "aud", "iat", "exp", "jti", "sid", "events"]
+        )
+        events = claims["events"]
+        if (
+            not oidc_identifier(claims["sid"])
+            or not oidc_identifier(claims["jti"])
+            or ("sub" in claims and not oidc_subject(claims["sub"]))
+            or "nonce" in claims
+            or not isinstance(events, dict)
+            or not isinstance(events.get(LOGOUT_EVENT), dict)
+            or not 0 < claims["exp"] - claims["iat"] <= 300
+            or claims["iat"] > datetime.now(UTC).timestamp()
+        ):
+            raise InvalidLogin
+        return claims
+
+    async def _verified_claims(self, metadata: dict, token: str, *, required: list[str]) -> dict:
         try:
             header = jwt.get_unverified_header(token)
             algorithm = header.get("alg")
@@ -170,27 +235,13 @@ class OidcClient:
                 token,
                 key=key,
                 algorithms=[algorithm],
-                issuer=config.issuer,
-                audience=config.client_id,
-                options={"require": ["iss", "sub", "aud", "exp", "iat", "nonce"]},
+                issuer=self.settings.issuer,
+                audience=self.settings.client_id,
+                options={"require": required},
             )
         except (jwt.PyJWTError, TypeError, KeyError, OverflowError) as exc:
             raise InvalidLogin from exc
-        audience = claims["aud"]
-        subject = claims["sub"]
-        if (
-            audience not in (config.client_id, [config.client_id])
-            or ("azp" in claims and claims["azp"] != config.client_id)
-            or claims["nonce"] != nonce
-            or not isinstance(subject, str)
-            or not subject
-            or not subject.isascii()
-            or len(subject) > 255
-            or any(
-                type(claims[field]) not in (int, float) or not isfinite(claims[field])
-                for field in ("iat", "exp")
-            )
-        ):
+        if any(not numeric_date(claims[field]) for field in ("iat", "exp")):
             raise InvalidLogin
         return claims
 

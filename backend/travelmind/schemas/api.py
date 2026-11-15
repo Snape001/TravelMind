@@ -53,6 +53,35 @@ class CurrentUser(Contract):
     user_id: UUID
     display_name: str | None
     csrf_token: Text
+    email: str | None = None
+    email_verified: bool | None = None
+    avatar_url: str | None = None
+    account_management_enabled: bool = Field(default_factory=bool)
+
+
+class ProfileEdit(Contract):
+    authorization_url: str
+
+
+class ProviderLogout(Contract):
+    provider_logout_url: str | None
+
+
+class BackchannelLogoutError(Contract):
+    error: Literal["invalid_request"]
+
+
+class ReportSummary(Contract):
+    task_id: UUID
+    report_id: UUID
+    version: int
+    title: str
+    published_at: AwareDatetime
+
+
+class AccountReports(Contract):
+    items: list[ReportSummary]
+    next_cursor: str | None
 
 
 class TaskRead(Contract):

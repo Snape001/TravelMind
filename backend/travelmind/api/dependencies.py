@@ -26,11 +26,13 @@ Sessions = Annotated[async_sessionmaker[AsyncSession], Depends(get_sessions)]
 
 
 async def current_session(
-    sessions: Sessions, token: Annotated[str | None, Security(session_cookie)]
+    request: Request, sessions: Sessions, token: Annotated[str | None, Security(session_cookie)]
 ) -> AuthenticatedUser:
     if token:
         async with sessions() as session:
-            user = await read_session(session, token)
+            user = await read_session(
+                session, token, account_client=request.app.state.auth_settings.account_client
+            )
         if user is not None:
             return user
     raise api_error(401, "UNAUTHENTICATED", "需要登录")

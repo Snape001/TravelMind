@@ -33,15 +33,21 @@ class UserRow(Base):
     issuer: Mapped[str] = mapped_column(Text)
     subject: Mapped[str] = mapped_column(Text)
     display_name: Mapped[str | None] = mapped_column(Text)
+    email: Mapped[str | None] = mapped_column(Text)
+    email_verified: Mapped[bool | None]
+    avatar_url: Mapped[str | None] = mapped_column(Text)
 
 
 class SessionRow(Base):
     __tablename__ = "sessions"
+    __table_args__ = (Index("ix_sessions_oidc_sid", "oidc_client_id", "oidc_sid"),)
 
     token_hash: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    oidc_client_id: Mapped[str | None] = mapped_column(Text)
+    oidc_sid: Mapped[str | None] = mapped_column(Text)
 
 
 class LoginFlowRow(Base):
@@ -51,6 +57,22 @@ class LoginFlowRow(Base):
     browser_hash: Mapped[bytes] = mapped_column(LargeBinary)
     nonce: Mapped[str] = mapped_column(Text)
     verifier: Mapped[str] = mapped_column(Text)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    expected_user_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.user_id", ondelete="CASCADE")
+    )
+    source_session_hash: Mapped[bytes | None] = mapped_column(LargeBinary)
+
+
+class LogoutReceiptRow(Base):
+    __tablename__ = "oidc_logout_receipts"
+    __table_args__ = (Index("ix_oidc_logout_receipts_sid", "issuer", "client_id", "sid"),)
+
+    issuer: Mapped[str] = mapped_column(Text, primary_key=True)
+    client_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    jti: Mapped[str] = mapped_column(Text, primary_key=True)
+    sid: Mapped[str] = mapped_column(Text)
+    subject: Mapped[str | None] = mapped_column(Text)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 

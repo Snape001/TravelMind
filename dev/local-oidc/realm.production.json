@@ -1,0 +1,104 @@
+{
+  "realm": "${TM_REALM_NAME}",
+  "displayName": "TravelMind",
+  "enabled": true,
+  "sslRequired": "all",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": true,
+  "resetPasswordAllowed": true,
+  "passwordPolicy": "length(12) and maxLength(128) and notUsername() and notEmail()",
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "clientSessionIdleTimeout": 1800,
+  "clientSessionMaxLifespan": 28800,
+  "actionTokenGeneratedByUserLifespan": 1800,
+  "attributes": {
+    "actionTokenGeneratedByUserLifespan.reset-credentials": "900"
+  },
+  "smtpServer": {
+    "host": "${TM_SMTP_HOST}",
+    "port": "${TM_SMTP_PORT}",
+    "from": "${TM_SMTP_FROM}",
+    "fromDisplayName": "TravelMind",
+    "auth": "true",
+    "user": "${TM_SMTP_USER}",
+    "password": "${TM_SMTP_PASSWORD}",
+    "ssl": "${TM_SMTP_SSL}",
+    "starttls": "${TM_SMTP_STARTTLS}"
+  },
+  "authenticatorConfig": [
+    {"alias": "travelmind-reset-email", "config": {"force-login": "true"}}
+  ],
+  "authenticationFlows": [
+    {
+      "alias": "travelmind-reset",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {"authenticator": "reset-credentials-choose-user", "requirement": "REQUIRED", "priority": 10},
+        {"authenticator": "reset-credential-email", "authenticatorConfig": "travelmind-reset-email", "requirement": "REQUIRED", "priority": 20},
+        {"authenticator": "reset-password", "requirement": "REQUIRED", "priority": 30},
+        {"flowAlias": "travelmind-reset-otp", "authenticatorFlow": true, "requirement": "CONDITIONAL", "priority": 40}
+      ]
+    },
+    {
+      "alias": "travelmind-reset-otp",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {"authenticator": "conditional-user-configured", "requirement": "REQUIRED", "priority": 10},
+        {"authenticator": "reset-otp", "requirement": "REQUIRED", "priority": 20}
+      ]
+    }
+  ],
+  "resetCredentialsFlow": "travelmind-reset",
+  "requiredActions": [
+    {"alias": "TERMS_AND_CONDITIONS", "name": "Terms and Conditions", "providerId": "TERMS_AND_CONDITIONS", "enabled": false, "defaultAction": false, "priority": 20},
+    {"alias": "UPDATE_PROFILE", "name": "Update Profile", "providerId": "UPDATE_PROFILE", "enabled": true, "defaultAction": false, "priority": 40},
+    {"alias": "VERIFY_EMAIL", "name": "Verify Email", "providerId": "VERIFY_EMAIL", "enabled": true, "defaultAction": false, "priority": 50},
+    {"alias": "CONFIGURE_TOTP", "name": "Configure OTP", "providerId": "CONFIGURE_TOTP", "enabled": true, "defaultAction": false, "priority": 54},
+    {"alias": "UPDATE_PASSWORD", "name": "Update Password", "providerId": "UPDATE_PASSWORD", "enabled": true, "defaultAction": false, "priority": 57},
+    {"alias": "delete_account", "name": "Delete Account", "providerId": "delete_account", "enabled": false, "defaultAction": false, "priority": 60},
+    {"alias": "UPDATE_EMAIL", "name": "Update Email", "providerId": "UPDATE_EMAIL", "enabled": true, "defaultAction": false, "priority": 70},
+    {"alias": "webauthn-register", "name": "Webauthn Register", "providerId": "webauthn-register", "enabled": true, "defaultAction": false, "priority": 80},
+    {"alias": "webauthn-register-passwordless", "name": "Webauthn Register Passwordless", "providerId": "webauthn-register-passwordless", "enabled": true, "defaultAction": false, "priority": 90},
+    {"alias": "VERIFY_PROFILE", "name": "Verify Profile", "providerId": "VERIFY_PROFILE", "enabled": true, "defaultAction": false, "priority": 100},
+    {"alias": "delete_credential", "name": "Delete Credential", "providerId": "delete_credential", "enabled": true, "defaultAction": false, "priority": 110},
+    {"alias": "idp_link", "name": "Linking Identity Provider", "providerId": "idp_link", "enabled": true, "defaultAction": false, "priority": 120},
+    {"alias": "CONFIGURE_RECOVERY_AUTHN_CODES", "name": "Recovery Authentication Codes", "providerId": "CONFIGURE_RECOVERY_AUTHN_CODES", "enabled": true, "defaultAction": false, "priority": 130},
+    {"alias": "update_user_locale", "name": "Update User Locale", "providerId": "update_user_locale", "enabled": true, "defaultAction": false, "priority": 1000}
+  ],
+  "clients": [
+    {
+      "clientId": "${TM_OIDC_CLIENT_ID}",
+      "name": "TravelMind Web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${TM_OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": false,
+      "redirectUris": ["${TM_PUBLIC_ORIGIN}/api/v1/auth/callback"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "id.token.signed.response.alg": "RS256",
+        "post.logout.redirect.uris": "${TM_PUBLIC_ORIGIN}/",
+        "backchannel.logout.url": "${TM_PUBLIC_ORIGIN}/api/v1/auth/backchannel-logout",
+        "backchannel.logout.session.required": "true"
+      }
+    }
+  ]
+}

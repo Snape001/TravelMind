@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## 账户认证后端与 Keycloak（2026-11-15）
+
+- 基于冻结契约 `476450d` 实现 Keycloak 注册、邮箱验证、重置密码及姓名编辑。账户模式校验已签名的邮箱、验证状态及 SID，继续用 `(issuer, subject)` 保留现有用户和任务归属。按需求为 `/auth/me` 增补可空的 `avatar_url`，来源为签名的 `picture`。迁移 `0007` 保存资料和会话绑定，未引入应用密码或 OIDC Token 存储。 [部署说明](docs/account-auth-deployment.md)
+- `/account/reports` 按发布事件和报告 ID 做游标分页，只列本人任务的最新 `report.ready` 版本。原历史详情可用。RP 退出先吊销本地会话，Keycloak 后通道按签名及 SID 吊销关联会话，PostgreSQL 限期回执与事务锁防止通知重放及在途换码复活。Cookie、CSRF 与两条 SSE 沿用现有机制。
+- Keycloak 26.8.2 的本地和生产 Realm 模板均实际导入成功。独立旧卷重复原地升级保留了原账号主体 ID 和客户端回调，包含 Compose 容器已移除、只剩数据卷的场景。提供 Mailpit 开发收件箱、生产 SMTP 环境模板和升级脚本。QQ SMTP 连接测试由 Keycloak 发起并成功返回，用时约 2.9 秒，收件箱由邮箱所有者确认。
+- Chrome 连接真实 Keycloak、Mailpit 和 PostgreSQL，验证两名新账户注册、未验证阻止应用会话、邮件过期及重放、姓名保存和取消、邮箱只读、密码重置、旧密码拒绝、新密码登录及跨用户报告隔离。Keycloak 管理端注销和重置时退出其他设备均吊销同一身份的其他会话，另一账户保持登录。RP 退出和管理端注销分别约 5.0 秒和 2.9 秒关闭两条已打开的 SSE。
+- 隔离 PostgreSQL 17 后端 289 项、前端 35 项通过，Ruff、Alembic、TypeScript、ESLint 通过。迁移前后 4 条已有任务的用户身份和所有权一致。**交付提交**　`feat: upgrade OIDC account authentication and logout`。
+
 ## 登录注册与个人账户前端（2026-11-15）
 
 - 首页提供独立登录和注册入口。登录后右上角显示昵称及首字头像，菜单可打开个人资料、我的报告或退出。个人资料读取会话中的昵称、邮箱和验证状态，账户功能启用时使用 Keycloak 原生资料编辑和 OIDC 退出。

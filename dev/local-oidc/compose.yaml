@@ -35,12 +35,22 @@ services:
     environment:
       KC_HOSTNAME: https://id.travelmind.localhost:18443
       KC_PROXY_HEADERS: xforwarded
+      KC_TRUSTSTORE_PATHS: /local-pki/rootCA.pem
       TM_LOCAL_CLIENT_SECRET: ${TM_LOCAL_CLIENT_SECRET:?Run stack.ps1 init}
       TM_LOCAL_ALICE_PASSWORD: ${TM_LOCAL_ALICE_PASSWORD:?Run stack.ps1 init}
       TM_LOCAL_BOB_PASSWORD: ${TM_LOCAL_BOB_PASSWORD:?Run stack.ps1 init}
     volumes:
       - keycloak:/opt/keycloak/data
       - ./realm.json:/opt/keycloak/data/import/travelmind-dev-realm.json:ro
+      - ../../.artifacts/local-oidc/pki/rootCA.pem:/local-pki/rootCA.pem:ro
+
+  mailpit:
+    image: ghcr.io/axllent/mailpit:v1.33.1
+    environment:
+      MP_MAX_MESSAGES: "100"
+      MP_ALLOWED_HOSTS: "127.0.0.1,localhost"
+    ports:
+      - "127.0.0.1:18025:8025"
 
   migrate:
     <<: *backend
@@ -72,6 +82,7 @@ services:
       OIDC_CLIENT_ID: travelmind-local
       OIDC_CLIENT_SECRET: ${TM_LOCAL_CLIENT_SECRET:?Run stack.ps1 init}
       OIDC_TOKEN_AUTH_METHOD: client_secret_basic
+      OIDC_ACCOUNT_ENABLED: "true"
       NO_PROXY: id.travelmind.localhost,postgres,redis
     volumes:
       - ../../.artifacts/local-oidc/pki/rootCA.pem:/local-pki/rootCA.pem:ro
@@ -114,6 +125,7 @@ services:
       default:
         aliases:
           - id.travelmind.localhost
+          - travelmind.localhost
 
 volumes:
   postgres:
