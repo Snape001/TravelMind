@@ -106,6 +106,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/from-destination": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Destination */
+        post: operations["submit_destination_api_v1_tasks_from_destination_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/intake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Intake */
+        get: operations["get_intake_api_v1_tasks__task_id__intake_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/questionnaires/{questionnaire_id}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Questionnaire */
+        post: operations["submit_questionnaire_api_v1_tasks__task_id__questionnaires__questionnaire_id__answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks": {
         parameters: {
             query?: never;
@@ -242,10 +293,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{task_id}/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Routes */
+        get: operations["read_routes_api_v1_tasks__task_id__routes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/reports/{report_id}/map-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Report Map */
+        get: operations["read_report_map_api_v1_tasks__task_id__reports__report_id__map_data_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdministrativeDivisions */
+        AdministrativeDivisions: {
+            /** Province */
+            province?: string | null;
+            /** City */
+            city?: string | null;
+            /** District */
+            district?: string | null;
+            /** Adcode */
+            adcode?: string | null;
+            /** Citycode */
+            citycode?: string | null;
+        };
         /** AgentEvent */
         AgentEvent: {
             /**
@@ -348,6 +446,18 @@ export interface components {
             /** Depends On */
             depends_on?: string[];
         };
+        /** ChoiceAnswer */
+        ChoiceAnswer: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "multi_choice" | "single_choice";
+            /** Option Ids */
+            option_ids: string[];
+        };
         /** ClarificationAnswer */
         ClarificationAnswer: {
             /**
@@ -394,6 +504,43 @@ export interface components {
             display_name: string | null;
             /** Csrf Token */
             csrf_token: string;
+        };
+        /** DateAnswer */
+        DateAnswer: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "date";
+            /**
+             * Value
+             * Format: date
+             */
+            value: string;
+        };
+        /** Destination */
+        Destination: {
+            /**
+             * Provider
+             * @default amap
+             * @constant
+             */
+            provider: "amap";
+            /** Poi Id */
+            poi_id: string;
+            /** Name */
+            name: string;
+            administrative: components["schemas"]["AdministrativeDivisions"];
+            coordinates: components["schemas"]["Gcj02Point"];
+            /** Address */
+            address?: string | null;
+        };
+        /** DestinationTaskCreate */
+        DestinationTaskCreate: {
+            /** Destination */
+            destination: string;
         };
         /** ErrorInfo */
         ErrorInfo: {
@@ -458,10 +605,35 @@ export interface components {
              */
             task_id: string;
         };
+        /** Gcj02Point */
+        Gcj02Point: {
+            /**
+             * Crs
+             * @default gcj02
+             * @constant
+             */
+            crs: "gcj02";
+            /** Longitude */
+            longitude: number;
+            /** Latitude */
+            latitude: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** IntegerAnswer */
+        IntegerAnswer: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "integer";
+            /** Value */
+            value: number;
         };
         /** Liveness */
         Liveness: {
@@ -471,6 +643,117 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** MapData */
+        MapData: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Report Id */
+            report_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "partial" | "unavailable";
+            destination?: components["schemas"]["Destination"] | null;
+            /** Places */
+            places?: components["schemas"]["MapPlace"][];
+            /** Days */
+            days?: components["schemas"]["MapDay"][];
+            /** Routes */
+            routes?: components["schemas"]["MapRoute"][];
+            /** Issues */
+            issues?: components["schemas"]["MapIssue"][];
+        };
+        /** MapDay */
+        MapDay: {
+            /** Day Number */
+            day_number: number;
+            /** On Date */
+            on_date?: string | null;
+            /** Stops */
+            stops: components["schemas"]["MapStop"][];
+            /** Legs */
+            legs?: components["schemas"]["MapLeg"][];
+        };
+        /** MapIssue */
+        MapIssue: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Poi Id */
+            poi_id?: string | null;
+            /** Origin Poi Id */
+            origin_poi_id?: string | null;
+            /** Mode */
+            mode?: ("driving" | "transit" | "walking" | "cycling") | null;
+        };
+        /** MapLeg */
+        MapLeg: {
+            /**
+             * Selected Route Id
+             * Format: uuid
+             */
+            selected_route_id: string;
+            /** Alternative Route Ids */
+            alternative_route_ids: string[];
+        };
+        /** MapPlace */
+        MapPlace: {
+            poi: components["schemas"]["Destination"];
+            /** Detail Fetched At */
+            detail_fetched_at?: string | null;
+            /** Category */
+            category?: string | null;
+        };
+        /** MapRoute */
+        MapRoute: {
+            route: components["schemas"]["TravelRoute"];
+            /** Evidence Id */
+            evidence_id?: string | null;
+            /** Segments */
+            segments?: components["schemas"]["MapSegment"][];
+        };
+        /** MapSegment */
+        MapSegment: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "driving" | "walking" | "cycling" | "transit" | "bus" | "railway" | "taxi";
+            /** Line Id */
+            line_id?: string | null;
+            /** Name */
+            name?: string | null;
+            departure_stop?: components["schemas"]["MapTransitStop"] | null;
+            arrival_stop?: components["schemas"]["MapTransitStop"] | null;
+            /** Distance M */
+            distance_m?: number | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            /** Path */
+            path?: components["schemas"]["Gcj02Point"][] | null;
+        };
+        /** MapStop */
+        MapStop: {
+            /** Poi Id */
+            poi_id: string;
+            /** Suggested Start */
+            suggested_start?: string | null;
+            /** Suggested Minutes */
+            suggested_minutes: number;
+        };
+        /** MapTransitStop */
+        MapTransitStop: {
+            /** Stop Id */
+            stop_id?: string | null;
+            /** Name */
+            name: string;
+            coordinates?: components["schemas"]["Gcj02Point"] | null;
         };
         /** PendingClarification */
         PendingClarification: {
@@ -490,6 +773,45 @@ export interface components {
              */
             type: "plan.ready";
             plan: components["schemas"]["ResearchPlan"];
+        };
+        /** QuestionCondition */
+        QuestionCondition: {
+            /** Question Id */
+            question_id: string;
+            /** Includes Option Id */
+            includes_option_id: string;
+        };
+        /** QuestionnaireOption */
+        QuestionnaireOption: {
+            /** Option Id */
+            option_id: string;
+            /** Label */
+            label: string;
+        };
+        /** QuestionnaireQuestion */
+        QuestionnaireQuestion: {
+            /** Question Id */
+            question_id: string;
+            /** Text */
+            text: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "text" | "single_choice" | "multi_choice" | "date" | "integer";
+            /**
+             * Required
+             * @default false
+             */
+            required: boolean;
+            /** Options */
+            options?: components["schemas"]["QuestionnaireOption"][];
+            visible_if?: components["schemas"]["QuestionCondition"] | null;
+        };
+        /** QuestionnaireSubmission */
+        QuestionnaireSubmission: {
+            /** Answers */
+            answers: (components["schemas"]["TextAnswer"] | components["schemas"]["ChoiceAnswer"] | components["schemas"]["DateAnswer"] | components["schemas"]["IntegerAnswer"])[];
         };
         /** Readiness */
         Readiness: {
@@ -618,12 +940,42 @@ export interface components {
              */
             depth: "quick" | "deep" | "academic";
         };
+        /** ResearchIntakeRead */
+        ResearchIntakeRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            destination: components["schemas"]["Destination"] | null;
+            questionnaire: components["schemas"]["ResearchQuestionnaire"] | null;
+            travel_preferences: components["schemas"]["TravelPreferences"] | null;
+        };
         /** ResearchPlan */
         ResearchPlan: {
             /** Objective */
             objective: string;
             /** Assignments */
             assignments: components["schemas"]["Assignment"][];
+        };
+        /** ResearchQuestionnaire */
+        ResearchQuestionnaire: {
+            /** Questions */
+            questions: components["schemas"]["QuestionnaireQuestion"][];
+            /**
+             * Questionnaire Id
+             * Format: uuid
+             */
+            questionnaire_id: string;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "destination_search" | "destination_confirmation" | "research" | "travel";
+            /** Candidates */
+            candidates?: {
+                [key: string]: components["schemas"]["Destination"];
+            };
         };
         /** TaskRead */
         TaskRead: {
@@ -670,6 +1022,18 @@ export interface components {
              */
             status: "queued" | "running" | "needs_clarification" | "paused" | "completed" | "failed";
             error?: components["schemas"]["ErrorInfo"] | null;
+        };
+        /** TextAnswer */
+        TextAnswer: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "text";
+            /** Text */
+            text: string;
         };
         /** ToolFinishedEvent */
         ToolFinishedEvent: {
@@ -720,6 +1084,69 @@ export interface components {
             tool_call_id: string;
             /** Tool Name */
             tool_name: string;
+        };
+        /** TravelPreferences */
+        TravelPreferences: {
+            /** Start Date */
+            start_date?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Stay Days */
+            stay_days?: number | null;
+            /** Transport Modes */
+            transport_modes?: ("driving" | "transit" | "walking" | "cycling")[] | null;
+            /** Styles */
+            styles?: string[] | null;
+            /** Intensity */
+            intensity?: ("relaxed" | "balanced" | "intensive") | null;
+            /** Budget Cny */
+            budget_cny?: number | null;
+            /** Party Size */
+            party_size?: number | null;
+            /** Companions */
+            companions?: string[] | null;
+        };
+        /** TravelRoute */
+        TravelRoute: {
+            /**
+             * Route Id
+             * Format: uuid
+             */
+            route_id: string;
+            /**
+             * Provider
+             * @default amap
+             * @constant
+             */
+            provider: "amap";
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "driving" | "transit" | "walking" | "cycling";
+            origin: components["schemas"]["Destination"];
+            destination: components["schemas"]["Destination"];
+            /**
+             * Fetched At
+             * Format: date-time
+             */
+            fetched_at: string;
+            /** Distance M */
+            distance_m: number;
+            /** Duration Seconds */
+            duration_seconds: number;
+            /** Polyline */
+            polyline?: components["schemas"]["Gcj02Point"][] | null;
+        };
+        /** TravelRoutesRead */
+        TravelRoutesRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Routes */
+            routes: components["schemas"]["TravelRoute"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -986,6 +1413,262 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_destination_api_v1_tasks_from_destination_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+                /** @description Required for authenticated writes */
+                "X-CSRF-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DestinationTaskCreate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /** @description Task resource URL */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Task resource URL */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_intake_api_v1_tasks__task_id__intake_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchIntakeRead"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_questionnaire_api_v1_tasks__task_id__questionnaires__questionnaire_id__answer_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                /** @description Required for authenticated writes */
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                task_id: string;
+                questionnaire_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionnaireSubmission"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -1609,6 +2292,141 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportRead"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_routes_api_v1_tasks__task_id__routes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TravelRoutesRead"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_report_map_api_v1_tasks__task_id__reports__report_id__map_data_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapData"];
                 };
             };
             /** @description Unauthorized */

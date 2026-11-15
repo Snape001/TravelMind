@@ -12,7 +12,7 @@ import { formatDate, workbenchHref, type ReportRead } from "@/lib/research";
 import { demo, demoResearch } from "@/lib/demo";
 import { splitPoiMentions } from "@/lib/report-map";
 import { SessionPrompt, useSession } from "./session";
-import { RouteMapPanel, useTaskRouteMap, type ReportChapter } from "./route-map-panel";
+import { RouteMapPanel, useRouteMap, type ReportChapter } from "./route-map-panel";
 import type { PoiSelection } from "./route-map-canvas";
 
 export function ReportReader({ taskId, reportId }: { taskId: string; reportId: string }) {
@@ -31,7 +31,7 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
   const [attempt, setAttempt] = useState(0);
   const report = example ? demoResearch.reports.find(({ report_id }) => report_id === reportId) : loaded;
   const error = example && !report ? "该任务的报告暂不可用。" : loadError;
-  const { state: routeState, retry: retryRoutes } = useTaskRouteMap(taskId, !!report && !example);
+  const { state: routeState, retry: retryRoutes } = useRouteMap(taskId, reportId, !!report && !example);
   const [mapSelection, setMapSelection] = useState<PoiSelection | null>(null);
   const selectPoi = useCallback((id: string) => setMapSelection({ id }), []);
   useEffect(() => {
@@ -71,7 +71,11 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
     });
     return { chapters, chaptersWithLinks };
   }, [report, routeData]);
-  const evidence = new Map(Array.from(new Set(sections.flatMap(({ evidence_ids }) => evidence_ids ?? [])))
+  const evidenceIds = new Set(sections.flatMap(({ evidence_ids }) => evidence_ids ?? []));
+  for (const { evidence_id } of routeData?.routes ?? []) {
+    if (evidence_id) evidenceIds.add(evidence_id);
+  }
+  const evidence = new Map(Array.from(evidenceIds)
     .map((id, index) => [id, index + 1]));
   return (
     <main className="shell inner-page report-page">
@@ -97,7 +101,7 @@ function ReaderSession({ taskId, reportId }: { taskId: string; reportId: string 
             <section id="report-map" className="report-section" aria-labelledby="report-map-title">
               <h2 id="report-map-title" className="report-map-title"><MapPin size={21} aria-hidden />目的地地图与游览规划</h2>
               <RouteMapPanel state={routeState} selection={mapSelection} onSelect={selectPoi}
-                retry={retryRoutes} chapters={linked.chapters} />
+                retry={retryRoutes} chapters={linked.chapters} evidenceLinks={evidence} />
             </section>
             {sections.map((section, index) => {
               const discussion = reportDiscussion(section.heading);

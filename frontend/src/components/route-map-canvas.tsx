@@ -86,8 +86,9 @@ export function RouteMapCanvas({ stops, paths, selection, onSelect }: {
   useEffect(() => {
     if (state.kind !== "ready") return;
     const { api, map } = state;
-    const polylines = paths.map(({ points }) => new api.Polyline({
-      path: points, strokeColor: "#21645d", strokeWeight: 6, isOutline: true,
+    const polylines = paths.map(({ points, mode }) => new api.Polyline({
+      path: points, strokeColor: mode === "bus" || mode === "railway" ? "#395873" : "#21645d",
+      strokeWeight: 6, isOutline: true,
       borderWeight: 1, outlineColor: "#fffdf5", lineJoin: "round", lineCap: "round",
     }));
     if (polylines.length) map.add(polylines);

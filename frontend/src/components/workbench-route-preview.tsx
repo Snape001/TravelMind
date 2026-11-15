@@ -2,23 +2,23 @@
 
 import { Route, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RouteMapPanel, useTaskRouteMap } from "./route-map-panel";
+import { RouteMapPanel, useRouteMap } from "./route-map-panel";
 import type { PoiSelection } from "./route-map-canvas";
 
-export function WorkbenchRoutePreview({ taskId }: { taskId: string }) {
+export function WorkbenchRoutePreview({ taskId, reportId }: { taskId: string; reportId?: string }) {
   const [open, setOpen] = useState(false);
   return <div className="workspace-route-preview">
     <span>陆知行</span>
     <button type="button" className="text-link" onClick={() => setOpen(true)}>
       <Route size={15} aria-hidden />路线规划预览
     </button>
-    {open && <RoutePreviewDialog taskId={taskId} onClose={() => setOpen(false)} />}
+    {open && <RoutePreviewDialog taskId={taskId} reportId={reportId} onClose={() => setOpen(false)} />}
   </div>;
 }
 
-function RoutePreviewDialog({ taskId, onClose }: { taskId: string; onClose: () => void }) {
+function RoutePreviewDialog({ taskId, reportId, onClose }: { taskId: string; reportId?: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const { state, retry } = useTaskRouteMap(taskId, true);
+  const { state, retry } = useRouteMap(taskId, reportId);
   const [selection, setSelection] = useState<PoiSelection | null>(null);
   const select = useCallback((id: string) => setSelection({ id }), []);
 

@@ -4,9 +4,11 @@ import type { TaskCommand } from "./task-lifecycle";
 import { isTerminal } from "./task-lifecycle";
 import { readResearchEvent, type ResearchEvent, type ResearchSource } from "./research-browser";
 import type { components } from "./phase4.generated";
+import type { components as LiveComponents } from "./api.generated";
 
 const collection = "/api/v1/tasks";
 const taskUrl = (taskId: string) => `${collection}/${encodeURIComponent(taskId)}`;
+const reportUrl = (taskId: string, reportId: string) => `${taskUrl(taskId)}/reports/${encodeURIComponent(reportId)}`;
 const auth = "/api/v1/auth";
 export const loginHref = `${auth}/login`;
 
@@ -61,11 +63,13 @@ export function sendCommand(taskId: string, command: TaskCommand, key: string, c
 }
 export const readTask = (taskId: string, signal: AbortSignal) => json<TaskRead>(taskUrl(taskId), { signal });
 export const readReport = (taskId: string, reportId: string, signal: AbortSignal) =>
-  json<ReportRead>(`${taskUrl(taskId)}/reports/${encodeURIComponent(reportId)}`, { signal });
+  json<ReportRead>(reportUrl(taskId, reportId), { signal });
+export const readReportMap = (taskId: string, reportId: string, signal: AbortSignal) =>
+  json<LiveComponents["schemas"]["MapData"]>(`${reportUrl(taskId, reportId)}/map-data`, { signal });
 export const readEvidence = (taskId: string, id: string, signal: AbortSignal) =>
   json<EvidenceRead>(`${taskUrl(taskId)}/evidence/${encodeURIComponent(id)}`, { signal });
 export const readTaskRoutes = (taskId: string, signal: AbortSignal) =>
-  json<components["schemas"]["TravelRoutesRead"]>(`${taskUrl(taskId)}/routes`, { signal });
+  json<LiveComponents["schemas"]["TravelRoutesRead"]>(`${taskUrl(taskId)}/routes`, { signal });
 
 export function subscribe(
   task: Pick<TaskRead, "task_id" | "trace_id">, after: number,

@@ -1,11 +1,11 @@
 # TravelMind 开发进度
 
-## Phase 4 · 报告地图与路线预览
+## Phase 4 · 报告地图与路线联调
 
-- 报告正文新增「目的地地图与游览规划」，支持编号 Marker、逐路线折线、交通方式切换、景点详情、真实距离和预计通勤时间。唯一匹配的景点名称和 Marker 可以互相定位并跳到报告章节。陆知行的预览入口沿用三栏工作台。
-- Chrome 验收采用独立 FastAPI、PostgreSQL、生产 Next.js 和真实高德 Web JS API。隔离读接口提供真实高德路线，包括泉州开元寺至博物馆的 2,895 米步行路线、至钟楼的后续步行路线以及公交和驾车方案。校验了编号、独立折线、无折线公交、正文联动、503 与空数据、地图配置失败及重试。浏览器请求检查未发现 Web 服务 POI 或路线调用及 JS 安全密钥参数。
-- ESLint、TypeScript、38 项前端测试与 Next.js 生产构建通过。当前应用 OpenAPI 尚无报告地图接口和 `MapData`，生产联调、多日切换、建议停留时间与公交分段仍依赖后端交付。 [实现与联调边界](docs/report-map-ui.md)
-- **交付分支**　`codex/report-map-ui`。**交付提交**　`feat: visualize confirmed routes in reports and workbench`。
+- 报告正文接入 `1b394f2` 提供的版本化 MapData，OpenAPI 类型重新生成。支持多日与交通方式切换、备选方案、编号景点、建议停留、换乘站点、独立分段折线、路线证据及正文双向联动。三栏工作台中的陆知行预览在报告发布前读取任务已选路线，发布后读取完整报告快照。
+- 隔离 PostgreSQL 17、默认 Worker、真实高德和 DeepSeek 生成新泉州报告。正式接口返回 2 天、7 个 POI、7 个方案、2 条已选路线和 73 个几何分段，状态为 `partial`。另一账户访问路线及报告地图均收到 404。
+- Chrome 使用正式接口核对日程、站点、备选方案、证据、三栏预览与部分数据提示。当前公交方案的 4 条 Polyline 与接口分段一一对应。地图返回 503 时仍可阅读报告，重试后恢复。41 项前端测试、ESLint、TypeScript 和生产构建通过。 [实现与联调记录](docs/report-map-ui.md)
+- **交付分支**　`codex/report-map-ui`。**交付提交**　`feat: integrate versioned report MapData`。
 
 ## Phase 4 · 默认 Worker 旅游规划与报告地图（2026-11-15）
 
