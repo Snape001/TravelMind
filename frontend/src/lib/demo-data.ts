@@ -171,6 +171,30 @@ export const demoResearch: DemoResearch = {
               "856d05aa-7d53-4fe7-aefa-000000000011"
             ],
             "body": "先选定主要游览区域，再按步行与公共交通的可达性安排备选地点。当前示例中的实时开放、交通与预约信息仍待核实。\n\n审核修订补充了出发前检查项：开放时间、预约规则和末班交通。"
+          },
+          {
+            "heading": "专家共识",
+            "author_agent_ids": [
+              "history_culture",
+              "internet_research"
+            ],
+            "evidence_ids": [
+              "856d05aa-7d53-4fe7-aefa-00000000000f",
+              "856d05aa-7d53-4fe7-aefa-000000000011"
+            ],
+            "body": "示例会商中，两位专家同意以联合国教科文组织遗产档案确定文化调研范围，并在出发前核验景点公告。"
+          },
+          {
+            "heading": "专家争议",
+            "author_agent_ids": [
+              "history_culture",
+              "travel_planning"
+            ],
+            "evidence_ids": [
+              "856d05aa-7d53-4fe7-aefa-00000000000f",
+              "856d05aa-7d53-4fe7-aefa-000000000010"
+            ],
+            "body": "示例会商中，历史文化专家建议按主题串联遗产点，旅游规划专家建议先按步行距离筛选。两种方案的可行性取决于开放时段和班次，示例资料尚不足以确认哪种更合适。"
           }
         ]
       }

@@ -1,22 +1,28 @@
 "use client";
 
 import { Background, Controls, Handle, Position, ReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
-import { ExpertIcon } from "./expert-icon";
-import { expertName, findExpert, tiers } from "@/lib/experts";
+import { ExpertAvatar } from "./expert-identity";
+import { expertName, expertTitle, findExpert, tiers } from "@/lib/experts";
 import type { summarize } from "@/lib/agent-events";
 
 type AssignmentStatus = ReturnType<typeof summarize>["assignments"][number]["status"];
-type TeamNode = Node<{ agentId: string; status: AssignmentStatus; label: string; selected: boolean }, "team">;
-const width = 146;
+type TeamNode = Node<{ agentId: string; status: AssignmentStatus; selected: boolean }, "team">;
+const width = 158;
+const height = 72;
 const directorId = "director";
 const statusLabels = { waiting: "待执行", running: "执行中", completed: "已完成", failed: "失败" };
 
 function AgentNode({ data }: NodeProps<TeamNode>) {
+  const title = expertTitle(data.agentId);
   return (
-    <div className={`team-node ${data.selected ? "is-selected" : ""}`}>
+    <div className={`team-node ${data.selected ? "is-selected" : ""}`} title={title ?? expertName(data.agentId)}>
       <Handle type="target" position={Position.Top} isConnectable={false} />
-      <ExpertIcon id={data.agentId} />
-      <div><strong>{data.label}</strong><small><span className={`status-dot ${data.status}`} />{statusLabels[data.status]}</small></div>
+      <ExpertAvatar id={data.agentId} />
+      <div className="team-node-copy">
+        <strong>{expertName(data.agentId)}</strong>
+        {title && <small className="team-node-role">{title}</small>}
+        <small><span className={`status-dot ${data.status}`} />{statusLabels[data.status]}</small>
+      </div>
       <Handle type="source" position={Position.Bottom} isConnectable={false} />
     </div>
   );
@@ -36,16 +42,16 @@ export function TeamGraph({ assignments, selected, onSelect, directorStatus }: {
   ];
   const nodes: TeamNode[] = groups.flatMap((items, row) =>
     items.map((item, col) => ({
-      id: item.assignment_id, type: "team", width, height: 61, position: { x: (col - (items.length - 1) / 2) * (width + 16), y: row * 104 },
-      data: { agentId: item.agent_id, label: expertName(item.agent_id), status: item.status, selected: selected === item.agent_id },
-      ariaLabel: `${expertName(item.agent_id)}，${statusLabels[item.status]}，筛选事件`,
+      id: item.assignment_id, type: "team", width, height, position: { x: (col - (items.length - 1) / 2) * (width + 16), y: row * 108 },
+      data: { agentId: item.agent_id, status: item.status, selected: selected === item.agent_id },
+      ariaLabel: [expertName(item.agent_id), expertTitle(item.agent_id), statusLabels[item.status], "筛选事件"].filter(Boolean).join("，"),
     })),
   );
   const edges: Edge[] = assignments.flatMap((item) => (
     item.depends_on?.length ? item.depends_on : [directorId]
   ).map((source) => ({
     id: `${source}-${item.assignment_id}`, source, target: item.assignment_id, type: "smoothstep",
-    animated: item.status === "running", style: { stroke: item.status === "running" ? "#28805c" : "#aebfb7" },
+    animated: item.status === "running", style: { stroke: item.status === "running" ? "var(--forest)" : "var(--node-edge)" },
     selectable: false, focusable: false,
   })));
   return (
@@ -60,7 +66,7 @@ export function TeamGraph({ assignments, selected, onSelect, directorStatus }: {
             if (selectedNodes[0]) onSelect(selectedNodes[0].data.agentId);
           }}
         >
-          <Background gap={18} color="#d6e1db" />
+          <Background gap={18} color="var(--line)" />
           <Controls showInteractive={false} aria-label="组织图缩放" />
         </ReactFlow>
       </div>

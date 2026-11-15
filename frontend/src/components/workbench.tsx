@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowUpRight, CircleAlert, FileText, GitBranch, ListChecks, 
 import { useEffect, useMemo, useState } from "react";
 import { EventFeed } from "./event-feed";
 import { TeamGraph } from "./team-graph";
-import { ExpertIcon } from "./expert-icon";
+import { ExpertAvatar, ExpertLabel } from "./expert-identity";
 import { summarize } from "@/lib/agent-events";
 import { demo, demoResearch } from "@/lib/demo";
 import { expertName } from "@/lib/experts";
@@ -106,14 +106,14 @@ function WorkbenchSession({ taskId, user, retry }: { taskId: string; user?: Curr
             {view.plan ? <>
               <p className="plan-objective">{view.plan.objective}</p>
               <ul className="assignment-list">{view.assignments.map((assignment) => <li key={assignment.assignment_id}>
-                <ExpertIcon id={assignment.agent_id} />
-                <div><strong>{expertName(assignment.agent_id)}</strong><p>{assignment.objective}</p>
+                <ExpertAvatar id={assignment.agent_id} />
+                <div><ExpertLabel id={assignment.agent_id} /><p>{assignment.objective}</p>
                   {(assignment.depends_on ?? []).length > 0 && <small>依赖 {assignment.depends_on!.map((id) => {
                     const dependency = view.assignments.find((item) => item.assignment_id === id);
                     return dependency ? expertName(dependency.agent_id) : id;
                   }).join("、")}</small>}
                 </div>
-                <span className={`task-badge ${assignment.status}`}>{assignmentLabels[assignment.status]}</span>
+                <span className={`task-badge ${assignment.status}`}><span className={`status-dot ${assignment.status}`} />{assignmentLabels[assignment.status]}</span>
               </li>)}</ul>
             </> : <p className="plan-objective">等待调研总监发布研究计划。</p>}
           </section>

@@ -1,0 +1,180 @@
+:where(.guild-page, .workbench, .report-page) {
+  --ink: #192e2e;
+  --muted: #4e625f;
+  --forest: #285c55;
+  --forest-dark: #183b38;
+  --canvas: #f6f3eb;
+  --surface: #fffdf7;
+  --mint: #e7efea;
+  --line: #dbdfd5;
+  --bronze: #785329;
+  --indigo: #344c5f;
+  --node-edge: #a4b4ac;
+  color: var(--ink);
+}
+
+.guild-banner {
+  display: grid;
+  align-items: center;
+  min-height: 252px;
+  border-radius: 20px;
+  background:
+    linear-gradient(90deg, #142f30 10%, #143133f2 37%, #233e44b3 68%, #243d4870 100%),
+    url("/images/jiangnan.webp") right 53% / cover no-repeat,
+    #243d48;
+  color: #fffaf0;
+}
+
+.guild-banner-content { max-width: 690px; padding: 34px clamp(22px, 5vw, 65px); }
+.guild-banner h1 {
+  font: 700 clamp(35px, 5vw, 63px)/1.22 var(--heading-font);
+  letter-spacing: .06em;
+}
+.guild-banner p { max-width: 39em; margin-top: 13px; color: #ebeee7; font-size: 15px; }
+.guild-banner nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.guild-banner nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  border: 1px solid #e6d3a96b;
+  border-radius: 7px;
+  color: #f4ebd5;
+  background: #162e32a8;
+  font-size: 13px;
+}
+.guild-banner nav a:hover { background: #294c4c; border-color: #e6d3a9; }
+.guild-banner :focus-visible { outline-color: #e8cb8a; }
+
+.guild-section { margin-top: 34px; }
+.guild-section-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.guild-section-heading h2 { font: 700 24px/1.25 var(--heading-font); scroll-margin-top: 18px; }
+.guild-section-heading p { color: var(--muted); margin-top: 3px; font-size: 13px; }
+.guild-leadership .guild-section-heading .icon-tile { background: #efe7d8; color: var(--bronze); }
+.guild-editorial .guild-section-heading .icon-tile { background: #e8edef; color: var(--indigo); }
+
+.guild-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.guild-leadership .guild-grid { grid-template-columns: minmax(0, 1fr); }
+.guild-editorial .guild-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.guild-grid li { min-width: 0; display: flex; }
+.expert-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-radius: 15px;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.expert-card:hover, .expert-card:focus-visible { border-color: #a18355; box-shadow: 0 8px 19px #2c472010; }
+.expert-portrait {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  aspect-ratio: 5 / 3;
+  background: #eadcc5;
+  border-radius: 14px 14px 0 0;
+}
+.expert-portrait img { display: block; object-fit: cover; object-position: center 18%; }
+.expert-portrait .icon-tile { width: 65px; height: 65px; background: #faf3e6; color: var(--bronze); }
+.expert-card-copy { display: flex; flex: 1; flex-direction: column; gap: 10px; min-width: 0; padding: 17px 19px 19px; }
+.expert-card-heading { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.expert-card h3 { font: 700 26px/1.18 var(--heading-font); }
+.expert-role { color: var(--bronze); font-size: 13px; font-weight: 700; }
+.expert-card-heading .expert-role { margin-bottom: 4px; }
+.expert-card-arrow {
+  display: grid;
+  flex: 0 0 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--forest);
+  background: #f7f6ef;
+}
+.expert-card:hover .expert-card-arrow, .expert-card:focus-visible .expert-card-arrow { background: var(--forest-dark); color: #fffdf7; }
+.expert-summary { color: var(--muted); line-height: 1.7; }
+.expert-card .tag-list { margin-top: auto; }
+.guild-page .chip { color: var(--forest-dark); background: #f3f2e9; }
+
+.guild-leadership .expert-card { flex-direction: row; }
+.guild-leadership .expert-portrait { width: min(30%, 300px); aspect-ratio: 1; border-radius: 14px 0 0 14px; }
+.guild-leadership .expert-card-copy { justify-content: center; padding: 24px clamp(20px, 4vw, 52px); }
+.guild-leadership .expert-card h3 { font-size: clamp(29px, 4vw, 45px); }
+.guild-leadership .expert-summary { max-width: 44em; }
+.guild-leadership .tag-list { margin-top: 7px; }
+
+.guild-editorial .expert-card { flex-direction: row; }
+.guild-editorial .expert-portrait { width: 30%; aspect-ratio: auto; border-radius: 14px 0 0 14px; }
+.guild-editorial .expert-portrait img { object-position: center 26%; }
+
+.profile-page { max-width: 1050px; }
+.expert-profile { border-radius: 18px; }
+.profile-header { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); align-items: stretch; }
+.profile-header .expert-portrait { aspect-ratio: 1; border-radius: 17px 0 0 0; }
+.profile-intro { display: grid; align-content: center; padding: clamp(19px, 4vw, 46px); background: #f2eee3; border-radius: 0 17px 0 0; }
+.profile-tier { width: fit-content; padding: 3px 9px; border: 1px solid #d6c7ab; border-radius: 6px; color: #674c2b; font-size: 12px; }
+.profile-intro h1 { margin-top: 10px; font: 700 clamp(31px, 5vw, 55px)/1.2 var(--heading-font); overflow-wrap: anywhere; }
+.profile-intro .expert-role { margin-top: 5px; font-size: 16px; }
+.profile-description { margin-top: 15px; color: var(--muted); font-size: 16px; line-height: 1.8; }
+.profile-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 23px; padding: 24px clamp(17px, 4vw, 46px) 30px; border-top: 1px solid var(--line); }
+.profile-sections h2 { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 17px; }
+.profile-sections svg { color: var(--forest); flex: 0 0 auto; }
+.profile-sections li { display: flex; align-items: center; gap: 8px; margin-block: 5px; color: var(--muted); }
+
+.expert-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #ecdfc8;
+}
+.expert-avatar > img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.expert-avatar .icon-tile { width: 100%; height: 100%; border-radius: inherit; }
+.expert-avatar .icon-tile svg { width: 17px; height: 17px; }
+.expert-identity { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.expert-identity-copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 7px; min-width: 0; overflow-wrap: anywhere; }
+.expert-identity-copy strong { color: var(--forest-dark); }
+.expert-identity-copy small { color: var(--bronze); font-size: 11px; }
+a.expert-identity:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.workbench .panel-heading { min-height: 62px; }
+.workbench .team-graph, .workbench .tier-key { background: var(--canvas); }
+.workbench .team-node .react-flow__handle { background: var(--node-edge); }
+.workbench .event-list { scrollbar-color: var(--node-edge) transparent; }
+.workbench .message .event-content > p, .workbench .segmented button[aria-pressed="true"] { background: var(--mint); }
+
+.report-page .report-masthead { background: #eef0ea; border-color: var(--line); }
+.byline { margin-top: 9px; gap: 7px 11px; }
+.byline ul { display: flex; flex-wrap: wrap; gap: 6px; }
+.byline .expert-identity { padding: 3px 8px 3px 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.byline a.expert-identity:hover { border-color: var(--node-edge); }
+.byline .expert-avatar { width: 24px; height: 24px; border-radius: 5px; }
+.report-discussion { padding: 16px; border: 1px solid var(--line); border-left: 4px solid var(--forest); border-radius: 10px; background: #edf3ed; }
+.report-discussion.dispute { border-left-color: var(--bronze); background: #f8f1e3; }
+.report-discussion.discussion { border-left-color: var(--indigo); background: #edf1f3; }
+.report-discussion h2 { display: flex; align-items: center; gap: 8px; }
+.report-discussion h2 svg { flex-shrink: 0; color: var(--forest); }
+.report-discussion.dispute h2 svg { color: var(--bronze); }
+.report-discussion.discussion h2 svg { color: var(--indigo); }
+
+@media (max-width: 890px) {
+  .guild-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .guild-editorial .expert-card { flex-direction: column; }
+  .guild-editorial .expert-portrait { width: auto; aspect-ratio: 5 / 3; border-radius: 14px 14px 0 0; }
+}
+
+@media (max-width: 640px) {
+  .guild-banner { min-height: 226px; }
+  .guild-grid, .guild-editorial .guild-grid, .profile-header, .profile-sections { grid-template-columns: minmax(0, 1fr); }
+  .guild-leadership .expert-card { flex-direction: column; }
+  .guild-leadership .expert-portrait { width: auto; aspect-ratio: 5 / 3; border-radius: 14px 14px 0 0; }
+  .profile-header .expert-portrait { aspect-ratio: 5 / 4; border-radius: 17px 17px 0 0; }
+  .profile-intro { border-radius: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expert-card { transition: none; }
+}

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SessionProvider } from "@/components/session";
 import "./globals.css";
+import "./guild-ui.css";
 
 export const metadata: Metadata = {
   title: "TravelMind",

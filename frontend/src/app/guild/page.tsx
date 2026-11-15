@@ -1,28 +1,48 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { ExpertIcon } from "@/components/expert-icon";
-import { experts, tiers } from "@/lib/experts";
+import { ArrowRight, ArrowUpRight, Compass, FilePenLine, UsersRound } from "lucide-react";
+import { ExpertPortrait } from "@/components/expert-identity";
+import { guildExperts, tiers } from "@/lib/experts";
 
 export const metadata = { title: "专家公会 · TravelMind" };
 
+const tierIcons = { leadership: Compass, council: UsersRound, editorial: FilePenLine };
+
 export default function Guild() {
   return (
-    <main className="shell inner-page">
-      <div className="page-heading"><h1>专家公会</h1><p>了解各领域 Agent 的专长、资料来源和调研职责。</p></div>
-      {tiers.map((tier) => (
-        <section className="guild-section" key={tier.id} aria-labelledby={tier.id}>
-          <div className="section-heading"><h2 id={tier.id}>{tier.title}</h2><p>{tier.description}</p></div>
+    <main className="shell inner-page guild-page">
+      <header className="guild-banner">
+        <div className="guild-banner-content">
+          <h1>专家公会</h1>
+          <p>从研究设计、专题取证到独立审议，认识参与 TravelMind 调研的九位专家。</p>
+          <nav aria-label="公会分组">
+            {tiers.map(({ id, title }) => <a href={`#${id}`} key={id}>{title}<ArrowRight size={14} aria-hidden /></a>)}
+          </nav>
+        </div>
+      </header>
+      {tiers.map(({ id, title, description }) => {
+        const Icon = tierIcons[id];
+        return <section className={`guild-section guild-${id}`} key={id} aria-labelledby={id}>
+          <header className="guild-section-heading">
+            <span className="icon-tile"><Icon size={20} aria-hidden /></span>
+            <div><h2 id={id}>{title}</h2><p>{description}</p></div>
+          </header>
           <ul className="guild-grid">
-            {experts.filter((expert) => expert.tier === tier.id).map((expert) => <li key={expert.id}>
+            {guildExperts.filter((expert) => expert.tier === id).map((expert) => <li key={expert.id}>
               <Link className="panel expert-card" href={`/guild/${expert.id}`}>
-                <div className="expert-card-top"><ExpertIcon id={expert.id} /><ArrowUpRight size={18} aria-hidden /></div>
-                <h3>{expert.title}</h3><p>{expert.description}</p>
-                <div className="tag-list">{expert.fields.map((field) => <span className="chip" key={field}>{field}</span>)}</div>
+                <ExpertPortrait expert={expert} />
+                <div className="expert-card-copy">
+                  <div className="expert-card-heading">
+                    <div><p className="expert-role">{expert.title}</p><h3>{expert.name}</h3></div>
+                    <span className="expert-card-arrow"><ArrowUpRight size={18} aria-hidden /></span>
+                  </div>
+                  <p className="expert-summary">{expert.description}</p>
+                  <div className="tag-list">{expert.fields.map((field) => <span className="chip" key={field}>{field}</span>)}</div>
+                </div>
               </Link>
             </li>)}
           </ul>
-        </section>
-      ))}
+        </section>;
+      })}
     </main>
   );
 }
