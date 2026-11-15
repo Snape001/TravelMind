@@ -100,7 +100,10 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
         store = PostgresWorkerStore(sessions)
         client = await resources.enter_async_context(httpx.AsyncClient())
         social_client = None
-        if settings.social_research_provider != "disabled":
+        if (
+            settings.social_research_provider != "disabled"
+            and settings.social_research_cache_path is None
+        ):
             social_client = await resources.enter_async_context(httpx.AsyncClient(trust_env=False))
         research = ResearchEngine(client, settings, social_client=social_client)
         amap = AmapClient(client, settings.amap_web_api_key)

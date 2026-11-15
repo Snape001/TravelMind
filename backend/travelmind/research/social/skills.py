@@ -10,6 +10,8 @@ SOCIAL_SCOPE = (
     "社交资料的 post 与已清洗评论是便利样本。注明平台、实际入选原帖及评论条数、采集时间。"
     "区分评论样本数与平台显示的总评论数。避免用有限样本估计全体游客的观点、比例或满意度。"
     "区分原帖、评论和回复的发言者。同一对话中的发言不算独立来源。"
+    "B站仅提供视频评论，视频标题用于定位来源，不能据此判断视频内容。"
+    "引用泛地区讨论时，只用与任务相关的证据，并注明地域范围。"
     "访问受限或没有样本的渠道作为研究缺口。"
     "知乎开放平台搜索和问题回答接口提供摘要，引用时按摘要范围判断。"
 )
@@ -96,8 +98,9 @@ def with_social_sample_notes(draft: ReportDraft, evidence: list[Evidence]) -> Re
             notes = []
             for platform, rows in samples.items():
                 dates = "、".join(sorted({stamp for stamp, _ in rows}))
+                scope = "个视频的 " if platform == "B站" else "篇原帖、"
                 notes.append(
-                    f"{platform} {len(rows)} 篇原帖、{sum(n for _, n in rows)} 条评论或回复，"
+                    f"{platform} {len(rows)} {scope}{sum(n for _, n in rows)} 条评论或回复，"
                     f"采集时间 {dates}"
                 )
                 if platform == "知乎" and zhihu_authors:

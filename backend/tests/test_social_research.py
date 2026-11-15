@@ -18,6 +18,7 @@ from travelmind.research.social.service import create_social_app
 from travelmind.research.social.zhihu_api import collect
 from travelmind.runtime.editorial import write
 from travelmind.runtime.experts import find
+from travelmind.runtime.planning import plan_research
 from travelmind.runtime.retrieval import ResearchRetriever
 from travelmind.schemas.agents import AgentInput, ResearchResult
 from travelmind.schemas.domain import Evidence
@@ -131,6 +132,94 @@ def test_sidecar_jobs_auth_cache_pagination_and_failed_batch(tmp_path):
         replay = client.post("/v1/jobs", json=normalized.model_dump(mode="json"))
         assert finished_job(client, replay.headers["Location"])["status"] == "completed"
         assert client.get("/v1/evidence", params=params).json() == page
+
+
+def test_sidecar_only_expands_to_matching_destination_when_requested(tmp_path):
+    with TestClient(create_social_app(tmp_path, TOKEN), base_url="http://127.0.0.1") as client:
+        client.headers["Authorization"] = f"Bearer {TOKEN}"
+        request = stage(tmp_path, "zhihu").model_copy(update={"keyword": "泉州 旅游"})
+        job = client.post("/v1/jobs", json=request.model_dump(mode="json"))
+        assert finished_job(client, job.headers["Location"])["status"] == "completed"
+        params = [
+            ("platform", "zhihu"), ("keyword", "泉州市 游客体验与口碑"), ("keyword", "泉州市"),
+        ]
+        assert client.get("/v1/evidence", params=params).json()["total"] == 0
+        assert client.get("/v1/evidence", params=[*params, ("destination", "泉州市")]).json()[
+            "total"
+        ] == 1
+        assert client.get("/v1/evidence", params=[*params, ("destination", "福州市")]).json()[
+            "total"
+        ] == 0
+
+
+def test_default_platforms_read_three_sources_from_local_cache(tmp_path):
+    with TestClient(create_social_app(tmp_path, TOKEN), base_url="http://127.0.0.1") as client:
+        client.headers["Authorization"] = f"Bearer {TOKEN}"
+        for platform in ("zhihu", "xiaohongshu", "bilibili"):
+            request = stage(tmp_path, platform).model_copy(update={"keyword": "泉州 旅游"})
+            job = client.post("/v1/jobs", json=request.model_dump(mode="json"))
+            assert finished_job(client, job.headers["Location"])["status"] == "completed"
+
+    def refuse_http(_):
+        pytest.fail("the file-backed Worker reader should not make HTTP requests")
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(refuse_http)) as http:
+            settings = Settings(
+                _env_file=None,
+                social_research_provider="mediacrawler_export",
+                social_research_cache_path=tmp_path / "social.sqlite3",
+            )
+            engine = ResearchEngine(http, settings)
+            result = await engine.search_social(["泉州市 游客体验与口碑", "泉州市"])
+            assert not result.errors
+            assert len(result.evidence) == 3
+            assert {item.source_url.host for item in result.evidence} == {
+                "www.zhihu.com", "www.xiaohongshu.com", "www.bilibili.com",
+            }
+            for item in result.evidence:
+                assert "周二预约后入场快" in item.excerpt
+                has_description = "周末建议提前预约，门票免费。" in item.excerpt
+                assert has_description == (item.source_url.host != "www.bilibili.com")
+                if not has_description:
+                    assert "仅视频评论" in item.source_locator
+
+    asyncio.run(run())
+
+
+def test_bilibili_without_comments_does_not_reach_expert(tmp_path):
+    request = stage(tmp_path, "bilibili")
+    (item,), _ = load_export(tmp_path / "inbox" / str(request.batch_id), request)
+    item.comments = []
+
+    def respond(_):
+        return httpx.Response(200, json={"total": 1, "items": [item.model_dump(mode="json")]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http:
+            adapter = SocialResearchAdapter(http, "http://127.0.0.1:18764", TOKEN, 1)
+            assert await adapter.search(["泉州"], ("bilibili",)) == ([], [])
+
+    asyncio.run(run())
+
+
+def test_planner_includes_social_expert_when_selected_in_questionnaire():
+    request = AgentInput(
+        task_id=uuid4(), trace_id=uuid4(), run_id=uuid4(), agent_id="planner",
+        brief={"destination": "泉州市", "topics": ["游客体验与口碑"]},
+    )
+
+    async def model(request, instructions, response_type, *, context=None):
+        return response_type(
+            objective="核对泉州体验",
+            assignments=[
+                {"agent_id": key, "objective": "核对当地资料"}
+                for key in ("history_culture", "natural_geography", "tourism_resources")
+            ],
+        )
+
+    result = asyncio.run(plan_research(model, request, social_requested=True))
+    assert sum(item.agent_id == "social_sentiment" for item in result.plan.assignments) == 1
 
 
 def finished_job(client, url):
@@ -257,7 +346,7 @@ def test_writer_adds_actual_sample_count_time_and_platform(tmp_path):
 
     report = asyncio.run(write(model, writer, [contribution], None)).report
     body = report.sections[0].body
-    assert "B站 1 篇原帖、2 条评论或回复" in body
+    assert "B站 1 个视频的 2 条评论或回复" in body
     assert COLLECTED.isoformat() in body
     assert "40 条" not in body
 

@@ -147,6 +147,9 @@ class SocialEvidenceRecord(Contract):
                 attribution += f"，来源作者 {self.author_display_name}"
         elif self.provider == "manual_browser":
             attribution = "，来源 人工浏览摘录"
+        elif self.platform == "bilibili":
+            attribution = "，资料范围 仅视频评论"
+        content = "B站视频评论样本" if self.platform == "bilibili" else self.content
         return SocialEvidence(
             platform=self.platform,
             post_id=self.post_id,
@@ -164,7 +167,7 @@ class SocialEvidenceRecord(Contract):
                 ),
                 "published_at": self.published_at,
                 "retrieved_at": self.collected_at,
-                "excerpt": "\n".join([self.content, *comments]),
+                "excerpt": "\n".join([content, *comments]),
             },
         )
 

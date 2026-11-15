@@ -1,5 +1,12 @@
 # TravelMind 开发进度
 
+## Phase 4 · 苏听雨读取知乎、小红书和 B 站缓存（2026-11-15）
+
+- 将社交资料分支与当前问卷、默认 Worker 和地图流程合并。勾选「游客体验与口碑」后固定安排苏听雨。Worker 可通过已有 Sidecar 接口或只读 SQLite 文件读取。默认平台为知乎、小红书和 B 站。按目的地匹配已导入标签，优先精确主题。 [启用方式](docs/phase-4-social-research.md#worker-配置与样本)
+- 知乎和小红书提供原帖摘录及评论，B 站仅提供评论及回复正文，保留视频标题和链接用于引用。已授权缓存原有 3 组资料、每平台 12 条评论或回复，验收任务按原预算各读取 6 条，共 18 条。无网络 Docker 容器的只读挂载验证通过。
+- 使用真实高德、博查、DeepSeek 与隔离 PostgreSQL 验证默认 Worker。三平台 3 条 Evidence 均通过已认证的读取接口验证。苏听雨完成五项结构化分析，首次验收同时引用三个平台。范围收窄的复测仍读入三平台，分析引用知乎的直接体验叙述。两次完整运行都生成了带样本说明的草稿，因准确性和覆盖等审核意见达到返工上限，未发布正式报告。
+- PostgreSQL 17 全量 305 项、Ruff、Alembic、PowerShell 语法和 Docker Compose 配置检查通过。**交付提交**　`feat: connect collected social evidence to the sentiment expert`。
+
 ## Phase 4 · MediaCrawler 在线采集编排（2026-11-15）
 
 - 新增 `Collect`：在固定版 MediaCrawler `306ab4c` 上编排一次在线采集。搜索模式按关键词抓原帖，详情模式按内容链接抓单帖，均启用评论与子评论，以 JSONL 导出后自动暂存到新批次并提交同一个 Sidecar 导入任务。支持小红书、B站、抖音、微博和知乎。 [命令用法、参数边界与护栏](docs/phase-4-social-research.md#在线采集mediacrawler-编排)

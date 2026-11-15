@@ -67,7 +67,7 @@ Reviewer 在 Writer 产出完整草稿后独立审核。Reviewer 权限和预算
 
 E 固定 MediaCrawler 上游提交并在独立虚拟环境安装。上游 LICENSE 为 Non-Commercial Learning License 1.1，限定非商业学习与研究，商业使用依赖权利方书面同意。在线采集须按平台确认允许的访问方式、授权和使用范围。账号会话、Cookie 和浏览器资料留在本机私有目录。
 
-TravelMind 的 `SOCIAL_RESEARCH_PROVIDER` 默认 `disabled`。启用 `mediacrawler_export` 后，宿主机 Worker 从独立 Sidecar 读取已授权的本地 JSONL 导出。Sidecar 负责四个平台的映射、批次状态、分页和缓存。Research Engine 通过冻结的 `SocialEvidence` 转出既有 `Evidence`，苏听雨在原有预算内处理评论样本，报告沿用引用与审核。 [配置与逐平台验收](phase-4-social-research.md)
+TravelMind 的 `SOCIAL_RESEARCH_PROVIDER` 默认 `disabled`。启用 `mediacrawler_export` 后，Worker 可通过本机 Sidecar HTTP 接口或只读文件访问已授权的缓存。Sidecar 负责平台映射、批次状态、分页和缓存。Research Engine 通过冻结的 `SocialEvidence` 转出既有 `Evidence`，苏听雨在原有预算内处理知乎、小红书和 B 站样本。报告继续沿用引用与审核。 [配置与逐平台验收](phase-4-social-research.md)
 
 ## 五条分支的修改边界
 

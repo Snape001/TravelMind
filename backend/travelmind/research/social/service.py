@@ -14,6 +14,7 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from travelmind.research.social.cache import evidence_page
 from travelmind.research.social.platforms import ImportStopped, load_export
 from travelmind.research.social.schemas import (
     MAX_POSTS,
@@ -211,36 +212,21 @@ def create_social_app(root: Path, token: str) -> FastAPI:
         limit: Annotated[int, Query(ge=1, le=MAX_POSTS)] = MAX_POSTS,
         offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
         format: Literal["json", "jsonl"] = "json",
+        destination: Keyword | None = None,
+        comments_only: bool = False,
     ):
-        first = keyword_key(keyword[0])
-        second = keyword_key(keyword[-1])
         with closing(connect()) as db:
-            select = """
-                WITH candidates AS (
-                  SELECT post_id, record, collected, keyword=? AS priority,
-                    ROW_NUMBER() OVER (
-                      PARTITION BY post_id ORDER BY keyword=? DESC, collected DESC
-                    ) AS rank
-                  FROM evidence WHERE platform=? AND keyword IN (?, ?)
-                )
-            """
-            values = (first, first, platform, first, second)
-            total = db.execute(
-                select + "SELECT COUNT(*) FROM candidates WHERE rank=1", values
-            ).fetchone()[0]
-            records = db.execute(
-                select
-                + """SELECT record FROM candidates WHERE rank=1
-                            ORDER BY priority DESC, collected DESC, post_id LIMIT ? OFFSET ?""",
-                (*values, limit, offset),
-            ).fetchall()
+            total, records = evidence_page(
+                db, platform, keyword, destination=destination, limit=limit, offset=offset,
+                comments_only=comments_only,
+            )
         if format == "jsonl":
             return Response(
-                "".join(f"{line}\n" for (line,) in records), media_type="application/x-ndjson"
+                "".join(f"{line}\n" for line in records), media_type="application/x-ndjson"
             )
         return SocialPage(
             total=total,
-            items=[SocialEvidenceRecord.model_validate_json(line) for (line,) in records],
+            items=[SocialEvidenceRecord.model_validate_json(line) for line in records],
         )
 
     return app

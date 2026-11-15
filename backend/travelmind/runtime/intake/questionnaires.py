@@ -19,6 +19,7 @@ from travelmind.schemas.phase4_intake import (
 
 logger = logging.getLogger(__name__)
 ROUTE = QuestionnaireOption(option_id="travel_route", label="旅游路线")
+SOCIAL = QuestionnaireOption(option_id="social_sentiment", label="游客体验与口碑")
 NOTES = QuestionnaireQuestion(
     question_id="additional_notes", text="还有哪些个性化需求？", kind="text"
 )
@@ -76,7 +77,7 @@ def _fallback() -> QuestionnaireDraft:
                             "history_culture": "历史与地方文化",
                             "natural_geography": "自然景观与地理",
                             "tourism_resources": "景点与游览资源",
-                            "social_sentiment": "游客体验与口碑",
+                            SOCIAL.option_id: SOCIAL.label,
                         }
                     ),
                 },
@@ -137,11 +138,18 @@ def _publish_research(draft: QuestionnaireDraft) -> ResearchQuestionnaire:
         )
     ):
         raise InvalidOutput("research questions must follow the intake template")
+    options = [option for option in interests.options if option.option_id != SOCIAL.option_id]
+    if len(options) == 9:
+        referenced = {
+            question.visible_if.includes_option_id for question in followups if question.visible_if
+        }
+        unused = next(option for option in reversed(options) if option.option_id not in referenced)
+        options.remove(unused)
     return ResearchQuestionnaire(
         questionnaire_id=uuid4(),
         stage="research",
         questions=[
-            interests.model_copy(update={"options": [*interests.options, ROUTE]}),
+            interests.model_copy(update={"options": [*options, SOCIAL, ROUTE]}),
             *followups,
             NOTES,
         ],
@@ -168,10 +176,11 @@ async def build_research_questionnaire(
         draft = await model(
             request,
             "担任 Research Director。按已确认地点的类别、行政区和调研深度设计调研问题。"
-            "第一题固定为 interests，kind 为 multi_choice。给出 2–9 个方向选项，建议 3–5 个。"
+            "第一题固定为 interests，kind 为 multi_choice。给出 2–8 个方向选项，建议 3–5 个。"
             "再生成 1–5 个简短选填追问，每题 visible_if 引用前面题目的一个真实选项。"
             "使用短英文 ID，所有问题 required=false。不要生成旅游路线选项 travel_route、"
             "additional_notes、出行表单或地点标识，应用会补齐这些字段。"
+            "如需追问游客体验与口碑，在第一题使用 social_sentiment 选项 ID。"
             "不要编造目的地属性或把未经核实的结论写成问题前提。",
             QuestionnaireDraft,
             context={"destination": destination.model_dump(mode="json")},

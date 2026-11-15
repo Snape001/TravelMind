@@ -59,10 +59,12 @@ class ResearchEngine:
         self.social = None
         self.social_platforms = settings.social_research_platforms
         token = settings.social_research_token
-        if settings.social_research_provider == "mediacrawler_export" and token:
+        cache_path = settings.social_research_cache_path
+        if settings.social_research_provider == "mediacrawler_export" and (token or cache_path):
             self.social = SocialResearchAdapter(
                 social_client or client, str(settings.social_research_url),
-                token.get_secret_value(), settings.social_research_timeout_seconds,
+                token.get_secret_value() if token else "", settings.social_research_timeout_seconds,
+                cache_path=cache_path,
             )
 
     async def search_social(

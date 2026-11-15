@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import Field, HttpUrl, SecretStr, field_validator
@@ -30,8 +31,14 @@ class Settings(BaseSettings):
     social_research_provider: Literal["disabled", "mediacrawler_export"] = "disabled"
     social_research_url: HttpUrl = HttpUrl("http://127.0.0.1:18764")
     social_research_token: SecretStr | None = None
-    social_research_platforms: tuple[Platform, ...] = ("xiaohongshu", "bilibili")
+    social_research_cache_path: Path | None = None
+    social_research_platforms: tuple[Platform, ...] = ("zhihu", "xiaohongshu", "bilibili")
     social_research_timeout_seconds: Annotated[float, Field(gt=0, le=10)] = 3
+
+    @field_validator("social_research_cache_path", mode="before")
+    @classmethod
+    def ignore_empty_cache_path(cls, value):
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("social_research_url")
     @classmethod

@@ -69,19 +69,29 @@ $job = & $social -Action Collect -Platform xiaohongshu -Keyword '泉州 预约'
 
 ## Worker 配置与样本
 
-在个人使用的本机 Worker 启动环境配置以下变量，令牌通过私有 `backend/.env` 或进程环境注入。同一 Worker 的匹配任务共用本地缓存。配置适用于宿主机运行的 Windows Worker。当前 Compose 默认保持社交功能关闭，Sidecar 的回环地址与容器内回环地址互相隔离。
+Worker 可读取本机已导入的授权缓存。Docker OIDC 开发栈可在当前项目目录使用 PowerShell 指定只读挂载：
+
+```powershell
+$cache = Join-Path $env:LOCALAPPDATA 'TravelMind\social-research\data\social.sqlite3'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\dev\local-oidc\stack.ps1 start -SocialCachePath $cache
+```
+
+使用自定义 Sidecar 根目录时，将 `$cache` 指向对应的 `data\social.sqlite3`。挂载只提供已导入的 SQLite 文件，适用于个人非商业研究。确定允许向模型供应商发送缓存摘录后再启用。启动后新建任务，在调研问卷选择「游客体验与口碑」，Planner 会安排苏听雨。
+
+宿主机运行的 Worker 可在私有 `backend/.env` 或进程环境配置以下变量，再按 README 启动。指定本地 SQLite 文件时优先以只读方式打开。使用 HTTP 读取时启动 Sidecar，并给 Worker 和 Sidecar 配置同一个令牌。
 
 | 变量 | 值 |
 | --- | --- |
 | `SOCIAL_RESEARCH_PROVIDER` | `mediacrawler_export`。默认 `disabled` |
 | `SOCIAL_RESEARCH_URL` | `http://127.0.0.1:18764` |
 | `SOCIAL_RESEARCH_TOKEN` | 与 Sidecar 一致的本地令牌 |
-| `SOCIAL_RESEARCH_PLATFORMS` | JSON 数组，默认 `["xiaohongshu","bilibili"]`，可加 `weibo`、`douyin` 和 `zhihu` |
+| `SOCIAL_RESEARCH_CACHE_PATH` | 可选，已导入的本地 `social.sqlite3` 路径。直接读取时无需令牌 |
+| `SOCIAL_RESEARCH_PLATFORMS` | JSON 数组，默认 `["zhihu","xiaohongshu","bilibili"]`，可覆盖为所需平台 |
 | `SOCIAL_RESEARCH_TIMEOUT_SECONDS` | 默认 3 秒，上限 10 秒 |
 
-苏听雨以目的地和最多两个调研主题构造查询，同时查找目的地关键词。匹配忽略全半角、大小写及重复空白，主题精确匹配优先。平台独立返回，预算优先从每个平台取一篇，再取各平台的第二篇。服务超时、平台缓存为空或结果异常时，专家继续使用现有网页和学术检索。
+苏听雨以目的地和最多两个调研主题构造查询。精确主题和目的地优先，随后允许同目的地开头、以空白分隔的导入标签。例如「泉州市 游客体验与口碑」可以读取「泉州 旅游」。平台独立返回，预算优先从每个平台取一组，再取第二组。服务超时、平台缓存为空或结果异常时，专家继续使用现有网页和学术检索。
 
-每批最多写入 15 篇原帖和每篇 12 条去重评论或回复。先按平台、关键词和原帖 ID 去重，再读取分页缓存。同一关键词的更新使用最新采集时间。入库前丢弃账号字段、带查询串链接和媒体信息，清理常见联系方式，并保留评论 ID 和父评论 ID 在本地缓存中。提交给模型的证据最多 6 篇原帖、每平台 2 篇和每篇 6 条不同评论。导入者须检查自由文本并确认允许向 TravelMind 使用的模型供应商发送摘录。
+每批最多写入 15 篇原帖和每篇 12 条去重评论或回复。先按平台、关键词和原帖 ID 去重，再读取分页缓存。同一关键词的更新使用最新采集时间。入库前丢弃账号字段、带查询串链接和媒体信息，清理常见联系方式，并保留评论 ID 和父评论 ID 在本地缓存中。提交给模型的证据最多 6 组、每平台 2 组和每组 6 条不同评论。知乎回答和小红书笔记附原帖摘录。B 站仅传评论及回复，视频标题和链接用于定位出处。
 
 Sidecar 的 `SocialEvidenceRecord` 记录原帖和评论样本。交给 Research Engine 时转换为冻结的 `SocialEvidence`，最后使用 `Evidence` 的公开链接和 ID 入库。`AgentEvent v1`、现有任务 API、Checkpoint 格式及状态机沿用原协议。苏听雨把旅游体验情感、主题、投诉、营销迹象和体验综合输出为现有结论结构。引用社交证据的报告章节自动附上平台、参与引用的原帖和评论条数及 UTC 采集时间。
 
