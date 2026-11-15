@@ -54,6 +54,19 @@
 - 桌面浏览器通过生产 Next.js、实际 FastAPI、PostgreSQL 和供应商 Fixture 完成同名确认、刷新待答轮次、条件追问、路线偏好、Planner 交接和报告入口。真实 DeepSeek 使用合成地点，一次调用发布六题。当前环境缺少高德 Web 服务 Key，真实 POI 和输入提示仍待配置后联调。
 - **交付分支**　`feat/dynamic-research-questionnaire`，基于 `03d56a1`。**交付提交**　`feat: add destination intake and dynamic research questionnaires`。
 
+## Phase 4 · B 高德真实路线回归（2026-11-15）
+
+- 敦煌与泉州的真实骑行响应将耗时放在路径顶层 `duration`。公交实报折线采用嵌套对象。真实道路分段的接点也会有小幅偏差。Adapter 支持这些响应形态，沿用冻结的 GCJ‑02 路线结构。
+- 实测两地驾车、公交、步行、骑行均返回高德距离与耗时。缺失或断开的几何仍允许返回路线指标。20 项高德及规划专项用例、26 项冻结契约测试与 Ruff 通过。
+- **交付提交**　`fix: handle live Amap route measurements and shapes`。
+
+## Phase 4 · B 旅游规划与高德地图（2026-11-15）
+
+- 陆知行绑定既有 `travel_planning` Agent ID，从已确认的问卷上下文执行版本化行程规划。交付景点分布与组合、停留建议、多方式比较、强度、可行性校验及带出处的预约、开放和限制核验。
+- 提供高德 POI 搜索与详情、地理及逆地理编码、驾车/公交/步行/骑行适配，输出 GCJ‑02 点位、真实测量路线和 Evidence。复用 A 线传输层，增加归一化结果的进程内 TTL 缓存。根目录模板标明 Web 服务和 JS API 凭据位置。 [配置与集成](docs/phase-4-travel-planning.md)
+- 隔离的 PostgreSQL 14 上全量 226 项后端测试通过，含 18 项新增测试。Ruff、冻结契约和 Alembic 一致性检查通过。已用 A 线实际客户端和 HTTP 测试响应核对接口。当前环境缺少高德 Web Key，实际供应商响应与浏览器地图待联调。
+- Phase 4 新图、任务路线持久化及读接口、档案注册和浏览器代理沿用各分支集成分工。**交付提交**　`feat: add Amap travel planning expert`。
+
 ## Phase 4 · Step 0 公共契约
 
 - 冻结目的地、动态问卷、路线偏好、专家档案与 Skills、Research Browser 事件、模型用量和社交证据。交付 Pydantic Schema、共享合成 Fixture 和独立类型导出。现有路由、AgentEvent v1、六态任务机及 Worker 仍走 Phase 3。 [公共接口](docs/phase-4-contract.md)
