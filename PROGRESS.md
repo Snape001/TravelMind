@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## Phase 3 · Research Evaluation（2026-11-15）
+
+- 交付独立离线评分 CLI 和敦煌、泉州各 18 题。每题含参考发现与原始来源定位，36 题待人工审核。Gold 需显式人工签核。评分复用公共 Schema，覆盖检索、证据、报告、Agent 事件与运行统计。
+- 以本地 `main` 的 `aedb2b7` 采集三个固定输入工作流，另复用一份仓库泉州演示。回放成功 2/3，包含一次审核返工和一次预设检索超时。运行时未调用真实模型。基线保留候选快照和独立判读，可重复生成 JSON 与 Markdown。[操作说明](docs/research-evaluation.md) · [基线报告](docs/evaluation-baseline.md)
+- 在临时 PostgreSQL 14 上全部 127 项后端测试通过，含 9 项评测测试。前端 22 项通过。Ruff、Alembic 一致性、锁文件检查及生成报告一致性均通过。
+- 待人工签核首批题集，并接入真实调研快照、检索排名和 Token 观测；本批回放覆盖 3 道题。
+- **交付提交**　`feat: add offline research evaluation and main baseline`。
+
 ## Phase 3 · 公共接口基线（2026-11-15）
 
 - 冻结 `EvidenceQuality`、`ReflectionState`、`ReflectionAction`、`ExpertResearchResult` 和 `EvaluationCase`。评分附规则依据或原文摘录，绑定证据、分工、评分版本和时间上下文。反思契约定义四种状态、补查策略和停止条件，离线评测以参考发现及证据快照为基线。[架构及接口](docs/phase-3-contract.md)

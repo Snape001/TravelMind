@@ -1,0 +1,754 @@
+{
+  "version": "dunhuang-quanzhou-v1",
+  "as_of": "2026-11-15T00:00:00+08:00",
+  "sources": {
+    "mogao": {
+      "title": "UNESCO 世界遗产中心 · 莫高窟",
+      "url": "https://whc.unesco.org/en/list/440/",
+      "locator": "名录 440，Description、Outstanding Universal Value、Date of Inscription",
+      "excerpt": "莫高窟 1987 年列入世界遗产名录。遗产位于甘肃敦煌绿洲东南，沿大泉河上方崖壁开凿，处于丝路贸易与宗教文化交流节点。英文档案列 492 个洞窟，壁画和彩塑展现约千年的佛教艺术。"
+    },
+    "visit": {
+      "title": "敦煌研究院 · 2026年莫高窟旅游开放公告",
+      "url": "https://www.dha.ac.cn/info/1020/7498.htm",
+      "locator": "开放时间、参观模式、预约购票及有关说明",
+      "excerpt": "4 月 1 日至 11 月 30 日为旺季，开放 08:00–18:00、16:10 停止检票；12 月 1 日至次年 3 月 31 日为淡季，开放 09:00–17:00、15:10 停止检票。常规票包括第 1 展馆数字影片和 8 个实体窟，应急票包括 4 个实体窟。预约和验票实名，须带有效证件，提前 30 分钟到数字展示中心。特窟需在当日常规或应急参观后、开放时段内持证到窟区特窟办理处办理。窟内禁止摄影摄像。强降雨或强沙尘等情况会停开洞窟，未核销的预约票全额退款。具体调整以最新公告为准。",
+      "published_at": "2026-03-30T00:00:00+08:00"
+    },
+    "cave17": {
+      "title": "敦煌研究院 · 莫高窟第17窟",
+      "url": "https://www.dha.ac.cn/info/1425/3608.htm",
+      "locator": "藏经洞文物年代与类型",
+      "excerpt": "第 17 窟为敦煌藏经洞。其文献和艺术品覆盖约公元 4 至 11 世纪，为研究中古时期中外历史文化提供资料。"
+    },
+    "digital": {
+      "title": "敦煌研究院 · 文物数字化研究所",
+      "url": "https://www.dha.ac.cn/jggk/jgsz/ywbm/bhyjb1/wwszhyjs.htm",
+      "locator": "数字敦煌资源库上线段落",
+      "excerpt": "数字敦煌资源库于 2016 年 5 月 1 日上线，免费向全球开放首批 30 个精品窟的高清图像和全景漫游。"
+    },
+    "geopark": {
+      "title": "UNESCO · 敦煌世界地质公园",
+      "url": "https://www.unesco.org/en/iggp/dunhuang-unesco-global-geopark",
+      "locator": "Highlights、Celebrating Earth Heritage、Characteristics",
+      "excerpt": "敦煌世界地质公园于 2015 年获认定。其自然景观包括风蚀塑造的雅丹，以及鸣沙山的沙丘和月牙泉。"
+    },
+    "yardangs": {
+      "title": "UNESCO 世界遗产中心 · 敦煌雅丹预备名单",
+      "url": "https://whc.unesco.org/en/tentativelists/5990/",
+      "locator": "Tentative List 5990，Date of Submission 与 Description",
+      "excerpt": "敦煌雅丹于 2015 年 1 月 30 日提交世界遗产预备名单。提名范围包含敦煌市的北湖雅丹和敦煌雅丹地质公园等多处雅丹区。"
+    },
+    "silk_road": {
+      "title": "UNESCO 世界遗产中心 · 丝绸之路长安—天山廊道",
+      "url": "https://whc.unesco.org/en/list/1442/",
+      "locator": "名录 1442，Brief synthesis、Date of Inscription",
+      "excerpt": "长安—天山廊道于 2014 年列入世界遗产名录。线路说明由长安经河西走廊向西抵达敦煌玉门关。"
+    },
+    "quanzhou": {
+      "title": "UNESCO 世界遗产中心 · 泉州",
+      "url": "https://whc.unesco.org/en/list/1561/",
+      "locator": "名录 1561，Outstanding Universal Value、Date of Inscription",
+      "excerpt": "泉州项目于 2021 年列入世界遗产名录，对应宋元海洋商贸繁荣。系列遗产共有 22 个组成部分，包括海贸相关的交通设施、生产遗址、管理机构与宗教建筑等。"
+    },
+    "quanzhou_sites": {
+      "title": "司法部 · 泉州世界遗产保护管理办法",
+      "url": "https://www.moj.gov.cn/pub/sfbgw/flfggz/flfggzdfzwgz/202305/t20230523_479372.html",
+      "locator": "第三十五条遗产点名录",
+      "excerpt": "列入系列遗产的有开元寺、清净寺、伊斯兰教圣墓、草庵摩尼光佛造像、洛阳桥、安平桥、顺济桥遗址、江口码头、石湖码头、六胜塔、万寿塔、磁灶金交椅山窑址、德化窑址及安溪青阳下草埔冶铁遗址等。"
+    },
+    "quanzhou_routes": {
+      "title": "泉州市人社局 · 世遗主题旅游线路",
+      "url": "https://rsj.quanzhou.gov.cn/ztzl/jwmsxf/202305/t20230526_2885414.htm",
+      "locator": "2023 年发布的线路与三个系列",
+      "excerpt": "市文旅局公布 16 条世遗主题线路，分魅力世遗、山海风情、多元文化三类。推荐线路可同时经过遗产点和其他景点，例如第一条同时经过开元寺和西街，第二条串联市舶司遗址、九日山祈风石刻、洛阳桥及石湖码头等。",
+      "published_at": "2023-04-17T00:00:00+08:00"
+    },
+    "licheng": {
+      "title": "鲤城区人民政府 · 精品世遗一日游",
+      "url": "https://www.qzlc.gov.cn/zjlc/lcfq/you/202303/t20230301_2852260.htm",
+      "locator": "线路安排及第一站开元寺",
+      "excerpt": "鲤城线路所列 8 个古城遗产点依次为开元寺、南外宗正司遗址、泉州府文庙、清净寺、市舶司遗址、德济门遗址、天后宫、顺济桥遗址。该页面介绍开元寺的东、西两座石塔，并在寺庙与下一站之间另外安排途经西街。"
+    },
+    "quanzhou_display": {
+      "title": "泉州市人民政府 · 13个系列遗产展示馆一览",
+      "url": "https://www.quanzhou.gov.cn/zfb/xxgk/zfxxgkzl/qzdt/qzyw/202107/t20210730_2595992.htm",
+      "locator": "洛阳桥、市舶司、磁灶窑、石湖码头展示馆条目",
+      "excerpt": "市舶司是宋元管理海洋贸易的行政机构。洛阳桥展馆介绍海陆联系及筏型基础、养蛎固基、浮运架梁等建桥技术。磁灶窑展馆展示宋元外销陶瓷生产。石湖码头展馆介绍码头并联系六胜塔、万寿塔的航运背景。",
+      "published_at": "2021-07-30T00:00:00+08:00"
+    },
+    "jiuri": {
+      "title": "泉州市人民政府 · 九日山祈风石刻",
+      "url": "https://www.quanzhou.gov.cn/zfb/xxgk/ztxxgk/ggwhty/whssml/202305/t20230516_2880615.htm",
+      "locator": "遗产性质与祈风仪式解说",
+      "excerpt": "崖壁石刻记录宋代负责海外贸易的官员等为商船举行祈风仪式，体现宋代官方对海外商贸航行的管理和支持。"
+    },
+    "bus": {
+      "title": "泉州市交通运输局 · 关于打造最“宠”游客城市的提案答复",
+      "url": "https://jtj.quanzhou.gov.cn/zfxxgkzl/xxgkml/rddbjy/zxta/202504/t20250424_3163043.htm",
+      "locator": "古城小白及公交实时信息",
+      "excerpt": "小白纳入古城旅游度假区公共交通；多彩泉行小程序可查询公交路线、车辆状态、到站与接驳信息。"
+    },
+    "holiday_bus": {
+      "title": "泉州市人民政府 · 2026年五一文旅消费季",
+      "url": "https://quanzhou.gov.cn/lyb/lyxw/202604/t20260417_3284483.htm",
+      "locator": "五一期间交通接驳措施",
+      "excerpt": "2026 年五一文旅消费季公告提出小白公交延时至 22:30，采用招手停车，并介绍古城等片区的假期接驳措施。",
+      "published_at": "2026-04-17T00:00:00+08:00"
+    }
+  },
+  "cases": [
+    {
+      "key": "dunhuang-heritage",
+      "destination": "敦煌",
+      "topic": "遗产档案",
+      "question": "敦煌莫高窟哪一年列入世界遗产名录？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "莫高窟于 1987 年列入世界遗产名录。",
+          "sources": [
+            "mogao"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-cave-count",
+      "destination": "敦煌",
+      "topic": "遗产档案",
+      "question": "按 UNESCO 英文遗产档案，莫高窟有多少个洞窟？这一数字是否等于一张常规票可参观的窟数？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "UNESCO 英文档案给出的洞窟数是 492 个。",
+          "sources": [
+            "mogao"
+          ]
+        },
+        {
+          "statement": "2026 年常规票安排 8 个实体洞窟，景区总量与单次开放参观数量口径不同。",
+          "sources": [
+            "visit"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-art",
+      "destination": "敦煌",
+      "topic": "历史文化",
+      "question": "莫高窟哪两类艺术遗存最具代表性，它们记录了大约多长时期的佛教艺术？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "主要遗存是壁画和彩塑，记录约一千年的佛教艺术。",
+          "sources": [
+            "mogao"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-cliff",
+      "destination": "敦煌",
+      "topic": "地理",
+      "question": "莫高窟在敦煌绿洲哪个方向，洞窟开凿在什么地形中？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "莫高窟位于敦煌绿洲东南，在大泉河上方的崖壁开凿。",
+          "sources": [
+            "mogao"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-silk",
+      "destination": "敦煌",
+      "topic": "历史文化",
+      "question": "从丝绸之路的角度看，莫高窟所在位置为何具有代表性？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "莫高窟所在位置是古丝路贸易及宗教文化交流的节点。",
+          "sources": [
+            "mogao"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-library",
+      "destination": "敦煌",
+      "topic": "历史文化",
+      "question": "藏经洞是莫高窟第几窟，洞中发现的材料大致跨越哪些世纪？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "莫高窟第 17 窟是藏经洞。",
+          "sources": [
+            "cave17"
+          ]
+        },
+        {
+          "statement": "出土文献及文物大致覆盖公元 4 至 11 世纪。",
+          "sources": [
+            "cave17"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-digital",
+      "destination": "敦煌",
+      "topic": "可达性",
+      "question": "行动不便的游客可以用哪项资源远程看窟？首批开放的内容是什么？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "可通过数字敦煌资源库免费浏览首批 30 个精品洞窟的高清图像和全景漫游。",
+          "sources": [
+            "digital"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-seasons",
+      "destination": "敦煌",
+      "topic": "开放政策",
+      "question": "按 2026 年莫高窟公告，11 月与 12 月的常规开放时段和停止检票时间有什么区别？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "11 月属旺季，开放 08:00–18:00，16:10 停止检票。",
+          "sources": [
+            "visit"
+          ]
+        },
+        {
+          "statement": "12 月属淡季，开放 09:00–17:00，15:10 停止检票。",
+          "sources": [
+            "visit"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-tickets",
+      "destination": "敦煌",
+      "topic": "预约与体验",
+      "question": "按 2026 年公告，莫高窟常规参观和应急参观各看什么？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "常规参观包括第 1 展馆数字影片加 8 个实体窟。",
+          "sources": [
+            "visit"
+          ]
+        },
+        {
+          "statement": "应急参观模式安排 4 个实体窟。",
+          "sources": [
+            "visit"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-arrival",
+      "destination": "敦煌",
+      "topic": "预约与交通",
+      "question": "按 2026 年公告，莫高窟实名预约的游客要带什么，建议到达哪个地点，提前多久？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "购票和参观时须持有效身份证件。",
+          "sources": [
+            "visit"
+          ]
+        },
+        {
+          "statement": "公告要求提前 30 分钟到莫高窟数字展示中心。",
+          "sources": [
+            "visit"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-special",
+      "destination": "敦煌",
+      "topic": "预约与体验",
+      "question": "按 2026 年公告，如想加看莫高窟特窟，什么时候、到哪里办理？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "完成当天常规或应急参观后，在特窟开放时段持有效证件到窟区特窟办理处办理。",
+          "sources": [
+            "visit"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-photo",
+      "destination": "敦煌",
+      "topic": "文物保护",
+      "question": "按 2026 年公告，游客可以在莫高窟洞窟内部拍照或录像吗？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "洞窟内禁止摄影摄像。",
+          "sources": [
+            "visit"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-weather",
+      "destination": "敦煌",
+      "topic": "出行风险",
+      "question": "按 2026 年公告，强沙尘来临时莫高窟是否继续开放，未核销预约票如何处理？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "强沙尘或强降雨等情况会导致洞窟停开。",
+          "sources": [
+            "visit"
+          ]
+        },
+        {
+          "statement": "未核销的预约门票全额退款。",
+          "sources": [
+            "visit"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-actual-open",
+      "destination": "敦煌",
+      "topic": "出行风险",
+      "question": "仅凭莫高窟年度公告，能否保证某个出行日照常开窟？应查什么？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "是否照常开放仍待临行确认，应查敦煌研究院莫高窟开放管理委员会最新公告。",
+          "sources": [
+            "visit"
+          ],
+          "support": "insufficient"
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-dunes",
+      "destination": "敦煌",
+      "topic": "自然地理",
+      "question": "在鸣沙山一带，UNESCO 地质公园资料列出的两类代表性景观是什么？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "鸣沙山的沙丘与月牙泉。",
+          "sources": [
+            "geopark"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-yardang",
+      "destination": "敦煌",
+      "topic": "自然地理",
+      "question": "敦煌雅丹的典型地貌由什么作用塑造？它在 UNESCO 世界遗产网站上的申报名录状态是什么？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "雅丹为风蚀塑造的地貌。",
+          "sources": [
+            "geopark"
+          ]
+        },
+        {
+          "statement": "敦煌雅丹于 2015 年提交世界遗产预备名单，预备名单条目不代表已正式列入世界遗产。",
+          "sources": [
+            "yardangs"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-designation",
+      "destination": "敦煌",
+      "topic": "旅游资源",
+      "question": "敦煌世界地质公园是哪一年获得认定的？应与哪一项莫高窟的世界遗产纪录区分？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "敦煌世界地质公园的认定年份是 2015 年。",
+          "sources": [
+            "geopark"
+          ]
+        },
+        {
+          "statement": "莫高窟作为单独的世界遗产项目于 1987 年列入名录。",
+          "sources": [
+            "mogao"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "dunhuang-pass",
+      "destination": "敦煌",
+      "topic": "线路与地理",
+      "question": "UNESCO 的丝绸之路长安—天山廊道说明中，从长安向西经河西走廊到敦煌的哪处关隘？廊道是哪一年入选的？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "线路说明提及敦煌玉门关。",
+          "sources": [
+            "silk_road"
+          ]
+        },
+        {
+          "statement": "长安—天山廊道于 2014 年列入世界遗产名录。",
+          "sources": [
+            "silk_road"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-heritage",
+      "destination": "泉州",
+      "topic": "遗产档案",
+      "question": "泉州宋元海贸系列遗产哪一年入选世界遗产，由多少个遗产点组成？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "泉州宋元海贸系列遗产于 2021 年入选世界遗产。",
+          "sources": [
+            "quanzhou"
+          ]
+        },
+        {
+          "statement": "系列遗产由 22 个遗产点组成。",
+          "sources": [
+            "quanzhou",
+            "quanzhou_sites"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-maritime",
+      "destination": "泉州",
+      "topic": "历史文化",
+      "question": "泉州遗产档案用哪些类型的遗存解释宋元海洋商贸？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "相关遗存包括交通设施、生产遗址、海贸管理机构与宗教建筑。",
+          "sources": [
+            "quanzhou"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-ministry",
+      "destination": "泉州",
+      "topic": "历史文化",
+      "question": "泉州的市舶司在宋元海贸中发挥什么作用？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "市舶司是宋元管理海洋贸易的行政机构。",
+          "sources": [
+            "quanzhou_display"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-wind",
+      "destination": "泉州",
+      "topic": "历史文化",
+      "question": "九日山祈风石刻记录了什么活动，体现了谁对宋代海外贸易的参与？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "石刻记录官员等为海外商船举行的祈风仪式，体现官方对贸易航行的支持和管理。",
+          "sources": [
+            "jiuri"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-temples",
+      "destination": "泉州",
+      "topic": "宗教遗产",
+      "question": "泉州开元寺、清净寺、伊斯兰教圣墓中，哪些属于宋元海贸系列的正式遗产点？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "三处均列入正式组成名录。",
+          "sources": [
+            "quanzhou_sites"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-tower",
+      "destination": "泉州",
+      "topic": "建筑遗产",
+      "question": "在泉州开元寺游览时，鲤城官方线路标注的成对石塔是什么？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "开元寺有东西两座成对石塔。",
+          "sources": [
+            "licheng"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-caoan",
+      "destination": "泉州",
+      "topic": "宗教遗产",
+      "question": "草庵属于泉州世遗系列的哪一项遗产点？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "名录中对应草庵摩尼光佛造像。",
+          "sources": [
+            "quanzhou_sites"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-bridges",
+      "destination": "泉州",
+      "topic": "交通遗产",
+      "question": "官方名录中选出三处反映泉州古代交通的桥梁或桥址。",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "洛阳桥、安平桥和顺济桥遗址都是组成遗产点。",
+          "sources": [
+            "quanzhou_sites"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-luoyang",
+      "destination": "泉州",
+      "topic": "交通遗产",
+      "question": "泉州洛阳桥展示馆介绍了哪三项建桥技术？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "展示内容包括筏型基础、养蛎固基与浮运架梁。",
+          "sources": [
+            "quanzhou_display"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-docks",
+      "destination": "泉州",
+      "topic": "交通遗产",
+      "question": "泉州系列遗产的两处码头叫什么？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "江口码头和石湖码头。",
+          "sources": [
+            "quanzhou_sites"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-navigation",
+      "destination": "泉州",
+      "topic": "交通遗产",
+      "question": "石湖码头展示馆把哪两座塔联系到航运主题？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "石湖码头展示馆介绍六胜塔和万寿塔的航运背景。",
+          "sources": [
+            "quanzhou_display"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-production",
+      "destination": "泉州",
+      "topic": "生产遗产",
+      "question": "如果想看泉州世遗中的生产遗迹，窑址和冶铁遗址各举实例。",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "窑址可举磁灶金交椅山窑址或德化窑址。",
+          "sources": [
+            "quanzhou_sites"
+          ]
+        },
+        {
+          "statement": "冶铁遗址可举安溪青阳下草埔冶铁遗址。",
+          "sources": [
+            "quanzhou_sites"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-ceramics",
+      "destination": "泉州",
+      "topic": "生产遗产",
+      "question": "磁灶窑展示馆用什么产业解释泉州与海外贸易的关系？",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "磁灶窑是宋元外销陶瓷的生产基地，展示馆围绕这一产业展开。",
+          "sources": [
+            "quanzhou_display"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-route-themes",
+      "destination": "泉州",
+      "topic": "旅游线路",
+      "question": "2023 年公布的泉州世遗主题旅游线路有多少条，分成哪三个系列？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "共有 16 条。",
+          "sources": [
+            "quanzhou_routes"
+          ]
+        },
+        {
+          "statement": "三类是魅力世遗、山海风情与多元文化。",
+          "sources": [
+            "quanzhou_routes"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-old-town",
+      "destination": "泉州",
+      "topic": "旅游线路",
+      "question": "鲤城的官方一日线覆盖几个古城遗产点？西街出现在路线里能否证明它是单列的遗产点？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "该线路覆盖 8 个古城遗产点。",
+          "sources": [
+            "licheng"
+          ]
+        },
+        {
+          "statement": "西街是路线途经点，正式组成名录没有将西街单独列项。",
+          "sources": [
+            "licheng",
+            "quanzhou_sites"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-bus-realtime",
+      "destination": "泉州",
+      "topic": "公交接驳",
+      "question": "泉州古城的小白属于哪类交通服务？游客可通过什么渠道核查公交到站与接驳信息？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "小白属于古城旅游度假区的公共交通服务。",
+          "sources": [
+            "bus"
+          ]
+        },
+        {
+          "statement": "可通过多彩泉行小程序查询实时公交和接驳信息。",
+          "sources": [
+            "bus"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-bus-holiday",
+      "destination": "泉州",
+      "topic": "时效与风险",
+      "question": "2026 年五一公告里的小白运营时间可以作为普通周末的固定末班时间吗？",
+      "status": "pending",
+      "depth": "deep",
+      "answer": [
+        {
+          "statement": "公告中的 22:30 是 2026 年五一活动的延时安排。",
+          "sources": [
+            "holiday_bus"
+          ]
+        },
+        {
+          "statement": "普通周末的末班信息需要按实际日期向公交方核验。",
+          "sources": [
+            "holiday_bus",
+            "bus"
+          ],
+          "support": "insufficient"
+        }
+      ]
+    },
+    {
+      "key": "quanzhou-trade-route",
+      "destination": "泉州",
+      "topic": "旅游线路",
+      "question": "想沿泉州遗产体验管理、航海仪式与港口物流，从官方推荐的第二条世遗线路各举一个站点。",
+      "status": "pending",
+      "answer": [
+        {
+          "statement": "管理机构、市舶祈风及港口物流可分别选择市舶司遗址、九日山祈风石刻和石湖码头，三处均在第二条路线中。",
+          "sources": [
+            "quanzhou_routes",
+            "jiuri",
+            "quanzhou_display"
+          ]
+        }
+      ]
+    }
+  ]
+}
