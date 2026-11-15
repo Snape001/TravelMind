@@ -67,7 +67,17 @@ Sidecar 的 `SocialEvidenceRecord` 记录原帖和评论样本。交给 Research
 
 ## 知乎
 
-固定版上游包含 Cookie 注入、持久化浏览器目录、关键词搜索、回答详情、根评论和子评论代码。站内结果抽取支持回答、文章和视频，固定版没有独立的问题详情采集器。上游知乎实现带反检测脚本，且部分接口使用网页签名。与 `4d629b52eddef9c53b5e9a52b76ec4a64383b494` 比较后，知乎模块、数据模型、存储和许可均无差异，因此沿用固定版本。本项目使用开放平台接口和已授权的本地导出。 [固定版知乎代码](https://github.com/NanmiCoder/MediaCrawler/blob/306ab4ca26c0e44fb87ede0e40e98748752815a6/media_platform/zhihu/core.py) · [知乎 robots.txt](https://www.zhihu.com/robots.txt) · [知乎数据开放平台](https://developer.zhihu.com/docs)
+### MediaCrawler 固定版复核
+
+| 项目 | `306ab4c` 源码行为 | 本轮真实验收 |
+| --- | --- | --- |
+| 二维码和 Cookie 登录 | 二维码流程等待浏览器会话 Cookie。Cookie 模式将提供的 Cookie 写入浏览器上下文。标准浏览器有本地持久化分支。手机登录是占位实现 | 未启动上游登录，账号授权及会话复用待验证 |
+| 关键词搜索 | 提取器保留回答、文章和视频，含问题关联的回答可被返回，问题条目不会导出。搜索一页固定 20 条，配置低于一页时会提升到一页 | 问题 0、回答 0 |
+| 问题和回答详情 | 详情分发可识别带回答 ID 的链接。纯问题链接没有处理分支，也没有问题下回答列表的采集入口 | 问题 0、回答 0 |
+| 回答评论和回复 | 根评论和子评论按游标分页，子评论由独立开关启用。知乎的调用和分页循环未使用通用单帖评论上限。Sidecar 的保留条数只限制导入，无法限制上游请求 | 根评论 0、回复 0 |
+| 入库与分析 | 既有知乎 Adapter 可导入获准使用的 JSONL 并生成 `SocialEvidence`。Evidence Center 接收现有证据格式，苏听雨读取同一证据链 | 本轮仅运行 5 项离线单元测试，真实数据入库及分析待验收 |
+
+上游标准浏览器模式加载反检测脚本，CDP 启动器包含反检测参数，两条入口在登录后都会主动打开站内搜索页。知乎 robots.txt 对通用爬虫限制相关路径，MediaCrawler 的源码使用声明要求遵守平台规则和 robots.txt。基于这些限制，本轮执行离线 CLI 帮助检查和源码复核，未启动上游爬虫。比对远端 HEAD `4d629b52eddef9c53b5e9a52b76ec4a64383b494` 后，整个差异只有 README，保留当前固定版。 [固定版登录实现](https://github.com/NanmiCoder/MediaCrawler/blob/306ab4ca26c0e44fb87ede0e40e98748752815a6/media_platform/zhihu/login.py) · [固定版采集实现](https://github.com/NanmiCoder/MediaCrawler/blob/306ab4ca26c0e44fb87ede0e40e98748752815a6/media_platform/zhihu/core.py) · [知乎 robots.txt](https://www.zhihu.com/robots.txt)
 
 ### 手动登录
 

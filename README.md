@@ -151,4 +151,4 @@ Next.js 默认监听 `127.0.0.1:3000`。若后端地址不同，可将 `frontend
 
 Phase 4 已定义目的地确认、动态问卷、路线规划、专家 Skills、Research Browser 和社交资料接入的开发契约。 [产品范围](PRD.md#phase-4) · [公共接口](docs/phase-4-contract.md) · [架构与验收](docs/phase-4-architecture.md)
 
-苏听雨可通过本机 Sidecar 读取已授权的 MediaCrawler JSONL 或规范化社交证据。知乎支持独立浏览器手动登录及按开放平台权限采集。 [Windows 安装、知乎登录与验收记录](docs/phase-4-social-research.md)
+苏听雨可通过本机 Sidecar 读取已授权的 MediaCrawler JSONL 或规范化社交证据。Windows 下运行 `.\dev\social-research\social.ps1 -Action ZhihuLogin`，在独立浏览器资料目录中手动登录知乎。固定版 MediaCrawler `306ab4c` 的自动化路径含反检测逻辑，且不提供独立问题详情采集。此次复核的真实采集量为问题 0、回答 0、评论 0、回复 0。 [固定版复核、登录步骤与导入说明](docs/phase-4-social-research.md#知乎)

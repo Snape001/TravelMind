@@ -186,8 +186,9 @@ def test_social_adapter_keeps_available_platform_on_timeout(tmp_path):
     assert {error.code for error in errors} == {"TIMEOUT", "UPSTREAM_UNAVAILABLE"}
 
 
-def test_social_expert_runs_all_five_skills_for_citable_evidence(tmp_path):
-    request = stage(tmp_path)
+@pytest.mark.parametrize("platform", ["xiaohongshu", "zhihu"])
+def test_social_expert_runs_all_five_skills_for_citable_evidence(tmp_path, platform):
+    request = stage(tmp_path, platform)
     (item,), _ = load_export(tmp_path / "inbox" / str(request.batch_id), request)
     agent_request = AgentInput(
         task_id=uuid4(),
@@ -198,8 +199,9 @@ def test_social_expert_runs_all_five_skills_for_citable_evidence(tmp_path):
         evidence=[item.to_evidence()],
     )
 
-    async def model(_, instructions, response_type, *, context):
+    async def model(request, instructions, response_type, *, context):
         assert "样本" in instructions
+        assert request.evidence == [item.to_evidence()]
         assert set(response_type.model_fields) == {
             "travel_sentiment",
             "topic_clustering",
