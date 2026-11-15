@@ -1,5 +1,12 @@
 # TravelMind 开发进度
 
+## Phase 4 · 知乎人工样本验收（2026-11-15）
+
+- 将用户正常浏览后提供的真实材料作为 `manual_browser` 导入。本次有 1 篇知乎回答摘录、1 条根评论、1 条回复，问题 ID 和链接作为上下文，无独立问题正文。采集记录时间使用本次录入时刻，原始发布时间保留为空。评论及回复使用本地稳定 ID 关联。
+- 本机 Sidecar 通过 HTTP 完成 JSONL 导入、读取和导出。Research Engine 连续两次检索返回同一证据 ID，写入独立 PostgreSQL 17 验收库，使用已认证的证据读取接口验证原链接与来源标识。DeepSeek 实际返回苏听雨的 5 项结构化结果，每项引用均可解析到这条已入库证据。样本内的预约和排队建议、交通不便为个案，营销及季节或时段差异保留为待核。
+- 35 项后端定向测试及 Ruff 通过。样本与模型输出的验收文件保存在本机忽略目录。MediaCrawler 在线采集与知乎开放平台调用量均为零。 [人工摘录格式与验收范围](docs/phase-4-social-research.md#人工样本导入与验收)
+- **交付提交**　`feat: preserve manual Zhihu evidence provenance`。
+
 ## Phase 4 · MediaCrawler 知乎网页登录与采集复核（2026-11-15）
 
 - 独立虚拟环境的 MediaCrawler `306ab4c` 可运行 `main.py --help`，确认 CLI 声明二维码、Cookie 登录和 JSONL 输出。源码中的二维码流程等待浏览器会话 Cookie，Cookie 模式将已有会话注入浏览器。手机登录分支是占位实现。本次未发起账号登录，Cookie 目录继续由既有 Git 忽略规则保护。

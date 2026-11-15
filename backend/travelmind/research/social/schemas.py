@@ -84,7 +84,9 @@ class SocialEvidenceRecord(Contract):
     platform: Platform
     post_id: SourceID
     content_type: Literal["note", "video", "post", "question", "answer"]
-    provider: Literal["mediacrawler_export", "zhihu_open_api"] = "mediacrawler_export"
+    provider: Literal["mediacrawler_export", "zhihu_open_api", "manual_browser"] = (
+        "mediacrawler_export"
+    )
     content_scope: ContentScope | None = None
     title: ShortText
     content: Annotated[Text, Field(max_length=1600)]
@@ -101,14 +103,17 @@ class SocialEvidenceRecord(Contract):
     @model_validator(mode="after")
     def validate_source(self):
         official = self.provider == "zhihu_open_api"
-        if official != (self.content_scope is not None):
+        manual = self.provider == "manual_browser"
+        if manual and (self.content_scope != "excerpt" or self.collection_status != "partial"):
+            raise ValueError("manual browser records must describe partial excerpts")
+        if not manual and official != (self.content_scope is not None):
             raise ValueError("scope is required for Zhihu Open API results")
         if self.platform == "zhihu":
             post_id, url = zhihu_source(str(self.original_url), attribution=official)
             if post_id != self.post_id or self.content_type != post_id.split("-", 1)[0]:
                 raise ValueError("Zhihu content type and ID must match the URL")
         else:
-            if official or self.content_type in ("question", "answer"):
+            if official or manual or self.content_type in ("question", "answer"):
                 raise ValueError("unexpected Zhihu fields for another platform")
             url = canonical_url(self.platform, self.post_id)
         if str(self.original_url) != url or self.evidence_id != social_evidence_id(
@@ -135,6 +140,8 @@ class SocialEvidenceRecord(Contract):
             attribution = f"，来源 知乎开放平台{scope}"
             if self.author_display_name:
                 attribution += f"，来源作者 {self.author_display_name}"
+        elif self.provider == "manual_browser":
+            attribution = "，来源 人工浏览摘录"
         return SocialEvidence(
             platform=self.platform,
             post_id=self.post_id,

@@ -9,6 +9,7 @@ from travelmind.schemas.domain import Contract, Evidence, Finding, ReportDraft
 SOCIAL_SCOPE = (
     "社交资料的 post 与已清洗评论是便利样本。注明平台、实际入选原帖及评论条数、采集时间。"
     "区分评论样本数与平台显示的总评论数。避免用有限样本估计全体游客的观点、比例或满意度。"
+    "区分原帖、评论和回复的发言者。同一对话中的发言不算独立来源。"
     "访问受限或没有样本的渠道作为研究缺口。"
     "知乎开放平台搜索和问题回答接口提供摘要，引用时按摘要范围判断。"
 )
@@ -16,10 +17,11 @@ SOCIAL_SKILLS = (
     "苏听雨使用五项技能，每项输出一个可引用的 Finding。"
     "travel_sentiment 说明样本中的正负体验和满意度线索。"
     "topic_clustering 按排队、预约、交通、消费、服务、商业化等可见主题归并。"
-    "complaint_mining 优先呈现反复出现且有明确情境的问题及可核实的避坑线索。"
+    "complaint_mining 说明具体问题和可核实的避坑线索。只有独立来源重复支持时才称反复出现。"
     "marketing_detection 指出广告、导流或重复文案迹象，疑似营销保留为待核；"
     "无迹象的帖子仍可能无法验证发布者身份。"
-    "experience_synthesis 归纳体验差异，按季节、时段及访问条件解释分歧。"
+    "experience_synthesis 根据对比证据描述季节、时段及访问条件的体验差异。"
+    "缺少对比材料时保留缺口，避免推测变化趋势或原因。"
     "单个经验可作为个案；原帖或评论不足以支撑该项时，标记 insufficient。"
 )
 TOPICS = (

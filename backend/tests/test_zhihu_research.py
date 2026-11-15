@@ -6,7 +6,11 @@ import pytest
 from pydantic import HttpUrl
 
 from travelmind.research.social.platforms import load_export
-from travelmind.research.social.schemas import ImportRequest
+from travelmind.research.social.schemas import (
+    ImportRequest,
+    SocialEvidenceRecord,
+    social_evidence_id,
+)
 from travelmind.research.social.zhihu_api import ZhihuError, collect
 from travelmind.research.sources import source_key
 from travelmind.schemas.phase4_openapi import phase4_components
@@ -64,6 +68,43 @@ def send(routes):
         return next(routes)
 
     return call, calls
+
+
+def test_manual_browser_records_preserve_sample_origin(tmp_path):
+    request = ImportRequest(
+        batch_id=uuid4(),
+        platform="zhihu",
+        keyword="泉州",
+        collected_at=COLLECTED,
+        format="normalized",
+    )
+    payload = {
+        "evidence_id": social_evidence_id("zhihu", "answer-456", ANSWER),
+        "platform": "zhihu",
+        "post_id": "answer-456",
+        "content_type": "answer",
+        "provider": "manual_browser",
+        "content_scope": "excerpt",
+        "title": "合成样例",
+        "content": "合成回答摘录",
+        "original_url": ANSWER,
+        "keyword": request.keyword,
+        "collected_at": COLLECTED,
+        "collection_status": "partial",
+        "comments": [
+            {"comment_id": "local-1", "content": "合成评论"},
+            {"comment_id": "local-2", "parent_comment_id": "local-1", "content": "合成回复"},
+        ],
+    }
+    evidence = SocialEvidenceRecord.model_validate(payload)
+    (tmp_path / "evidence.jsonl").write_text(evidence.model_dump_json() + "\n", encoding="utf-8")
+    (loaded,), errors = load_export(tmp_path, request)
+    assert errors == 0 and loaded == evidence
+    assert loaded.handoff().provider == "manual_browser"
+    assert "人工浏览摘录" in loaded.to_evidence().source_locator
+    assert "回复：合成回复" in loaded.to_evidence().excerpt
+    with pytest.raises(ValueError, match="manual browser"):
+        SocialEvidenceRecord.model_validate({**payload, "collection_status": "collected"})
 
 
 def test_official_search_keeps_attribution_and_selected_comment_scope():

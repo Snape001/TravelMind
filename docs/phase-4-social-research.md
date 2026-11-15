@@ -89,6 +89,12 @@ Sidecar 的 `SocialEvidenceRecord` 记录原帖和评论样本。交给 Research
 
 对允许导出并分析的材料，可以用原版 `Import -Platform zhihu` 导入。原帖记录包含 `content_type`（`question` 或 `answer`）、`content_id`、`title` 及可用的 `content_text`、`content_url`、`question_id`。评论带原帖的 `content_type` 和 `content_id`，以及 `comment_id`、`content` 和可选 `parent_comment_id`。问题和回答的 ID 分开去重，回答的短链接和问题下的完整链接统一识别为同一条证据。
 
+### 人工样本导入与验收
+
+手动摘录使用规范化 `evidence.jsonl` 和 `Import -Platform zhihu -InputFormat normalized`。设置 `provider: "manual_browser"`、`content_scope: "excerpt"` 和 `collection_status: "partial"`。保留问题或回答的原链接。评论原始 ID 缺失时可用本地稳定 ID 保留父子关系。未提供发布时间时留空，采集时间记录该批素材的实际摘录或录入时间。Evidence Center 的来源说明标注「人工浏览摘录」。
+
+2026-11-15 用一篇用户提供的真实知乎回答摘录、一条根评论和一条回复完成 Sidecar 导入及查询、Research Engine 去重和独立 PostgreSQL 数据库写入，再通过已认证的证据接口读取记录。苏听雨使用 DeepSeek 生成五项结构化分析，引用均指向此条证据。蟳埔村拍照的预约排队与泉州古城打车的描述各自作为个案，样本无法支撑高频判断、不同季节或时段对比。这次只录入回答，问题链接用于关联上下文。
+
 ### 开放平台采集
 
 先启动本机 Sidecar。在调用终端本地设置 `SOCIAL_RESEARCH_TOKEN` 和拥有对应权限、额度的 `ZHIHU_ACCESS_SECRET`。命令返回导入任务状态，使用 `Job` 查看结果，使用 `Read -Platform zhihu` 按关键词查询或导出。

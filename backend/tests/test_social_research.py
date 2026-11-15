@@ -201,6 +201,7 @@ def test_social_expert_runs_all_five_skills_for_citable_evidence(tmp_path, platf
 
     async def model(request, instructions, response_type, *, context):
         assert "样本" in instructions
+        assert "只有独立来源重复支持时才称反复出现" in instructions
         assert request.evidence == [item.to_evidence()]
         assert set(response_type.model_fields) == {
             "travel_sentiment",
