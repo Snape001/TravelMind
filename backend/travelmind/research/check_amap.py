@@ -113,11 +113,16 @@ def _check(name: str, operation: Callable[[], object]) -> bool:
 
 
 def main() -> int:
-    argparse.ArgumentParser(description=__doc__).parse_args()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        default=Path(__file__).resolve().parents[2] / ".env",
+        help="configuration file (default: backend/.env)",
+    )
+    args = parser.parse_args()
     try:
-        configured = Settings(
-            _env_file=Path(__file__).resolve().parents[2] / ".env"
-        ).amap_web_api_key
+        configured = Settings(_env_file=args.env_file).amap_web_api_key
     except ValidationError:
         print("无法读取 backend/.env，请检查环境变量格式。", file=sys.stderr)
         return 2

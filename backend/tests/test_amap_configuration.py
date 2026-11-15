@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 import sys
 import tempfile
@@ -93,16 +94,22 @@ def test_httpx_transport_log_redacts_amap_query():
     assert record.getMessage() == "Request GET https://restapi.amap.com/v5/place/text"
 
 
-def test_amap_cli_refuses_to_contact_supplier_with_empty_key(monkeypatch):
-    monkeypatch.setenv("AMAP_WEB_API_KEY", "")
-    monkeypatch.setenv("PYTHONIOENCODING", "utf-8")
-    result = subprocess.run(
-        [sys.executable, "-m", "travelmind.research.check_amap"],
-        cwd=Path(__file__).resolve().parents[1],
-        capture_output=True,
-        encoding="utf-8",
-        timeout=10,
-    )
+def test_amap_cli_refuses_to_contact_supplier_with_empty_key():
+    env = {name: value for name, value in os.environ.items() if name.upper() != "AMAP_WEB_API_KEY"}
+    env["PYTHONIOENCODING"] = "utf-8"
+    with tempfile.NamedTemporaryFile(delete=False) as file:
+        dotenv = Path(file.name)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "travelmind.research.check_amap", "--env-file", str(dotenv)],
+            cwd=Path(__file__).resolve().parents[1],
+            env=env,
+            capture_output=True,
+            encoding="utf-8",
+            timeout=10,
+        )
+    finally:
+        dotenv.unlink()
     assert result.returncode == 2
     assert "AMAP_WEB_API_KEY" in result.stderr
     assert "PASS" not in result.stdout
