@@ -34,6 +34,7 @@ def stage(root, platform="xiaohongshu"):
         "bilibili": ("video_id", "123456", "desc"),
         "weibo": ("note_id", "123456", "content"),
         "douyin": ("aweme_id", "123456", "desc"),
+        "zhihu": ("content_id", "456", "content_text"),
     }
     id_field, post_id, text_field = ids[platform]
     rows = [
@@ -43,9 +44,13 @@ def stage(root, platform="xiaohongshu"):
             text_field: "周末建议提前预约，门票免费。",
             "time": 1760000000000,
             "create_time": 1760000000,
+            "created_time": 1760000000,
+            "question_id": "123",
+            "content_type": "answer",
             "note_url": "https://www.xiaohongshu.com/explore/fake?xsec_token=secret",
             "nickname": "账号资料",
             "liked_count": "12",
+            "voteup_count": 12,
             "video_comment": "40",
         },
     ]
@@ -60,6 +65,9 @@ def stage(root, platform="xiaohongshu"):
         {id_field: post_id, "comment_id": "3", "content": "周二预约后入场快"},
         {id_field: "999", "comment_id": "1", "content": "其他帖子"},
     ]
+    if platform == "zhihu":
+        for comment in comments:
+            comment["content_type"] = "answer"
     for name, values in (("contents", rows * 2), ("comments", comments)):
         (batch / f"{name}.jsonl").write_text(
             "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in values),
@@ -251,11 +259,12 @@ def test_writer_adds_actual_sample_count_time_and_platform(tmp_path):
 
 
 @pytest.mark.postgres
-def test_retriever_saves_social_evidence_and_falls_back_without_sidecar(client, tmp_path):
+@pytest.mark.parametrize("platform", ["bilibili", "zhihu"])
+def test_retriever_saves_social_evidence_and_falls_back_without_sidecar(client, tmp_path, platform):
     app = create_social_app(tmp_path, TOKEN)
     with TestClient(app, base_url="http://127.0.0.1") as sidecar:
         sidecar.headers["Authorization"] = f"Bearer {TOKEN}"
-        request = stage(tmp_path, "bilibili")
+        request = stage(tmp_path, platform)
         job = sidecar.post("/v1/jobs", json=request.model_dump(mode="json"))
         assert finished_job(sidecar, job.headers["Location"])["status"] == "completed"
         task = client.post("/api/v1/tasks", json={"destination": "泉州", "topics": ["体验"]}).json()
@@ -288,6 +297,7 @@ def test_retriever_saves_social_evidence_and_falls_back_without_sidecar(client, 
                 _env_file=None,
                 social_research_provider="mediacrawler_export",
                 social_research_token=TOKEN,
+                social_research_platforms=(platform,),
             )
             async with (
                 httpx.AsyncClient() as web,
@@ -326,6 +336,8 @@ def test_retriever_saves_social_evidence_and_falls_back_without_sidecar(client, 
         evidence = client.portal.call(run, httpx.ASGITransport(app=app))
         social, web = evidence
         assert web == website and social.source_type == "social"
+        if platform == "zhihu":
+            assert str(social.source_url) == "https://www.zhihu.com/question/123/answer/456"
         saved = client.get(f"/api/v1/tasks/{task['task_id']}/evidence/{social.evidence_id}")
         assert saved.status_code == 200
         assert saved.json()["source_locator"] == social.source_locator

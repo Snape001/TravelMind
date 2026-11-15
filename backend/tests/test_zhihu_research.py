@@ -1,0 +1,139 @@
+import json
+from datetime import UTC, datetime
+from uuid import uuid4
+
+import pytest
+from pydantic import HttpUrl
+
+from travelmind.research.social.platforms import load_export
+from travelmind.research.social.schemas import ImportRequest
+from travelmind.research.social.zhihu_api import ZhihuError, collect
+from travelmind.research.sources import source_key
+from travelmind.schemas.phase4_openapi import phase4_components
+
+COLLECTED = datetime(2025, 11, 14, tzinfo=UTC)
+QUESTION = "https://www.zhihu.com/question/123"
+ANSWER = f"{QUESTION}/answer/456"
+
+
+def write_rows(path, *rows):
+    path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8"
+    )
+
+
+def test_zhihu_authorized_export_preserves_question_and_answer_comments(tmp_path):
+    question = {"content_id": "123", "content_type": "question", "title": "泉州怎么玩"}
+    answer = {
+        "content_id": "456",
+        "question_id": "123",
+        "content_type": "answer",
+        "content_url": ANSWER + "?token=hidden",
+        "content_text": "<p>周末建议预约。</p>",
+        "creator_hash": "private",
+    }
+    write_rows(tmp_path / "contents.jsonl", question, answer, answer)
+    first = {
+        "comment_id": "10",
+        "content": "周末拥挤",
+        "content_id": "456",
+        "content_type": "answer",
+    }
+    second = {**first, "comment_id": "11", "parent_comment_id": "10", "content": "工作日人少"}
+    unrelated = {**first, "content_type": "question"}
+    write_rows(tmp_path / "comments.jsonl", first, second, first, unrelated)
+    request = ImportRequest(
+        batch_id=uuid4(), platform="zhihu", keyword="泉州 预约", collected_at=COLLECTED
+    )
+    (question, answer), errors = load_export(tmp_path, request)
+    assert errors == 0
+    assert str(question.original_url) == QUESTION and question.comments == []
+    assert question.collection_status == "partial"
+    assert str(answer.original_url) == ANSWER and answer.post_id == "answer-456"
+    assert answer.comments[1].parent_comment_id == "10" and len(answer.comments) == 2
+    assert "private" not in answer.model_dump_json() and "token=" not in answer.model_dump_json()
+    assert answer.handoff().platform == "zhihu"
+    assert "知乎" in answer.to_evidence().source_locator
+
+
+def send(routes):
+    calls = []
+
+    def call(endpoint, **params):
+        calls.append((endpoint, params))
+        return next(routes)
+
+    return call, calls
+
+
+def test_official_search_keeps_attribution_and_selected_comment_scope():
+    item = {
+        "Title": "泉州",
+        "ContentType": "Answer",
+        "ContentID": "456",
+        "ContentText": "周末建议预约",
+        "Url": ANSWER + "?utm_medium=openapi_platform&utm_source=abc&session=discard",
+        "CommentCount": 20,
+        "AuthorName": "公开昵称",
+        "CommentInfoList": [{"Content": "周末需排队"}, {"Content": "周末需排队"}],
+    }
+    call, calls = send(iter([{"Items": [item]}]))
+    (record,) = collect(call, "search", "泉州", COLLECTED)
+    assert calls == [("content/zhihu_search", {"Query": "泉州", "Count": 10})]
+    assert record.provider == "zhihu_open_api"
+    assert record.author_display_name == "公开昵称"
+    assert "utm_source=abc" in str(record.original_url)
+    assert "session=" not in str(record.original_url)
+    assert record.collection_status == "partial" and len(record.comments) == 1
+    assert record.comments[0].comment_id.startswith("excerpt-")
+    evidence = record.to_evidence()
+    short_url = evidence.model_copy(
+        update={"source_url": HttpUrl("https://www.zhihu.com/answer/456")}
+    )
+    assert source_key(evidence) == source_key(short_url)
+
+
+def test_question_answers_follows_server_offset_with_two_page_budget():
+    first = {"Items": [], "Paging": {"IsEnd": False, "NextOffset": 17}}
+    second = {
+        "Items": [{"ContentToken": "456", "Url": ANSWER, "Summary": "泉州体验"}],
+        "Paging": {"IsEnd": False, "NextOffset": 99},
+    }
+    call, calls = send(iter([first, second]))
+    (record,) = collect(call, "answers", "泉州", COLLECTED, QUESTION)
+    assert [params["Offset"] for _, params in calls] == [0, 17]
+    assert record.post_id == "answer-456" and record.collection_status == "partial"
+
+
+def test_question_answers_rejects_nonincreasing_offset():
+    page = {"Items": [], "Paging": {"IsEnd": False, "NextOffset": 0}}
+    call, calls = send(iter([page]))
+    with pytest.raises(ZhihuError, match="INVALID_PAGINATION"):
+        collect(call, "answers", "泉州", COLLECTED, QUESTION)
+    assert len(calls) == 1
+
+
+def test_owned_answer_reads_child_replies_and_rejects_wrong_target():
+    owned = {"ContentType": "answer", "ContentToken": "456", "Url": ANSWER, "Body": "详情"}
+    comments = {
+        "Items": [
+            {
+                "Comment": {"ID": 19_446_744_073_709_551_615, "Content": "原评论"},
+                "Children": [{"ID": "9", "Content": "回复"}],
+            }
+        ],
+        "Paging": {"IsEnd": True},
+    }
+    call, calls = send(iter([owned, comments]))
+    (record,) = collect(call, "owned", "泉州", COLLECTED, ANSWER)
+    assert [name for name, _ in calls] == ["user/content_detail", "user/content_comments"]
+    assert record.comments[1].parent_comment_id == record.comments[0].comment_id
+    assert record.comments[0].comment_id == "19446744073709551615"
+    call, _ = send(iter([{**owned, "Url": ANSWER.replace("456", "457")}]))
+    with pytest.raises(ZhihuError, match="INVALID_RESPONSE"):
+        collect(call, "owned", "泉州", COLLECTED, ANSWER)
+
+
+def test_phase4_contract_advertises_zhihu():
+    fields = phase4_components()["components"]["schemas"]["SocialEvidence"]["properties"]
+    assert "zhihu" in fields["platform"]["enum"]

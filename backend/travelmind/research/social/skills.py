@@ -10,6 +10,7 @@ SOCIAL_SCOPE = (
     "社交资料的 post 与已清洗评论是便利样本。注明平台、实际入选原帖及评论条数、采集时间。"
     "区分评论样本数与平台显示的总评论数。避免用有限样本估计全体游客的观点、比例或满意度。"
     "访问受限或没有样本的渠道作为研究缺口。"
+    "知乎开放平台搜索和问题回答接口提供摘要，引用时按摘要范围判断。"
 )
 SOCIAL_SKILLS = (
     "苏听雨使用五项技能，每项输出一个可引用的 Finding。"
@@ -77,6 +78,7 @@ def with_social_sample_notes(draft: ReportDraft, evidence: list[Evidence]) -> Re
     sections = []
     for section in draft.sections:
         samples: dict[str, list[tuple[str, int]]] = defaultdict(list)
+        zhihu_authors: dict[str, None] = {}
         for key in dict.fromkeys(section.evidence_ids):
             item = by_id.get(key)
             if item and (match := SAMPLE.match(item.source_locator or "")):
@@ -84,6 +86,10 @@ def with_social_sample_notes(draft: ReportDraft, evidence: list[Evidence]) -> Re
                 if platform in PLATFORM_NAMES.values():
                     stamp = item.retrieved_at.astimezone(UTC).isoformat(timespec="seconds")
                     samples[platform].append((stamp, int(count)))
+                    if platform == "知乎":
+                        _, _, author = (item.source_locator or "").partition("，来源作者 ")
+                        if author:
+                            zhihu_authors[author] = None
         if samples:
             notes = []
             for platform, rows in samples.items():
@@ -92,6 +98,8 @@ def with_social_sample_notes(draft: ReportDraft, evidence: list[Evidence]) -> Re
                     f"{platform} {len(rows)} 篇原帖、{sum(n for _, n in rows)} 条评论或回复，"
                     f"采集时间 {dates}"
                 )
+                if platform == "知乎" and zhihu_authors:
+                    notes[-1] += f"，来源作者 {'、'.join(zhihu_authors)}"
             section = section.model_copy(
                 update={
                     "body": f"{section.body}\n\n社交样本（UTC）  {'。'.join(notes)}。"

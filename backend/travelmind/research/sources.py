@@ -4,6 +4,7 @@ from urllib.parse import unquote, unquote_plus, urlsplit
 
 from pydantic import HttpUrl, ValidationError
 
+from travelmind.research.social.schemas import zhihu_source
 from travelmind.schemas.domain import Evidence, SourceType
 
 TRACKING_KEYS = frozenset({"fbclid", "gclid", "msclkid"})
@@ -46,6 +47,13 @@ def source_key(item: Evidence) -> tuple[str, str]:
 def url_key(url: HttpUrl) -> tuple[str, str]:
     parts = urlsplit(str(url))
     host = (parts.hostname or "").rstrip(".")
+    if host == "www.zhihu.com":
+        try:
+            post_id, _ = zhihu_source(str(url))
+        except ValueError:
+            pass
+        else:
+            return "zhihu", post_id
     if host in DOI_HOSTS:
         doi = unquote(parts.path.lstrip("/")).casefold()
         if doi.startswith("10.") and "/" in doi:

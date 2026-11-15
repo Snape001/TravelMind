@@ -1,20 +1,23 @@
+import re
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 from unicodedata import normalize
+from urllib.parse import urlencode, urlsplit
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import AwareDatetime, Field, HttpUrl, StringConstraints, model_validator
 
 from travelmind.schemas.domain import Contract, Evidence, ShortText, Text
 from travelmind.schemas.phase4_sources import SocialEvidence
+from travelmind.schemas.phase4_sources import SocialPlatform as Platform
 
-Platform = Literal["xiaohongshu", "bilibili", "weibo", "douyin"]
 Keyword = Annotated[Text, Field(max_length=120)]
 SourceID = Annotated[str, StringConstraints(pattern=r"^[a-zA-Z0-9_-]{1,64}$")]
 Count = Annotated[int, Field(strict=True, ge=0, le=2**63 - 1)]
+ContentScope = Literal["excerpt", "detail"]
 MAX_POSTS = 15
 MAX_COMMENTS = 12
-SOURCE_URLS: dict[Platform, str] = {
+SOURCE_URLS: dict[str, str] = {
     "xiaohongshu": "https://www.xiaohongshu.com/explore/{}",
     "bilibili": "https://www.bilibili.com/video/av{}",
     "weibo": "https://m.weibo.cn/detail/{}",
@@ -25,7 +28,35 @@ PLATFORM_NAMES: dict[Platform, str] = {
     "bilibili": "B站",
     "weibo": "微博",
     "douyin": "抖音",
+    "zhihu": "知乎",
 }
+ZHIHU_ORIGIN = "https://www.zhihu.com"
+
+
+def zhihu_source(value: str, *, attribution: bool = False) -> tuple[str, str]:
+    parts = urlsplit(value)
+    if parts.scheme != "https" or parts.netloc != "www.zhihu.com":
+        raise ValueError("expected a Zhihu question or answer URL")
+    question = re.fullmatch(r"/question/([0-9]{1,24})", parts.path)
+    answer = re.fullmatch(r"(?:/question/[0-9]{1,24})?/answer/([0-9]{1,24})", parts.path)
+    if question is None and answer is None:
+        raise ValueError("expected a Zhihu question or answer URL")
+    post_id = f"answer-{answer[1]}" if answer else f"question-{question[1]}"
+    url = ZHIHU_ORIGIN + parts.path
+    if attribution:
+        fields = dict(
+            re.findall(r"(?:^|&)(utm_medium|utm_source)=([A-Za-z0-9_-]{1,64})(?=&|$)", parts.query)
+        )
+        if fields.get("utm_medium") == "openapi_platform":
+            url += "?" + urlencode(fields)
+    return post_id, url
+
+
+def social_evidence_id(platform: Platform, post_id: str, url: str) -> UUID:
+    return uuid5(
+        NAMESPACE_URL,
+        f"{ZHIHU_ORIGIN}/{post_id.replace('-', '/', 1)}" if platform == "zhihu" else url,
+    )
 
 
 def keyword_key(value: str) -> str:
@@ -52,7 +83,9 @@ class SocialEvidenceRecord(Contract):
     evidence_id: UUID
     platform: Platform
     post_id: SourceID
-    content_type: Literal["note", "video", "post"]
+    content_type: Literal["note", "video", "post", "question", "answer"]
+    provider: Literal["mediacrawler_export", "zhihu_open_api"] = "mediacrawler_export"
+    content_scope: ContentScope | None = None
     title: ShortText
     content: Annotated[Text, Field(max_length=1600)]
     author_display_name: ShortText | None = None
@@ -67,8 +100,20 @@ class SocialEvidenceRecord(Contract):
 
     @model_validator(mode="after")
     def validate_source(self):
-        url = canonical_url(self.platform, self.post_id)
-        if str(self.original_url) != url or self.evidence_id != uuid5(NAMESPACE_URL, url):
+        official = self.provider == "zhihu_open_api"
+        if official != (self.content_scope is not None):
+            raise ValueError("scope is required for Zhihu Open API results")
+        if self.platform == "zhihu":
+            post_id, url = zhihu_source(str(self.original_url), attribution=official)
+            if post_id != self.post_id or self.content_type != post_id.split("-", 1)[0]:
+                raise ValueError("Zhihu content type and ID must match the URL")
+        else:
+            if official or self.content_type in ("question", "answer"):
+                raise ValueError("unexpected Zhihu fields for another platform")
+            url = canonical_url(self.platform, self.post_id)
+        if str(self.original_url) != url or self.evidence_id != social_evidence_id(
+            self.platform, self.post_id, url
+        ):
             raise ValueError("social URL and evidence ID must match the platform post ID")
         return self
 
@@ -84,10 +129,16 @@ class SocialEvidenceRecord(Contract):
             comments.append(f"{label}：{comment.content}")
             if len(comments) == 6:
                 break
+        attribution = ""
+        if self.provider == "zhihu_open_api":
+            scope = "摘要" if self.content_scope == "excerpt" else "详情摘录"
+            attribution = f"，来源 知乎开放平台{scope}"
+            if self.author_display_name:
+                attribution += f"，来源作者 {self.author_display_name}"
         return SocialEvidence(
             platform=self.platform,
             post_id=self.post_id,
-            provider="mediacrawler_export",
+            provider=self.provider,
             sample_size=len(comments),
             evidence={
                 "evidence_id": self.evidence_id,
@@ -97,7 +148,7 @@ class SocialEvidenceRecord(Contract):
                 "source_locator": (
                     f"{PLATFORM_NAMES[self.platform]}，1 篇原帖，{len(comments)} 条评论或回复摘录，"
                     f"采集时间 {self.collected_at.astimezone(UTC).isoformat()}，"
-                    f"采集状态 {self.collection_status}"
+                    f"采集状态 {self.collection_status}{attribution}"
                 ),
                 "published_at": self.published_at,
                 "retrieved_at": self.collected_at,

@@ -1,5 +1,13 @@
 # TravelMind 开发进度
 
+## Phase 4 · 知乎社交资料（2026-11-15）
+
+- 审核 MediaCrawler 固定版 `306ab4ca26c0e44fb87ede0e40e98748752815a6` 的知乎登录、搜索、回答详情和评论代码，对比 `4d629b52eddef9c53b5e9a52b76ec4a64383b494` 确认知乎实现、输出结构与许可证无差异，沿用固定版本。固定版缺少独立的问题正文采集，网页采集路径含反检测与网页签名。
+- 接入知乎开放平台关键词搜索、问题下的回答摘要，以及本人已发布回答详情和评论回复。Windows 独立浏览器目录支持手动登录后保存本机会话，`browser_data/` 已加入 Git 忽略规则。支持问题和回答的授权 JSONL 导入、稳定去重、分页、缓存及采样预算，复用 Evidence Center 与苏听雨流程。 [启动、权限边界及验收记录](docs/phase-4-social-research.md#知乎)
+- PostgreSQL 17 全量回归 **226 项通过**（新增 8 项），含知乎本地缓存到 Evidence Center 实际入库。Ruff、Alembic 检查、PowerShell 解析和 Phase 4 类型生成均通过。Windows 独立进程验证合成问题 1 个、回答 1 条、根评论 1 条和回复 1 条的导入、分页和导出。
+- 官方搜索端点在无凭据请求下返回鉴权失败，取得真实问题、回答、评论及回复均为 0。真实内容与知乎 Cookie 会话复用待授权后验收。问题正文与非本人回答的完整详情和回复由正常浏览或授权导出提供。
+- **交付提交**　`feat: add Zhihu social research support`，分支 `feat/social-research-adapter`。
+
 ## Phase 4 · Social Research Adapter（2026-11-15）
 
 - 独立安装固定版 MediaCrawler `306ab4ca26c0e44fb87ede0e40e98748752815a6`、其依赖锁和 Playwright Chromium，保留原始许可证。Windows 本机 Sidecar 支持四平台的已授权导出导入、取消、状态、分页、去重、缓存及 JSONL 导出。应用内默认关闭，可按平台启用。

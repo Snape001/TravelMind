@@ -1,12 +1,12 @@
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('Setup', 'Start', 'Status', 'Import', 'Job', 'Stop', 'Read')]
+    [ValidateSet('Setup', 'Start', 'Status', 'Import', 'Job', 'Stop', 'Read', 'ZhihuLogin', 'ZhihuCollect')]
     [string]$Action,
     [string]$Root = (Join-Path $env:LOCALAPPDATA 'TravelMind\social-research'),
     [ValidateRange(1024, 65535)]
     [int]$Port = 18764,
     [guid]$BatchId = [guid]::Empty,
-    [ValidateSet('xiaohongshu', 'bilibili', 'weibo', 'douyin')]
+    [ValidateSet('xiaohongshu', 'bilibili', 'weibo', 'douyin', 'zhihu')]
     [string]$Platform = 'xiaohongshu',
     [string]$Keyword,
     [string]$CollectedAt,
@@ -17,7 +17,10 @@ param(
     [ValidateRange(0, 10000)]
     [int]$Offset = 0,
     [string]$JsonlPath,
-    [switch]$InstallBrowser
+    [switch]$InstallBrowser,
+    [ValidateSet('search', 'answers', 'owned')]
+    [string]$ZhihuMode = 'search',
+    [string]$SourceUrl
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,6 +73,29 @@ if ($Action -eq 'Setup') {
     return
 }
 
+if ($Action -eq 'ZhihuLogin') {
+    $programDirs = @(
+        [Environment]::GetFolderPath('ProgramFiles'),
+        [Environment]::GetFolderPath('ProgramFilesX86'),
+        [Environment]::GetFolderPath('LocalApplicationData')
+    ) | Where-Object { $_ } | Select-Object -Unique
+    $browser = @(
+        foreach ($directory in $programDirs) {
+            Join-Path $directory 'Microsoft\Edge\Application\msedge.exe'
+            Join-Path $directory 'Google\Chrome\Application\chrome.exe'
+        }
+    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (!$browser) { throw 'Install Microsoft Edge or Google Chrome to log in manually.' }
+    $localRoot = [Environment]::GetFolderPath('LocalApplicationData')
+    if (!$localRoot) { throw 'The current Windows account has no local app data directory.' }
+    $profile = Join-Path $localRoot 'TravelMind\social-research\browser_data\zhihu'
+    New-Item -Path $profile -ItemType Directory -Force | Out-Null
+    Start-Process -FilePath $browser -ArgumentList @(
+        ('--user-data-dir="{0}"' -f $profile), 'https://www.zhihu.com/signin'
+    )
+    return
+}
+
 if (!$env:SOCIAL_RESEARCH_TOKEN) { throw 'Set SOCIAL_RESEARCH_TOKEN in this shell.' }
 if ($Action -eq 'Start') {
     $env:SOCIAL_DATA_PATH = $dataPath
@@ -93,6 +119,31 @@ if ($Action -eq 'Stop') {
     return
 }
 if (!$Keyword) { throw 'Provide Keyword.' }
+if ($Action -eq 'ZhihuCollect') {
+    if (!$env:ZHIHU_ACCESS_SECRET) { throw 'Set ZHIHU_ACCESS_SECRET locally in this shell.' }
+    if ($ZhihuMode -ne 'search' -and !$SourceUrl) { throw 'Provide SourceUrl.' }
+    $null = Invoke-RestMethod "$baseUri/status" -Headers $headers
+    $cliArgs = @(
+        '-m', 'travelmind.research.social.zhihu_api',
+        '--data', $dataPath, "--keyword=$Keyword", '--mode', $ZhihuMode
+    )
+    if ($SourceUrl) { $cliArgs += @('--url', $SourceUrl) }
+    Push-Location $backend
+    try {
+        $body = Invoke-Checked (Join-Path $venvPath 'Scripts\python.exe') $cliArgs
+    } finally {
+        Pop-Location
+    }
+    $arguments = @{
+        Uri = "$baseUri/jobs"
+        Method = 'Post'
+        Headers = $headers
+        ContentType = 'application/json; charset=utf-8'
+        Body = [Text.Encoding]::UTF8.GetBytes($body)
+    }
+    Invoke-RestMethod @arguments
+    return
+}
 if ($Action -eq 'Import') {
     if (!$CollectedAt) { throw 'Provide the actual CollectedAt in ISO 8601 with a time zone.' }
     $body = @{

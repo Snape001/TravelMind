@@ -14,6 +14,8 @@ from pydantic import TypeAdapter
 from travelmind.research.social.schemas import (
     MAX_COMMENTS,
     MAX_POSTS,
+    ZHIHU_ORIGIN,
+    ContentScope,
     ImportRequest,
     Platform,
     SocialComment,
@@ -21,6 +23,8 @@ from travelmind.research.social.schemas import (
     SourceID,
     canonical_url,
     keyword_key,
+    social_evidence_id,
+    zhihu_source,
 )
 
 MAX_FILE_BYTES = 4 * 1024 * 1024
@@ -73,6 +77,7 @@ class PlatformAdapter:
     count_field: str
     content_type: str
     comment_likes: str = "like_count"
+    comment_time: str = "create_time"
 
     def post(self, row: dict, request: ImportRequest) -> SocialEvidenceRecord:
         post_id = public_id(row.get(self.id_field))
@@ -106,9 +111,69 @@ class PlatformAdapter:
             comment_id=comment_id,
             parent_comment_id=parent_id if parent_id != comment_id else None,
             content=clean(row.get("content"), 320),
-            published_at=parse_time(row.get("create_time")),
+            published_at=parse_time(row.get(self.comment_time)),
             like_count=parse_count(row.get(self.comment_likes)),
         )
+
+    def comment_target(self, row: dict) -> str:
+        return public_id(row.get(self.id_field))
+
+
+def zhihu_record(
+    row: dict, keyword: str, collected_at: datetime, *, scope: ContentScope | None = None
+) -> SocialEvidenceRecord:
+    official = scope is not None
+    url = row.get("content_url")
+    post_id, url = zhihu_source(str(url), attribution=official)
+    kind, raw_id = post_id.split("-", 1)
+    if kind != row.get("content_type") or raw_id != public_id(row.get("content_id")):
+        raise ValueError("Zhihu ID and type do not match the source URL")
+    title = clean(row.get("title"), 200)
+    content = clean(row.get("content_text"), 1600) or clean(row.get("desc"), 1600) or title
+    author = clean(row.get("author_display_name"), 200) if official else ""
+    return SocialEvidenceRecord(
+        platform="zhihu",
+        post_id=post_id,
+        evidence_id=social_evidence_id("zhihu", post_id, url),
+        content_type=kind,
+        provider="zhihu_open_api" if official else "mediacrawler_export",
+        content_scope=scope,
+        title=title or content[:200],
+        content=content,
+        original_url=url,
+        published_at=parse_time(row.get("created_time")),
+        collected_at=collected_at,
+        like_count=parse_count(row.get("voteup_count")),
+        comment_count=parse_count(row.get("comment_count")),
+        author_display_name=author or None,
+        keyword=keyword,
+        collection_status="partial",
+    )
+
+
+class ZhihuExportAdapter(PlatformAdapter):
+    def post(self, row: dict, request: ImportRequest) -> SocialEvidenceRecord:
+        kind = row.get("content_type")
+        content_id = public_id(row.get("content_id"))
+        if kind == "question":
+            fallback = f"{ZHIHU_ORIGIN}/question/{content_id}"
+        elif kind == "answer":
+            question = row.get("question_id")
+            prefix = f"/question/{public_id(question)}" if question else ""
+            fallback = f"{ZHIHU_ORIGIN}{prefix}/answer/{content_id}"
+        else:
+            raise ValueError("only Zhihu questions and answers are supported")
+        return zhihu_record(
+            {**row, "content_url": row.get("content_url") or fallback},
+            request.keyword,
+            request.collected_at,
+        )
+
+    def comment_target(self, row: dict) -> str:
+        kind = row.get("content_type")
+        if kind not in ("question", "answer"):
+            raise ValueError("unsupported Zhihu comment target")
+        return f"{kind}-{public_id(row.get('content_id'))}"
 
 
 PLATFORMS: dict[Platform, PlatformAdapter] = {
@@ -118,6 +183,14 @@ PLATFORMS: dict[Platform, PlatformAdapter] = {
         "note_id", "content", "create_time", "comments_count", "post", "comment_like_count"
     ),
     "douyin": PlatformAdapter("aweme_id", "desc", "create_time", "comment_count", "video"),
+    "zhihu": ZhihuExportAdapter(
+        "content_id",
+        "content_text",
+        "created_time",
+        "comment_count",
+        "answer",
+        comment_time="publish_time",
+    ),
 }
 
 
@@ -167,7 +240,11 @@ def normalize_record(row: dict, request: ImportRequest) -> SocialEvidenceRecord:
             **item.model_dump(),
             "title": clean(item.title, 200),
             "content": clean(item.content, 1600),
-            "author_display_name": None,
+            "author_display_name": (
+                clean(item.author_display_name, 200) or None
+                if item.provider == "zhihu_open_api"
+                else None
+            ),
             "comments": list(comments.values()),
         }
     )
@@ -207,7 +284,7 @@ def load_export(
         try:
             if row is None:
                 raise ValueError("invalid comment row")
-            post_id = public_id(row.get(adapter.id_field))
+            post_id = adapter.comment_target(row)
             if post_id in posts:
                 keep_comment(comments[post_id], keys[post_id], adapter.comment(row))
         except ValueError:

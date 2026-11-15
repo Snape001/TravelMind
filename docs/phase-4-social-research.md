@@ -56,14 +56,48 @@ New-Item -ItemType Directory -Path $batchPath
 | `SOCIAL_RESEARCH_PROVIDER` | `mediacrawler_export`。默认 `disabled` |
 | `SOCIAL_RESEARCH_URL` | `http://127.0.0.1:18764` |
 | `SOCIAL_RESEARCH_TOKEN` | 与 Sidecar 一致的本地令牌 |
-| `SOCIAL_RESEARCH_PLATFORMS` | JSON 数组，默认 `["xiaohongshu","bilibili"]`，可加 `weibo` 和 `douyin` |
+| `SOCIAL_RESEARCH_PLATFORMS` | JSON 数组，默认 `["xiaohongshu","bilibili"]`，可加 `weibo`、`douyin` 和 `zhihu` |
 | `SOCIAL_RESEARCH_TIMEOUT_SECONDS` | 默认 3 秒，上限 10 秒 |
 
-苏听雨以目的地和最多两个调研主题构造查询，同时查找目的地关键词。匹配忽略全半角、大小写及重复空白，主题精确匹配优先。四个平台独立返回。服务超时、平台缓存为空或结果异常时，专家继续使用现有网页和学术检索。
+苏听雨以目的地和最多两个调研主题构造查询，同时查找目的地关键词。匹配忽略全半角、大小写及重复空白，主题精确匹配优先。平台独立返回，预算优先从每个平台取一篇，再取各平台的第二篇。服务超时、平台缓存为空或结果异常时，专家继续使用现有网页和学术检索。
 
 每批最多写入 15 篇原帖和每篇 12 条去重评论或回复。先按平台、关键词和原帖 ID 去重，再读取分页缓存。同一关键词的更新使用最新采集时间。入库前丢弃账号字段、带查询串链接和媒体信息，清理常见联系方式，并保留评论 ID 和父评论 ID 在本地缓存中。提交给模型的证据最多 6 篇原帖、每平台 2 篇和每篇 6 条不同评论。导入者须检查自由文本并确认允许向 TravelMind 使用的模型供应商发送摘录。
 
 Sidecar 的 `SocialEvidenceRecord` 记录原帖和评论样本。交给 Research Engine 时转换为冻结的 `SocialEvidence`，最后使用 `Evidence` 的公开链接和 ID 入库。`AgentEvent v1`、现有任务 API、Checkpoint 格式及状态机沿用原协议。苏听雨把旅游体验情感、主题、投诉、营销迹象和体验综合输出为现有结论结构。引用社交证据的报告章节自动附上平台、参与引用的原帖和评论条数及 UTC 采集时间。
+
+## 知乎
+
+固定版上游包含 Cookie 注入、持久化浏览器目录、关键词搜索、回答详情、根评论和子评论代码。站内结果抽取支持回答、文章和视频，固定版没有独立的问题详情采集器。上游知乎实现带反检测脚本，且部分接口使用网页签名。与 `4d629b52eddef9c53b5e9a52b76ec4a64383b494` 比较后，知乎模块、数据模型、存储和许可均无差异，因此沿用固定版本。本项目使用开放平台接口和已授权的本地导出。 [固定版知乎代码](https://github.com/NanmiCoder/MediaCrawler/blob/306ab4ca26c0e44fb87ede0e40e98748752815a6/media_platform/zhihu/core.py) · [知乎 robots.txt](https://www.zhihu.com/robots.txt) · [知乎数据开放平台](https://developer.zhihu.com/docs)
+
+### 手动登录
+
+```powershell
+.\dev\social-research\social.ps1 -Action ZhihuLogin
+```
+
+脚本打开 Edge 或 Chrome 的独立资料目录，由用户在知乎页面手动登录、搜索关键词、查看有访问权限的问题、回答、评论和回复。完全关闭窗口后再次执行可复用浏览器保存的会话，具体有效期由知乎决定。浏览器将 Cookie 保存在 `%LOCALAPPDATA%\TravelMind\social-research\browser_data\zhihu`，该目录独立于 `-Root` 参数，仓库也忽略 `browser_data/`。普通浏览器会话和开放平台 API 使用各自的凭据。请勿导出或粘贴 Cookie。
+
+对允许导出并分析的材料，可以用原版 `Import -Platform zhihu` 导入。原帖记录包含 `content_type`（`question` 或 `answer`）、`content_id`、`title` 及可用的 `content_text`、`content_url`、`question_id`。评论带原帖的 `content_type` 和 `content_id`，以及 `comment_id`、`content` 和可选 `parent_comment_id`。问题和回答的 ID 分开去重，回答的短链接和问题下的完整链接统一识别为同一条证据。
+
+### 开放平台采集
+
+先启动本机 Sidecar。在调用终端本地设置 `SOCIAL_RESEARCH_TOKEN` 和拥有对应权限、额度的 `ZHIHU_ACCESS_SECRET`。命令返回导入任务状态，使用 `Job` 查看结果，使用 `Read -Platform zhihu` 按关键词查询或导出。
+
+```powershell
+$social = '.\dev\social-research\social.ps1'
+& $social -Action ZhihuCollect -Keyword '泉州 预约'
+& $social -Action ZhihuCollect -Keyword '泉州 预约' -ZhihuMode answers -SourceUrl $questionUrl
+& $social -Action ZhihuCollect -Keyword '泉州 预约' -ZhihuMode owned -SourceUrl $ownAnswerUrl
+& $social -Action Read -Platform zhihu -Keyword '泉州 预约'
+```
+
+| 模式 | 接口范围 | 预算 |
+| --- | --- | --- |
+| `search` | 关键词搜索。导入问题、回答摘要和接口返回的精选评论。精选评论没有原始评论 ID 或回复关系，按正文生成本地去重键 | 一次请求，最多 10 个上游结果 |
+| `answers` | 由知乎问题链接获取回答列表和摘要。问题正文通过正常浏览或授权导出取得 | 最多两页，每页请求 5 条 |
+| `owned` | 由本人已发布的回答链接获取正文和评论，以及接口附带的子评论 | 一次详情请求，最多两页评论，每页请求 5 条根评论 |
+
+API 每次请求有 8 秒超时和响应大小限制。分页遵循服务端游标，遇到验证码、拒绝访问、限流或游标异常即停止。摘要和详情摘录分别标记；平台提供作者和溯源参数时，保留可用于引用的公开署名及开放平台标识。已导入资料进同一 SQLite 缓存，Worker 仅查询缓存。全平台默认预算仍为每批 15 篇、每篇 12 条评论或回复，单次研究最多向苏听雨提供 6 篇。 [搜索接口](https://developer.zhihu.com/docs?key=zhihu_search) · [问题回答接口](https://developer.zhihu.com/docs?key=question_answers) · [本人详情](https://developer.zhihu.com/docs?key=user_content_detail) · [本人评论](https://developer.zhihu.com/docs?key=user_content_comments)
 
 ## 验收记录（2026-11-15）
 
@@ -73,5 +107,6 @@ Sidecar 的 `SocialEvidenceRecord` 记录原帖和评论样本。交给 Research
 | B站 | 合成视频 1 个、评论 1 条；另测平台评论数与样本数区分 | 未执行。用户协议对自动化获取明确要求事先书面许可。真实数据 0 个、0 条。 [用户协议](https://www.bilibili.com/blackboard/protocal/licence.html) |
 | 微博 | 合成帖子 1 篇、评论 1 条；另测缺文件错误和渠道失败隔离 | 未执行。协议禁止未经书面许可的自动化行为。真实数据 0 篇、0 条。 [服务使用协议](https://www.weibo.com/signup/v5/protocol/) |
 | 抖音 | 合成视频 1 个、评论 1 条 | 未执行，未取得可用的授权样本。真实数据 0 个、0 条。 [用户服务协议](https://www.douyin.com/draft/douyin_agreement/douyin_agreement_user.html?id=6773906068725565448) |
+| 知乎 | Windows 独立进程导入并分页导出合成问题 1 个、回答 1 条、根评论和回复各 1 条。合成证据通过 PostgreSQL 写入测试 | 真实搜索端点返回鉴权失败，当前缺少授权数据。真实问题、回答、评论和回复均为 0，实际 Cookie 会话复用待验收 |
 
 真实平台验收仍需小红书笔记、B站视频及其可用评论和回复，并记录微博、抖音获准访问后的结果与失败分类。取得样本后，运行同一导入流程和本机 Worker，核对原帖链接、Evidence ID、五项分析、证据评分和最终报告范围。

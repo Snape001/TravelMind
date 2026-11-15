@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from itertools import zip_longest
 from time import monotonic
 
 import httpx
@@ -89,6 +90,11 @@ class SocialResearchAdapter:
 
         batches = await asyncio.gather(*(read(platform) for platform in dict.fromkeys(platforms)))
         seen: set[str] = set()
-        by_id = {item.evidence_id: item for batch in batches for item in batch}
+        by_id = {
+            item.evidence_id: item
+            for group in zip_longest(*batches)
+            for item in group
+            if item is not None
+        }
         evidence = [item.to_evidence(seen) for item in list(by_id.values())[:RESEARCH_LIMIT]]
         return evidence, errors
