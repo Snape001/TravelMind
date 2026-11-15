@@ -85,13 +85,19 @@ def record(item: dict, keyword: str, collected: datetime, mode: Mode) -> SocialE
         raise ValueError("Zhihu body is unavailable")
     kind = "answer" if mode == "answers" else str(item.get("ContentType")).lower()
     try:
+        url = item.get("Url")
+        content_id = item.get("ContentToken")
+        if mode == "search":
+            # Search ContentID identifies a result, while the source URL carries the public ID.
+            source_id, _ = zhihu_source(str(url))
+            content_id = source_id.split("-", 1)[1]
         result = zhihu_record(
             {
                 "title": item.get("Title"),
                 "content_text": text,
                 "content_type": kind,
-                "content_url": item.get("Url"),
-                "content_id": item.get("ContentID" if mode == "search" else "ContentToken"),
+                "content_url": url,
+                "content_id": content_id,
                 "created_time": item.get("CreateTime"),
                 "voteup_count": item.get("VoteUpCount"),
                 "comment_count": item.get("CommentCount"),
@@ -220,7 +226,7 @@ def main() -> None:
     (batch / "evidence.jsonl").write_text(
         "".join(result.model_dump_json() + "\n" for result in results), encoding="utf-8"
     )
-    print(request.model_dump_json())
+    print(json.dumps(request.model_dump(mode="json"), ensure_ascii=True, separators=(",", ":")))
 
 
 if __name__ == "__main__":

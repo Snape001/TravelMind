@@ -1,10 +1,12 @@
 import json
+import sys
 from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
 from pydantic import HttpUrl
 
+from travelmind.research.social import zhihu_api
 from travelmind.research.social.platforms import load_export
 from travelmind.research.social.schemas import (
     ImportRequest,
@@ -111,7 +113,7 @@ def test_official_search_keeps_attribution_and_selected_comment_scope():
     item = {
         "Title": "泉州",
         "ContentType": "Answer",
-        "ContentID": "456",
+        "ContentID": "-9001",
         "ContentText": "周末建议预约",
         "Url": ANSWER + "?utm_medium=openapi_platform&utm_source=abc&session=discard",
         "CommentCount": 20,
@@ -124,6 +126,7 @@ def test_official_search_keeps_attribution_and_selected_comment_scope():
     (record,) = collect(call, "search", "泉州", COLLECTED)
     assert calls == [("content/zhihu_search", {"Query": "泉州", "Count": 10})]
     assert record.provider == "zhihu_open_api"
+    assert record.post_id == "answer-456"
     assert record.author_display_name == "公开昵称"
     assert record.created_at == datetime.fromtimestamp(1760000000, UTC)
     assert record.published_at is None
@@ -137,6 +140,21 @@ def test_official_search_keeps_attribution_and_selected_comment_scope():
         update={"source_url": HttpUrl("https://www.zhihu.com/answer/456")}
     )
     assert source_key(evidence) == source_key(short_url)
+
+
+def test_search_question_identity_comes_from_its_public_url():
+    item = {
+        "ContentType": "Question",
+        "ContentID": "9001",
+        "Title": "泉州",
+        "Url": QUESTION,
+    }
+    answer_with_wrong_url = {**item, "ContentType": "Answer"}
+    call, _ = send(iter([{"Items": [item]}, {"Items": [answer_with_wrong_url]}]))
+    (record,) = collect(call, "search", "泉州", COLLECTED)
+    assert record.post_id == "question-123"
+    with pytest.raises(ZhihuError, match="INVALID_RESPONSE"):
+        collect(call, "search", "泉州", COLLECTED)
 
 
 def test_question_answers_follows_server_offset_with_two_page_budget():
@@ -211,6 +229,21 @@ def test_search_distinguishes_empty_from_malformed_rows():
     assert collect(call, "search", "泉州", COLLECTED) == []
     with pytest.raises(ZhihuError, match="INVALID_RESPONSE"):
         collect(call, "search", "泉州", COLLECTED)
+
+
+def test_cli_import_receipt_transports_chinese_keyword_as_ascii_json(tmp_path, monkeypatch, capsys):
+    keyword = "泉州古城 预约 排队"
+
+    def search(endpoint, **params):
+        assert endpoint == "content/zhihu_search" and params["Query"] == keyword
+        return {"Items": []}
+
+    monkeypatch.setattr(zhihu_api.ZhihuOfficialClient, "from_environment", lambda: search)
+    monkeypatch.setattr(sys, "argv", ["zhihu_api", "--data", str(tmp_path), "--keyword", keyword])
+    zhihu_api.main()
+    receipt = capsys.readouterr().out
+    assert receipt.isascii()
+    assert ImportRequest.model_validate_json(receipt).keyword == keyword
 
 
 def test_phase4_contract_advertises_zhihu():
