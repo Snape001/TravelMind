@@ -1,0 +1,12 @@
+services:
+  worker:
+    environment:
+      SOCIAL_RESEARCH_PROVIDER: mediacrawler_export
+      SOCIAL_RESEARCH_CACHE_PATH: /local-social/social.sqlite3
+    volumes:
+      - type: bind
+        source: ${SOCIAL_RESEARCH_HOST_CACHE:?Set the authorized local social cache path}
+        target: /local-social/social.sqlite3
+        read_only: true
+        bind:
+          create_host_path: false

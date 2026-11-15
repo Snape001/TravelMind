@@ -109,7 +109,7 @@ async def test_director_reserves_fields_checks_conditions_and_falls_back():
 
 
 @pytest.mark.anyio
-async def test_director_can_use_available_options_leaving_one_slot_for_route():
+async def test_director_reserves_slots_for_social_and_route_options():
     async def model(*_args, **_kwargs):
         return QuestionnaireDraft.model_validate(
             {
@@ -126,7 +126,7 @@ async def test_director_can_use_available_options_leaving_one_slot_for_route():
                         "question_id": "followup",
                         "text": "想深入核对什么？",
                         "kind": "text",
-                        "visible_if": {"question_id": "interests", "includes_option_id": "focus_0"},
+                        "visible_if": {"question_id": "interests", "includes_option_id": "focus_8"},
                     },
                 ],
             }
@@ -146,6 +146,8 @@ async def test_director_can_use_available_options_leaving_one_slot_for_route():
     ]
     assert len(questionnaire.questions[0].options) == 10
     assert questionnaire.questions[0].options[-1].option_id == "travel_route"
+    assert questionnaire.questions[0].options[-2].option_id == "social_sentiment"
+    assert "focus_8" in {option.option_id for option in questionnaire.questions[0].options}
 
 
 def test_travel_preferences_validate_cross_field_values_and_preserve_zero():

@@ -3,7 +3,8 @@
 param(
     [ValidateSet('init', 'start', 'stop', 'status', 'check', 'restart-worker')]
     [string]$Action = 'start',
-    [string]$MkcertPath = 'mkcert'
+    [string]$MkcertPath = 'mkcert',
+    [string]$SocialCachePath
 )
 
 Set-StrictMode -Version Latest
@@ -20,6 +21,12 @@ $composeArgs = @(
     'compose', '-p', 'travelmind-local-oidc',
     '--env-file', $envFile, '-f', (Join-Path $PSScriptRoot 'compose.yaml')
 )
+if ($SocialCachePath) {
+    $cache = Get-Item -LiteralPath $SocialCachePath
+    if ($cache.PSIsContainer) { throw 'SocialCachePath must point to the authorized SQLite file.' }
+    $env:SOCIAL_RESEARCH_HOST_CACHE = $cache.FullName
+    $composeArgs += @('-f', (Join-Path $PSScriptRoot 'compose.social.yaml'))
+}
 
 function New-LocalSecret {
     $bytes = New-Object byte[] 24

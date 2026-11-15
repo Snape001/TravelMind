@@ -26,4 +26,4 @@ Phase 3 交付证据质量筛选、专家反思、离线评测、公会和本地
 
 ## Phase 4
 
-Phase 4 面向桌面端 Web。首页只提交目的地，经高德 POI 确认后进入 Director 动态问卷。路线需求触发可选出行问卷，并由陆知行使用真实高德数据规划。报告引入按需加载的专家 Skills，Reviewer 保持独立审核。三栏工作台通过 Research Browser 展示来源生命周期，并用供应商实际用量支持专家 Hover。社交资料接入先做独立 PoC 与授权核查。 [技术架构与验收标准](docs/phase-4-architecture.md) · [公共接口](docs/phase-4-contract.md)
+Phase 4 面向桌面端 Web。首页只提交目的地，经高德 POI 确认后进入 Director 动态问卷。路线需求触发可选出行问卷，并由陆知行使用真实高德数据规划。报告引入按需加载的专家 Skills，Reviewer 保持独立审核。三栏工作台通过 Research Browser 展示来源生命周期，并用供应商实际用量支持专家 Hover。苏听雨通过本机服务读取已授权的社交导出，报告注明平台、样本量和采集时间。在线采集单独核对平台授权和可用范围。 [技术架构与验收标准](docs/phase-4-architecture.md) · [公共接口](docs/phase-4-contract.md) · [社交资料验收](docs/phase-4-social-research.md)

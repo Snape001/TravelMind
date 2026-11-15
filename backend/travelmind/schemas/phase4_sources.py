@@ -44,8 +44,11 @@ class SocialEvidenceItem(Evidence):
     source_type: Literal["social"] = "social"
 
 
+SocialPlatform = Literal["xiaohongshu", "bilibili", "weibo", "douyin", "zhihu"]
+
+
 class SocialEvidence(Contract):
-    platform: Literal["xiaohongshu", "douyin", "bilibili", "weibo"]
+    platform: SocialPlatform
     provider: ContractKey
     post_id: ShortText
     sample_size: NonnegativeInt | None = None

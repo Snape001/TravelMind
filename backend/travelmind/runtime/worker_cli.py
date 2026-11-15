@@ -99,7 +99,13 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
         sessions = async_sessionmaker(engine, expire_on_commit=False)
         store = PostgresWorkerStore(sessions)
         client = await resources.enter_async_context(httpx.AsyncClient())
-        research = ResearchEngine(client, settings)
+        social_client = None
+        if (
+            settings.social_research_provider != "disabled"
+            and settings.social_research_cache_path is None
+        ):
+            social_client = await resources.enter_async_context(httpx.AsyncClient(trust_env=False))
+        research = ResearchEngine(client, settings, social_client=social_client)
         amap = AmapClient(client, settings.amap_web_api_key)
         map_cache = AmapResultCache(amap)
         pool = await resources.enter_async_context(
@@ -116,7 +122,10 @@ async def serve(settings: Settings, lease_seconds: int, poll_seconds: float) -> 
             store,
             model,
             lambda lease: FencedPostgresSaver(pool, store, lease),
-            retrieve=lambda lease: ResearchRetriever(research, sessions, store=store, lease=lease),
+            retrieve=lambda lease: ResearchRetriever(
+                research, sessions, store=store, lease=lease,
+                social_search=research.search_social if research.social is not None else None,
+            ),
             reflection=reflection_for(model, settings.deepseek_model),
             intake=IntakeWorker(store, AmapPoi(amap), model),
             travel_planner=TravelPlanner(

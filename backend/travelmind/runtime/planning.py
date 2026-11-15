@@ -88,6 +88,7 @@ async def plan_research(
     *,
     focused: bool = False,
     travel_requested: bool | None = None,
+    social_requested: bool = False,
 ) -> PlanResult:
     roster = "\n".join(
         f"- {agent_id}：{role}"
@@ -102,6 +103,8 @@ async def plan_research(
             if focused
             else ""
         )
+        if social_requested:
+            scope += "用户已选择游客体验与口碑，安排 social_sentiment 核对公开样本。\n"
         draft = await model(
             request,
             "担任 Planner。按主题和深度从以下名册选择 3 至 5 个不同专家，分配互补、可核查的目标。"
@@ -125,6 +128,14 @@ async def plan_research(
                 ExpertAssignment(
                     agent_id="travel_planning",
                     objective="按已确认目的地和偏好核对景点及交通路线",
+                )
+            )
+        if social_requested and "social_sentiment" not in ids:
+            ids["social_sentiment"] = uuid5(request.run_id, "social_sentiment")
+            assignments.append(
+                ExpertAssignment(
+                    agent_id="social_sentiment",
+                    objective="核对目的地的游客体验、口碑和争议，说明平台与样本范围",
                 )
             )
         return ResearchPlan(

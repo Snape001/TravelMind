@@ -1,8 +1,11 @@
 from functools import lru_cache
-from typing import Annotated
+from pathlib import Path
+from typing import Annotated, Literal
 
-from pydantic import Field, HttpUrl, SecretStr
+from pydantic import Field, HttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from travelmind.research.social.schemas import Platform
 
 WAKE_CHANNEL = "travelmind:worker:wakeup"
 
@@ -25,6 +28,29 @@ class Settings(BaseSettings):
     next_public_amap_js_api_key: SecretStr | None = None
     amap_security_js_code: SecretStr | None = None
     research_timeout_seconds: Annotated[float, Field(gt=0, le=120)] = 35
+    social_research_provider: Literal["disabled", "mediacrawler_export"] = "disabled"
+    social_research_url: HttpUrl = HttpUrl("http://127.0.0.1:18764")
+    social_research_token: SecretStr | None = None
+    social_research_cache_path: Path | None = None
+    social_research_platforms: tuple[Platform, ...] = ("zhihu", "xiaohongshu", "bilibili")
+    social_research_timeout_seconds: Annotated[float, Field(gt=0, le=10)] = 3
+
+    @field_validator("social_research_cache_path", mode="before")
+    @classmethod
+    def ignore_empty_cache_path(cls, value):
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("social_research_url")
+    @classmethod
+    def require_local_url(cls, value: HttpUrl) -> HttpUrl:
+        if (
+            value.scheme != "http" or value.host != "127.0.0.1"
+            or value.username is not None or value.password is not None
+            or value.path not in (None, "", "/") or value.query is not None
+            or value.fragment is not None
+        ):
+            raise ValueError("social service URL must be an HTTP origin on 127.0.0.1")
+        return value
 
 
 @lru_cache

@@ -79,6 +79,7 @@
 - [专家档案与技能调用](../backend/travelmind/schemas/phase4_experts.py)
 - [扩展事件与用量](../backend/travelmind/schemas/phase4_events.py)
 - [来源正文、路线与社交证据](../backend/travelmind/schemas/phase4_sources.py)
+- 社交证据的 `platform` 枚举增加 `zhihu`。知乎问题与回答使用各自的 `post_id`，引用继续使用 `Evidence`。 [知乎采集范围](phase-4-social-research.md#知乎)
 - [公共 JSON Fixture](../fixtures/phase4.json) 包含同名 POI、动态问题、多轮示例、逐条来源事件、模型用量、路线和社交样本。数据为合成测试样例。
 
 前端可从仓库根目录单独导出待接入的组件类型。接口路径以本文为准，集成时由真实后端 OpenAPI 生成正式类型。

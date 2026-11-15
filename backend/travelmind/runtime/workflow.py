@@ -50,7 +50,7 @@ from travelmind.schemas.events import (
     TaskStatusEvent,
 )
 from travelmind.schemas.map_data import MapData
-from travelmind.schemas.phase4_intake import ResearchIntakeContext
+from travelmind.schemas.phase4_intake import ChoiceAnswer, ResearchIntakeContext
 from travelmind.schemas.research_quality import ExpertResearchResult
 
 
@@ -179,6 +179,12 @@ def build_research_graph(
 
     async def planner(state: ResearchState) -> dict:
         request = request_for(state, planning.PLANNER)
+        social_requested = travel_intake is not None and any(
+            isinstance(answer, ChoiceAnswer)
+            and answer.question_id == "interests"
+            and "social_sentiment" in answer.option_ids
+            for answer in travel_intake.research_submission.answers
+        )
         result = await run_agent(
             request,
             lambda: planning.plan_research(
@@ -186,6 +192,7 @@ def build_research_graph(
                 request,
                 focused=reflection_flow is not None,
                 travel_requested=travel_intake.travel_route_requested if travel_intake else None,
+                social_requested=social_requested,
             ),
         )
         if isinstance(result, AgentFailure):

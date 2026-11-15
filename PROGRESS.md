@@ -12,6 +12,68 @@
 - Chrome 使用正式接口核对日程、站点、备选方案、证据、三栏预览与部分数据提示。当前公交方案的 4 条 Polyline 与接口分段一一对应。地图返回 503 时仍可阅读报告，重试后恢复。41 项前端测试、ESLint、TypeScript 和生产构建通过。 [实现与联调记录](docs/report-map-ui.md)
 - **交付分支**　`codex/report-map-ui`。**交付提交**　`feat: integrate versioned report MapData`。
 
+
+## Phase 4 · 苏听雨读取知乎、小红书和 B 站缓存（2026-11-15）
+
+- 将社交资料分支与当前问卷、默认 Worker 和地图流程合并。勾选「游客体验与口碑」后固定安排苏听雨。Worker 可通过已有 Sidecar 接口或只读 SQLite 文件读取。默认平台为知乎、小红书和 B 站。按目的地匹配已导入标签，优先精确主题。 [启用方式](docs/phase-4-social-research.md#worker-配置与样本)
+- 知乎和小红书提供原帖摘录及评论，B 站仅提供评论及回复正文，保留视频标题和链接用于引用。已授权缓存原有 3 组资料、每平台 12 条评论或回复，验收任务按原预算各读取 6 条，共 18 条。无网络 Docker 容器的只读挂载验证通过。
+- 使用真实高德、博查、DeepSeek 与隔离 PostgreSQL 验证默认 Worker。三平台 3 条 Evidence 均通过已认证的读取接口验证。苏听雨完成五项结构化分析，首次验收同时引用三个平台。范围收窄的复测仍读入三平台，分析引用知乎的直接体验叙述。两次完整运行都生成了带样本说明的草稿，因准确性和覆盖等审核意见达到返工上限，未发布正式报告。
+- PostgreSQL 17 全量 305 项、Ruff、Alembic、PowerShell 语法和 Docker Compose 配置检查通过。**交付提交**　`feat: connect collected social evidence to the sentiment expert`。
+
+## Phase 4 · MediaCrawler 在线采集编排（2026-11-15）
+
+- 新增 `Collect`：在固定版 MediaCrawler `306ab4c` 上编排一次在线采集。搜索模式按关键词抓原帖，详情模式按内容链接抓单帖，均启用评论与子评论，以 JSONL 导出后自动暂存到新批次并提交同一个 Sidecar 导入任务。支持小红书、B站、抖音、微博和知乎。 [命令用法、参数边界与护栏](docs/phase-4-social-research.md#在线采集mediacrawler-编排)
+- CLI 固定单并发、每帖评论上限 20、不启用 IP 代理、不下载媒体；`MaxNotes`（1–50，默认 20）和 `TimeoutSeconds`（60–7200，默认 1800）受控。上游 checkout 与虚拟环境按固定提交校验，子进程输出记录在 `data\runs\<批次>\crawler.log`。登录只使用上游自带的二维码流程，由用户本人扫码；不新增验证码识别、代理池或账号池，遇到验证码、拒绝访问或限流即停止该渠道。
+- 全量回归 230 项通过、29 项跳过，其中新增 12 项全部通过，覆盖命令构造、固定提交校验、JSONL 暂存拼接、失败分类（错误码 3/4/5/6）、端到端导入与回执。Ruff 通过。本机沙盒环境 `os.mkdir(path, 0o700)` 会产生无法访问的目录，导致 pytest `tmp_path` 失败；根因在沙盒对目录模式的处理，仓库代码未做环境适配，测试以仓库外的兼容插件运行。
+- 真实运行暴露并修复了两处启动问题。固定版默认 `CDP_CONNECT_EXISTING=True`，会等待外部浏览器而拒绝自己拉起；采集前用 `-c` 引导脚本关闭该开关，由采集器启动本机 Chrome/Edge 并连接其调试端口。本机 `NO_PROXY` 中的 `[::1]` 条目会让 `httpx` 解析调试端口时报 `Invalid port`，子进程环境已剔除带方括号的 IPv6 代理例外。回归新增 1 项，采集测试共 13 项通过。
+- 2026-11-15 本人扫码后完成小红书真实验证：搜索“泉州 旅游”抓到 20 篇笔记和 327 条评论/回复的原始 JSONL（评论抓取阶段按用户要求中止，未入库）；详情模式对 1 篇笔记完成端到端导入，写入 1 条证据和 12 条评论，`Read` 接口返回标题、关键词和评论内容均正确。Cookie 会话保存在 `browser_data\cdp_xhs_user_data_dir`。 [验收记录](docs/phase-4-social-research.md#验收记录2026-11-15)
+- 同日完成 B站与知乎真实验证：B站详情模式对 `BV1G5ASetEbR` 写入 1 条视频证据和 12 条评论；知乎搜索返回 20 条回答和 490+ 条评论/回复原始 JSONL（按用户要求中止，未入库），详情模式对 1 条回答写入 1 条证据和 12 条评论，均通过证据接口读取。抖音二维码登录弹窗无法自动关闭，按用户指示停止接入；`a_bogus` 签名所需 Node.js 运行时装在 `social-research\node`。知乎专栏文章超出 Sidecar 现支持的问题/回答类型，保持官方 API 兜底。
+- **交付提交**　`feat: orchestrate MediaCrawler online collection`。
+
+## Phase 4 · 知乎官方搜索真实验收（2026-11-15）
+
+- 使用用户本机凭据查询 `泉州古城 预约 排队`，知乎成功返回 10 条结果，其中 4 条回答、6 条文章，问题条目为零。当前导入范围为问题和回答，实际导入 4 条回答摘要和 7 条精选评论摘录。搜索接口未提供完整评论树或回复。
+- 真实响应暴露了两项差异。Windows PowerShell 的旧代码页导致初次验收脚本传入乱码关键词。官方搜索返回的 `ContentID` 也与公开回答链接的 ID 不同。修正本机脚本的 Unicode 输入和 CLI 的 JSON 回执。搜索结果改用公开链接的 ID 建立证据，继续校验内容类型与链接一致。使用已保存响应重放，修复后未为重放增加业务调用。
+- Sidecar 验证了 4 条摘要的导入和读取。Research Engine 按单平台证据预算取前 2 条写入独立 PostgreSQL，重复检索沿用同一证据 ID，已认证的证据读取接口验证通过。51 项定向测试及 Ruff 通过。样本和验收制品保留在本机忽略目录。 [开放平台验收范围](docs/phase-4-social-research.md#开放平台采集)
+- **交付提交**　`fix: normalize live Zhihu search results`。
+
+## Phase 4 · 知乎开放平台客户端（2026-11-15）
+
+- 根据官方文档核实 Access Secret、站内搜索、问题回答、本人创作全文和评论、额度及计费。本次公开数据范围为问题和回答摘要以及搜索返回的精选评论。完整回答正文与评论回复限本人已发布的内容。第三方用户数据的 OAuth 应用申请另有流程。 [接入能力、配置及价格](docs/phase-4-social-research.md#开放平台采集)
+- 提取独立 `ZhihuOfficialClient`，加入每次调用超时、单进程节流、一次临时服务失败重试、错误分流和 `ZhihuQuota`。沿用 JSONL、Sidecar 和 Evidence Center。本人评论保留直接回复与根评论关系。公开作者和创建时间随记录保留，发布时间不可确定时留空。
+- 245 项后端测试通过（新增 17 项），含 Mock 官方响应、权限和限流分类、空结果、异常响应以及隔离 PostgreSQL 上的证据读写。Ruff、Alembic 和 PowerShell 语法检查通过。本轮实际官方业务调用量为零，等待用户完成凭据和额度确认后再验收真实内容。
+- **交付提交**　`feat: harden Zhihu official API integration`。
+
+## Phase 4 · 知乎人工样本验收（2026-11-15）
+
+- 将用户正常浏览后提供的真实材料作为 `manual_browser` 导入。本次有 1 篇知乎回答摘录、1 条根评论、1 条回复，问题 ID 和链接作为上下文，无独立问题正文。采集记录时间使用本次录入时刻，原始发布时间保留为空。评论及回复使用本地稳定 ID 关联。
+- 本机 Sidecar 通过 HTTP 完成 JSONL 导入、读取和导出。Research Engine 连续两次检索返回同一证据 ID，写入独立 PostgreSQL 17 验收库，使用已认证的证据读取接口验证原链接与来源标识。DeepSeek 实际返回苏听雨的 5 项结构化结果，每项引用均可解析到这条已入库证据。样本内的预约和排队建议、交通不便为个案，营销及季节或时段差异保留为待核。
+- 35 项后端定向测试及 Ruff 通过。样本与模型输出的验收文件保存在本机忽略目录。MediaCrawler 在线采集与知乎开放平台调用量均为零。 [人工摘录格式与验收范围](docs/phase-4-social-research.md#人工样本导入与验收)
+- **交付提交**　`feat: preserve manual Zhihu evidence provenance`。
+
+## Phase 4 · MediaCrawler 知乎网页登录与采集复核（2026-11-15）
+
+- 独立虚拟环境的 MediaCrawler `306ab4c` 可运行 `main.py --help`，确认 CLI 声明二维码、Cookie 登录和 JSONL 输出。源码中的二维码流程等待浏览器会话 Cookie，Cookie 模式将已有会话注入浏览器。手机登录分支是占位实现。本次未发起账号登录，Cookie 目录继续由既有 Git 忽略规则保护。
+- 知乎自动化路径包含反检测配置，并在登录后主动访问站内搜索。平台 robots.txt 对通用爬虫限制这些路径。关键词搜索会保留与问题关联的回答，但不输出问题条目，独立问题链接无详情分支。回答详情以及根评论和回复分页都有代码，知乎评论路径未应用通用单帖评论上限。对比上游 HEAD `4d629b5`，整个差异仅涉及 README，因此保留固定版本。
+- 运行 5 项离线单元测试，覆盖知乎导出映射、问题和回答的区分、父评论关联、序列化、公共契约和苏听雨五项分析的输入。授权导出继续沿用已有 Sidecar 和 Evidence Center 路径。本次未执行以真实样本入库和分析的端到端验证。
+- 本轮仅复核 MediaCrawler 网页实现。真实采集量为问题 **0**、回答 **0**、根评论 **0**、回复 **0**。后续可先使用已获准加工和引用的真实导出验收入库和分析。在线验证需有允许自动化访问的范围，并确认采集配置能遵守访问控制和请求预算。 [登录说明与复核记录](docs/phase-4-social-research.md#知乎)
+- **交付提交**　`docs: audit pinned MediaCrawler Zhihu collection`。
+
+## Phase 4 · 知乎社交资料（2026-11-15）
+
+- 审核 MediaCrawler 固定版 `306ab4ca26c0e44fb87ede0e40e98748752815a6` 的知乎登录、搜索、回答详情和评论代码，对比 `4d629b52eddef9c53b5e9a52b76ec4a64383b494` 确认知乎实现、输出结构与许可证无差异，沿用固定版本。固定版缺少独立的问题正文采集，网页采集路径含反检测与网页签名。
+- 接入知乎开放平台关键词搜索、问题下的回答摘要，以及本人已发布回答详情和评论回复。Windows 独立浏览器目录支持手动登录后保存本机会话，`browser_data/` 已加入 Git 忽略规则。支持问题和回答的授权 JSONL 导入、稳定去重、分页、缓存及采样预算，复用 Evidence Center 与苏听雨流程。 [启动、权限边界及验收记录](docs/phase-4-social-research.md#知乎)
+- PostgreSQL 17 全量回归 **226 项通过**（新增 8 项），含知乎本地缓存到 Evidence Center 实际入库。Ruff、Alembic 检查、PowerShell 解析和 Phase 4 类型生成均通过。Windows 独立进程验证合成问题 1 个、回答 1 条、根评论 1 条和回复 1 条的导入、分页和导出。
+- 官方搜索端点在无凭据请求下返回鉴权失败，取得真实问题、回答、评论及回复均为 0。真实内容与知乎 Cookie 会话复用待授权后验收。问题正文与非本人回答的完整详情和回复由正常浏览或授权导出提供。
+- **交付提交**　`feat: add Zhihu social research support`，分支 `feat/social-research-adapter`。
+
+## Phase 4 · Social Research Adapter（2026-11-15）
+
+- 独立安装固定版 MediaCrawler `306ab4ca26c0e44fb87ede0e40e98748752815a6`、其依赖锁和 Playwright Chromium，保留原始许可证。Windows 本机 Sidecar 支持四平台的已授权导出导入、取消、状态、分页、去重、缓存及 JSONL 导出。应用内默认关闭，可按平台启用。
+- 苏听雨按目的地与调研主题查询本机样本。证据经过评论清洗、样本限额、现有 Evidence Center 与 EvidenceQuality，形成五项结构化分析。引用社交样本的报告章节附平台、实际评论和原帖数量及采集时间。公共 `SocialEvidence`、AgentEvent v1、LangGraph Checkpoint 和任务 API 的结构继续兼容。
+- PostgreSQL 17 上 218 项后端测试通过（新增 10 项），覆盖四平台映射、序列化、任务取消、超时降级、真实 PostgreSQL 写入、五项技能结构和报告样本说明。Ruff、Alembic 一致性检查通过。Windows 启动独立进程，以合成样本逐平台验证各 1 篇原帖、1 条评论的导入、状态读取和 JSONL 导出。
+- 四个平台均为 0 条真实采集。平台授权、允许的访问方式及可用于分析的真实导出待确认，尚未进行在线搜索、详情、评论和真实样本的模型验收。 [Windows 配置、许可证及逐平台结果](docs/phase-4-social-research.md)
+- **交付提交**　`feat: integrate local social research exports`，分支 `feat/social-research-adapter`。
 ## Phase 4 · 默认 Worker 旅游规划与报告地图（2026-11-15）
 
 - 复用问卷后端 `b7d64a8` 和高德适配器 `e080bf2`。结构化问卷的新任务使用 `durable-v3`。Planner 按实际选择调度陆知行，默认 Worker 使用高德 POI 搜索、详情和路线工具。旧简报任务及已有 `durable-v1`、`durable-v2` Checkpoint 沿用原图。
