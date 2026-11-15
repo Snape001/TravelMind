@@ -38,7 +38,9 @@ Get-Content .artifacts/local-oidc/.env | Select-String '^TM_LOCAL_(ALICE|BOB)_PA
 Start-Process 'https://travelmind.localhost:18443'
 ```
 
-已有开发 Realm 的机器先执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack upgrade-auth`，再执行 `start`。升级脚本原地启用账户功能并保留原有用户。空数据卷首次启动时自动导入 Realm。
+日常执行 `start` 会复用本地前后端镜像，缺少任一应用镜像时自动构建。更新源码或依赖后用 `start -Build` 构建新版。
+
+已有旧版开发 Realm 的机器先执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack upgrade-auth`，再执行 `start -Build`。升级脚本原地启用账户功能并保留原有用户。空数据卷首次启动时自动导入 Realm。
 
 可以使用 `alice` 或 `bob` 登录，也可以用测试邮箱注册。注册和密码重置邮件由 Keycloak 通过本地 SMTP 发送到 [Mailpit 收件箱](http://127.0.0.1:18025)。邮箱验证后设置密码并登录，资料页可修改昵称。账户菜单退出时先吊销 TravelMind 会话，再进入 Keycloak 单点退出，完成后可重新登录。使用独立浏览器配置文件验证多设备及跨用户权限。 [SMTP、Realm 导入和生产配置](docs/account-auth-deployment.md)
 
@@ -62,7 +64,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stack stop
 
 | 现象 | 检查方式 |
 | --- | --- |
-| Docker 不可用或不能拉取镜像 | 启动 Docker Desktop 并切换到 Linux 容器，运行 `docker info`，再执行 `start`。首次构建需访问镜像、PyPI 和 npm 仓库。 |
+| Docker 不可用或构建时报仓库连接超时 | 确认 Docker Desktop 正在运行 Linux 容器。已有应用镜像时用 `start` 启动。缺少镜像或执行 `start -Build` 时需能访问容器镜像仓库、PyPI 和 npm 仓库。 |
 | 找不到 mkcert，或浏览器提示证书不可信 | 用 `-MkcertPath` 传入可执行文件路径，运行 `init`，重启浏览器并用上述域名访问。证书过期时，停止开发栈，移走 `pki/site.pem` 与 `pki/site-key.pem`，再运行 `start`。 |
 | HTTPS 端口被占用 | 运行 `Get-NetTCPConnection -LocalPort 18443 -State Listen` 定位当前监听者。 |
 | 登录提示回调无效或身份服务暂不可用 | 运行 `check` 检查本机信任、Discovery、JWKS 和授权跳转。用下面的日志命令定位 Caddy、Keycloak 或 FastAPI 错误。避免手工替换本地密码文件中的客户端密钥。 |
@@ -174,10 +176,10 @@ Set-Location backend
 
 ### Docker 更新 API 与 Worker
 
-从项目根目录启动或更新本地 OIDC 栈。脚本会重建镜像并运行数据库迁移。
+从项目根目录执行 `start` 可启动已有镜像并运行数据库迁移。要把源码或依赖的变更部署到本地 OIDC 栈，运行以下命令。
 
 ```powershell
-.\dev\local-oidc\stack.ps1 start
+.\dev\local-oidc\stack.ps1 start -Build
 ```
 
 如果本地栈正在运行，可以单独升级后端。先停旧 Worker，重建后端并迁移，再重建 API 和 Worker 容器，让 Docker Compose 重新读取 `backend/.env`。

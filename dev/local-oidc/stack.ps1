@@ -4,7 +4,8 @@ param(
     [ValidateSet('init', 'start', 'stop', 'status', 'check', 'restart-worker', 'upgrade-auth')]
     [string]$Action = 'start',
     [string]$MkcertPath = 'mkcert',
-    [string]$SocialCachePath
+    [string]$SocialCachePath,
+    [switch]$Build
 )
 
 Set-StrictMode -Version Latest
@@ -277,8 +278,14 @@ switch ($Action) {
         }
         Initialize-LocalState
         Invoke-Compose config --quiet
-        Invoke-Compose build migrate frontend
-        Invoke-Compose up -d
+        $images = @(& docker image ls --filter "reference=${composeProject}-*" --format '{{.Repository}}:{{.Tag}}')
+        if ($LASTEXITCODE -ne 0) { throw 'Could not list local Docker images.' }
+        if ($Build -or "${composeProject}-backend:latest" -notin $images -or "${composeProject}-frontend:latest" -notin $images) {
+            Invoke-Compose build migrate frontend
+        } else {
+            Write-Host 'Using local application images. Run stack.ps1 start -Build after changing source or dependencies.'
+        }
+        Invoke-Compose up -d --no-build
         $deadline = (Get-Date).AddMinutes(3)
         while ($true) {
             try {

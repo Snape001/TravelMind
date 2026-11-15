@@ -11,11 +11,13 @@
 .\dev\local-oidc\stack.ps1 check
 ```
 
+日常 `start` 优先复用已有应用镜像，缺少镜像时自动构建。部署更新过的源码或依赖时使用 `start -Build`。
+
 已有本地部署先升级原 Realm，再重建应用。升级短暂停止本机 Keycloak，通过一次性私有管理员原地更新 Realm 和客户端，保留 Alice、Bob、已注册用户、主体 ID 和数据卷。已有仅含旧会话信息的 Cookie 在账户模式下需重新登录。
 
 ```powershell
 .\dev\local-oidc\stack.ps1 upgrade-auth
-.\dev\local-oidc\stack.ps1 start
+.\dev\local-oidc\stack.ps1 start -Build
 .\dev\local-oidc\stack.ps1 check
 ```
 
